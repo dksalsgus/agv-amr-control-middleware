@@ -67,7 +67,7 @@ curl -H "$AUTH" "http://localhost:3000/logs?type=LINK_DOWN&page=1&size=100"
 curl -H "$AUTH" http://localhost:3000/alarms
 curl -H "$AUTH" -X POST http://localhost:3000/alarms/{id}/ack
 
-# 측정 스크립트 (Node 22, 의존성 없음, 약 2분): 지연 p50·p95, 유실률, 복구 시간, CPU·메모리를 표로 출력
+# 측정 스크립트 (Node 22, 의존성 없음, 약 2분 30초, 끝에 에뮬레이터를 다시 켬): 지연 p50·p95, 유실률, 복구 시간, CPU·메모리를 표로 출력
 # 장애를 직접 주입했다가 되돌린다. 결과 예시는 docs/measurements.md
 node scripts/measure.mjs
 

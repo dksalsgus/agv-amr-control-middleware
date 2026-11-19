@@ -85,6 +85,17 @@ class Api {
     }
   }
 
+  async setPlcPoint(pointNo, on) {
+    const response = await fetch(`${FAULT_API}/faults/plc-points/${pointNo}`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ on }),
+    });
+    if (!response.ok) {
+      throw new Error(`PUT /faults/plc-points/${pointNo}: ${response.status}`);
+    }
+  }
+
   async clearFaults() {
     for (const group of ["A", "B", "C", "PLC"]) {
       await this.setFault(group, NORMAL_FAULT);
@@ -279,7 +290,7 @@ class MeasureRunner {
   async measureNormal(screen) {
     await this.api.request("POST", "/metrics/reset");
     screen.resetLatencies();
-    await sleep(NORMAL_SEC * 1000);
+    await this.togglePlcPoint(NORMAL_SEC * 1000);
     const metrics = await this.api.request("GET", "/metrics");
 
     this.print(`\n## 1. 정상 ${NORMAL_SEC}초: 지연과 유실`);
@@ -311,6 +322,16 @@ class MeasureRunner {
     );
     this.print(`| heap 사용 | ${process.heapUsedLatestMb} MB |`);
     this.print(`| 표본 수 (5초 간격) | ${process.samples} |`);
+  }
+
+  /** PLC 값은 주입해야만 바뀌므로, 정상 구간 동안 0번 점을 2초마다 켜고 꺼서 PLC 종단 지연 표본을 만든다. */
+  async togglePlcPoint(durationMs) {
+    const toggleCount = Math.floor(durationMs / 2000);
+    for (const index of Array.from({ length: toggleCount }, (_, i) => i)) {
+      await this.api.setPlcPoint(0, index % 2 === 0);
+      await sleep(2000);
+    }
+    await this.api.setPlcPoint(0, false);
   }
 
   async measureFaultFiltering(screen) {
