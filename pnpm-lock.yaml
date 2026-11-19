@@ -72,6 +72,9 @@ importers:
       class-validator:
         specifier: 0.14.4
         version: 0.14.4
+      modbus-serial:
+        specifier: 8.0.25
+        version: 8.0.25
       mqtt:
         specifier: 5.16.1
         version: 5.16.1
