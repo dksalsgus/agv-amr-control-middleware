@@ -27,6 +27,13 @@ export type PlcPointValue = {
   receivedTs: Date;
 };
 
+/** PLC 장비 단위로 마지막 받아들인 읽기. seq 판정과 STALE 판정에 쓴다. */
+export type PlcDeviceLastRead = {
+  seq: number;
+  sourceTs: Date;
+  receivedTs: Date;
+};
+
 export type PlcPointEntry = PlcPoint & {
   current: PlcPointValue | null;
   rev: number;

@@ -142,18 +142,20 @@ export class PlcIngestService {
       return;
     }
 
-    const last = await this.plcPointStateProvider.findLastSeq(device.deviceId);
+    const last = await this.plcPointStateProvider.findLastRead(device.deviceId);
     const judgement = await this.seqJudgeProvider.judge(last, reading);
     if (!judgement.accept) {
       return;
     }
 
-    await this.plcPointStateProvider.updateLastSeq(device.deviceId, {
+    const receivedTs = new Date();
+    await this.plcPointStateProvider.updateLastRead(device.deviceId, {
       seq: reading.seq,
       sourceTs: reading.sourceTs,
+      receivedTs,
     });
 
-    const changes = await this.applyChangedPoints(device, reading, new Date());
+    const changes = await this.applyChangedPoints(device, reading, receivedTs);
     await this.plcEventProvider.recordAll(changes);
   }
 

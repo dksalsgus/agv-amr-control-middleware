@@ -1,12 +1,12 @@
 import { Injectable } from "@nestjs/common";
 import {
+  PlcDeviceLastRead,
   PlcPoint,
   PlcPointEntry,
   PlcPointValue,
 } from "../../state/plc-point-state";
 import { PlcPointStateRepository } from "../../state/plc-point-state.repository";
 import { RevisionRepository } from "../../state/revision.repository";
-import { SeqPoint } from "./seq-judge.provider";
 
 /** PLC 점 메모리 상태 갱신. 값이 바뀐 점마다 전역 rev를 올린다. */
 @Injectable()
@@ -26,12 +26,15 @@ export class PlcPointStateProvider {
     return await this.plcPointStateRepository.findById(pointId);
   }
 
-  async findLastSeq(deviceId: string): Promise<SeqPoint | null> {
-    return await this.plcPointStateRepository.findLastSeq(deviceId);
+  async findLastRead(deviceId: string): Promise<PlcDeviceLastRead | null> {
+    return await this.plcPointStateRepository.findLastRead(deviceId);
   }
 
-  async updateLastSeq(deviceId: string, last: SeqPoint): Promise<void> {
-    await this.plcPointStateRepository.updateLastSeq(deviceId, last);
+  async updateLastRead(
+    deviceId: string,
+    last: PlcDeviceLastRead,
+  ): Promise<void> {
+    await this.plcPointStateRepository.updateLastRead(deviceId, last);
   }
 
   async apply(pointId: string, current: PlcPointValue): Promise<void> {
