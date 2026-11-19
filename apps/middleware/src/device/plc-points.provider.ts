@@ -8,11 +8,11 @@ export class PlcPointsProvider {
     private readonly plcPointStateRepository: PlcPointStateRepository,
   ) {}
 
-  findAll(): PlcPointEntry[] {
-    return this.plcPointStateRepository.findAll();
+  async findAll(): Promise<PlcPointEntry[]> {
+    return await this.plcPointStateRepository.findAll();
   }
 
-  findById(pointId: string): PlcPointEntry | undefined {
-    return this.plcPointStateRepository.findById(pointId);
+  async findById(pointId: string): Promise<PlcPointEntry | undefined> {
+    return await this.plcPointStateRepository.findById(pointId);
   }
 }

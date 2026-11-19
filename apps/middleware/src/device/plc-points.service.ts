@@ -20,11 +20,14 @@ export class PlcPointsService {
     private readonly plcEventsQueryProvider: PlcEventsQueryProvider,
   ) {}
 
-  getPlcPoints(): GetPlcPointsResponseDto {
-    const plcPoints = this.plcPointsProvider
-      .findAll()
-      .sort((a, b) => a.pointNo - b.pointNo)
-      .map((entry) => this.toItem(entry));
+  async getPlcPoints(): Promise<GetPlcPointsResponseDto> {
+    const entries = await this.plcPointsProvider.findAll();
+    const sorted = [...entries].sort((a, b) => a.pointNo - b.pointNo);
+
+    const plcPoints: GetPlcPointsItemDto[] = [];
+    for (const entry of sorted) {
+      plcPoints.push(await this.toItem(entry));
+    }
 
     return { plcPoints };
   }
@@ -33,7 +36,8 @@ export class PlcPointsService {
     id: string,
     query: GetPlcPointEventsQueryDto,
   ): Promise<GetPlcPointEventsResponseDto> {
-    if (!this.plcPointsProvider.findById(id)) {
+    const point = await this.plcPointsProvider.findById(id);
+    if (!point) {
       throw new NotFoundException(`PLC 점이 없습니다: ${id}`);
     }
 
@@ -45,15 +49,15 @@ export class PlcPointsService {
       take: query.size,
     });
 
-    return {
-      items: rows.map((row) => this.toEventItem(row)),
-      page: query.page,
-      size: query.size,
-      total,
-    };
+    const items: GetPlcPointEventsItemDto[] = [];
+    for (const row of rows) {
+      items.push(await this.toEventItem(row));
+    }
+
+    return { items, page: query.page, size: query.size, total };
   }
 
-  private toItem(entry: PlcPointEntry): GetPlcPointsItemDto {
+  private async toItem(entry: PlcPointEntry): Promise<GetPlcPointsItemDto> {
     const value = entry.current?.value ?? null;
 
     return {
@@ -71,7 +75,9 @@ export class PlcPointsService {
     };
   }
 
-  private toEventItem(row: PlcPointEventRow): GetPlcPointEventsItemDto {
+  private async toEventItem(
+    row: PlcPointEventRow,
+  ): Promise<GetPlcPointEventsItemDto> {
     return {
       id: row.id.toString(),
       value: row.value,

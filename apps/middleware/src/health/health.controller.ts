@@ -8,8 +8,8 @@ export class HealthController {
   constructor(private readonly healthService: HealthService) {}
 
   @Get()
-  getHealth(): ApiResult<GetHealthResponseDto> {
-    const response = this.healthService.getHealth();
+  async getHealth(): Promise<ApiResult<GetHealthResponseDto>> {
+    const response = await this.healthService.getHealth();
     return ApiResult.ofSuccess(response);
   }
 }

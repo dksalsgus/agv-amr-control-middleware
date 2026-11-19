@@ -3,7 +3,7 @@ import { GetHealthResponseDto } from "./dto/get-health.response.dto";
 
 @Injectable()
 export class HealthService {
-  getHealth(): GetHealthResponseDto {
+  async getHealth(): Promise<GetHealthResponseDto> {
     return { status: "ok" };
   }
 }
