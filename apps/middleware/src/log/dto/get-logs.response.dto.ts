@@ -1,12 +1,4 @@
-export class GetLogsItemDto {
-  id!: string;
-  type!: string;
-  level!: string;
-  targetType!: string;
-  targetId!: string;
-  message!: string;
-  createdAt!: string;
-}
+import { GetLogsItemDto } from "./get-logs.item.dto";
 
 export class GetLogsResponseDto {
   items!: GetLogsItemDto[];

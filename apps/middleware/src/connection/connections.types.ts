@@ -1,10 +1,8 @@
-import { ConnectionSummaryRow } from "../settings/vendors-connections.types";
 import { LinkState } from "../state/link-state";
-import {
-  ModbusConfigDto,
-  MqttConfigDto,
-  RestConfigDto,
-} from "./dto/connection-config.dto";
+import { ModbusConfigDto } from "./dto/modbus-config.dto";
+import { RestConfigDto } from "./dto/rest-config.dto";
+import { MqttConfigDto } from "./dto/mqtt-config.dto";
+import { ConnectionSummaryRow } from "../settings/vendors-connections.types";
 
 export type ConfigParts = {
   mqtt?: MqttConfigDto;

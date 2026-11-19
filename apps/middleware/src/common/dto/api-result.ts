@@ -1,12 +1,4 @@
-/** 실패 응답의 error 필드 */
-export class ApiError {
-  constructor(
-    readonly statusCode: number,
-    readonly message: string | string[],
-    readonly path: string,
-    readonly timestamp: string,
-  ) {}
-}
+import { ApiError } from "./api-error";
 
 /** 모든 HTTP 응답의 공통 구조: { success, data, error } */
 export class ApiResult<T> {

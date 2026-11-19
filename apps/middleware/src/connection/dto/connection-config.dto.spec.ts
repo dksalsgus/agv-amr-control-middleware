@@ -1,10 +1,8 @@
 import { plainToInstance } from "class-transformer";
 import { validate } from "class-validator";
-import {
-  ModbusConfigDto,
-  MqttConfigDto,
-  RestConfigDto,
-} from "./connection-config.dto";
+import { ModbusConfigDto } from "./modbus-config.dto";
+import { RestConfigDto } from "./rest-config.dto";
+import { MqttConfigDto } from "./mqtt-config.dto";
 
 const errorFields = async <T extends object>(
   dto: new () => T,

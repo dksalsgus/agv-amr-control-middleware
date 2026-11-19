@@ -10,11 +10,9 @@ import {
 } from "class-validator";
 import { CONNECTION_PROTOCOLS } from "../../ingest/providers/connection.constants";
 import { ConnectionProtocol } from "../../ingest/providers/connection.types";
-import {
-  ModbusConfigDto,
-  MqttConfigDto,
-  RestConfigDto,
-} from "./connection-config.dto";
+import { ModbusConfigDto } from "./modbus-config.dto";
+import { RestConfigDto } from "./rest-config.dto";
+import { MqttConfigDto } from "./mqtt-config.dto";
 
 /** config는 protocol에 맞는 것 하나를 보낸다. */
 export class PostConnectionRequestDto {

@@ -1,8 +1,4 @@
-export class GetVendorsItemDto {
-  id!: string;
-  code!: string;
-  name!: string;
-}
+import { GetVendorsItemDto } from "./get-vendors.item.dto";
 
 export class GetVendorsResponseDto {
   vendors!: GetVendorsItemDto[];

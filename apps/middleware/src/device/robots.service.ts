@@ -1,14 +1,10 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { RobotEntry, RobotState } from "../state/robot-state";
-import {
-  GetRobotResponseDto,
-  GetRobotStateDto,
-} from "./dto/get-robot.response.dto";
-import {
-  GetRobotsItemDto,
-  GetRobotsResponseDto,
-  GetRobotsStateDto,
-} from "./dto/get-robots.response.dto";
+import { GetRobotResponseDto } from "./dto/get-robot.response.dto";
+import { GetRobotStateDto } from "./dto/get-robot.state.dto";
+import { GetRobotsResponseDto } from "./dto/get-robots.response.dto";
+import { GetRobotsItemDto } from "./dto/get-robots.item.dto";
+import { GetRobotsStateDto } from "./dto/get-robots.state.dto";
 import { RobotsProvider } from "./robots.provider";
 import { StaleJudgeProvider } from "./stale-judge.provider";
 

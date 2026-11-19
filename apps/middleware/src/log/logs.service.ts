@@ -1,10 +1,8 @@
 import { Injectable } from "@nestjs/common";
 import { LogRow } from "../history/logs.types";
 import { GetLogsQueryDto } from "./dto/get-logs.request.dto";
-import {
-  GetLogsItemDto,
-  GetLogsResponseDto,
-} from "./dto/get-logs.response.dto";
+import { GetLogsResponseDto } from "./dto/get-logs.response.dto";
+import { GetLogsItemDto } from "./dto/get-logs.item.dto";
 import { LogsQueryProvider } from "./logs-query.provider";
 
 @Injectable()
