@@ -3,6 +3,7 @@ import { RequireAuth } from "./auth/require-auth";
 import { LoginPage } from "./pages/login-page";
 import { MonitorPage } from "./pages/monitor-page";
 import { ConnectionsPage } from "./pages/connections-page";
+import { LogsPage } from "./pages/logs-page";
 import { PlaceholderPage } from "./pages/placeholder-page";
 
 export const App = () => (
@@ -29,7 +30,7 @@ export const App = () => (
         path="/logs"
         element={
           <RequireAuth>
-            <PlaceholderPage title="로그·알람 이력" />
+            <LogsPage />
           </RequireAuth>
         }
       />
