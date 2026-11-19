@@ -29,16 +29,13 @@ export class VendorCAdapter implements VendorAdapter<ModbusRawMessage> {
     for (const index of blockIndexes) {
       const start = index * raw.blockSize;
       const block = raw.registers.slice(start, start + raw.blockSize);
-      readings.push(await this.toReading(raw.firstBlock + index, block));
+      readings.push(this.toReading(raw.firstBlock + index, block));
     }
 
     return readings;
   }
 
-  private async toReading(
-    blockNo: number,
-    block: number[],
-  ): Promise<RobotReading> {
+  private toReading(blockNo: number, block: number[]): RobotReading {
     const errorCode = block[11];
 
     return {

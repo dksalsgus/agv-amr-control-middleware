@@ -15,11 +15,11 @@ export class PlcAdapter {
       externalId: String(raw.firstBlock),
       seq: toUint32(registers[1], registers[2]),
       sourceTs: new Date(toUint48(registers[3], registers[4], registers[5])),
-      values: await this.toBits(registers[0]),
+      values: this.toBits(registers[0]),
     };
   }
 
-  private async toBits(word: number): Promise<boolean[]> {
+  private toBits(word: number): boolean[] {
     return Array.from(
       { length: PlcAdapter.POINT_COUNT },
       (_, pointNo) => (word & (1 << pointNo)) !== 0,

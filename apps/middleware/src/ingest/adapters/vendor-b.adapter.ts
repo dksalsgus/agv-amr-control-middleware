@@ -22,17 +22,16 @@ export class VendorBAdapter implements VendorAdapter<RestRawMessage> {
   readonly vendorCode = "VENDOR_B";
 
   async toCommon(raw: RestRawMessage): Promise<RobotReading[]> {
-    const vehicles = await this.toVehicles(raw.body);
+    const vehicles = this.toVehicles(raw.body);
 
-    const readings: RobotReading[] = [];
-    for (const vehicle of vehicles) {
-      readings.push(await this.toReading(vehicle));
-    }
+    const readings: RobotReading[] = vehicles.map((vehicle) =>
+      this.toReading(vehicle),
+    );
 
     return readings;
   }
 
-  private async toVehicles(body: unknown): Promise<VendorBVehicle[]> {
+  private toVehicles(body: unknown): VendorBVehicle[] {
     const list = (body as { vehicles?: VendorBVehicle[] }).vehicles;
     if (Array.isArray(list)) {
       return list;
@@ -41,7 +40,7 @@ export class VendorBAdapter implements VendorAdapter<RestRawMessage> {
     return [body as VendorBVehicle];
   }
 
-  private async toReading(vehicle: VendorBVehicle): Promise<RobotReading> {
+  private toReading(vehicle: VendorBVehicle): RobotReading {
     return {
       externalId: vehicle.vehicleId,
       seq: vehicle.sequence,

@@ -124,7 +124,7 @@ export class IngestService {
     await this.stopLink(connection);
     await this.robotStateProvider.unregisterDevices(connection.robots);
     await this.linkStateProvider.unregister(connection.id);
-    this.logger.log(`연결 내림: ${await this.toLabel(connection)}`);
+    this.logger.log(`연결 내림: ${this.toLabel(connection)}`);
   }
 
   /** 장비 상태는 두고 접속만 새 설정으로 바꾼다. 폴링 루프는 다음 차례에 새 설정을 읽는다. */
@@ -136,7 +136,7 @@ export class IngestService {
     this.connections.set(next.id, next);
     await this.linkStateProvider.register(next.id);
     await this.startPushConnection(next);
-    this.logger.log(`연결 다시 붙임: ${await this.toLabel(next)}`);
+    this.logger.log(`연결 다시 붙임: ${this.toLabel(next)}`);
   }
 
   private async stopLink(connection: IngestConnection): Promise<void> {
@@ -166,13 +166,13 @@ export class IngestService {
       return;
     }
 
-    const adapter = await this.findAdapter(connection.vendorCode);
+    const adapter = this.findAdapter(connection.vendorCode);
     if (!adapter) {
       this.logger.warn(`어댑터 없음: ${connection.vendorCode}`);
       return;
     }
 
-    const label = await this.toLabel(connection);
+    const label = this.toLabel(connection);
     await this.mqttLinkProvider.start(
       connection.id,
       connection.config as MqttConnectionConfig,
@@ -197,12 +197,12 @@ export class IngestService {
   }
 
   private async pollOnce(connection: IngestConnection): Promise<void> {
-    const adapter = await this.findAdapter(connection.vendorCode);
+    const adapter = this.findAdapter(connection.vendorCode);
     if (!adapter) {
       return;
     }
 
-    const label = await this.toLabel(connection);
+    const label = this.toLabel(connection);
     const raws = await this.tryFetchRaws(connection, label);
     if (!raws) {
       return;
@@ -257,7 +257,7 @@ export class IngestService {
     const readings = await this.toReadings(adapter, raw);
     const receivedTs = new Date();
 
-    const queue = await this.findQueue(connectionId);
+    const queue = this.findQueue(connectionId);
     const accepted = await queue.run(() =>
       this.applyReadings(connectionId, readings, receivedTs),
     );
@@ -317,15 +317,12 @@ export class IngestService {
       return null;
     }
 
-    const state = await this.toState(reading, receivedTs);
+    const state = this.toState(reading, receivedTs);
     await this.robotStateProvider.apply(entry.deviceId, state);
     return { deviceId: entry.deviceId, state };
   }
 
-  private async toState(
-    reading: RobotReading,
-    receivedTs: Date,
-  ): Promise<RobotState> {
+  private toState(reading: RobotReading, receivedTs: Date): RobotState {
     return {
       seq: reading.seq,
       sourceTs: reading.sourceTs,
@@ -341,17 +338,15 @@ export class IngestService {
     };
   }
 
-  private async toLabel(connection: IngestConnection): Promise<string> {
+  private toLabel(connection: IngestConnection): string {
     return `${connection.vendorCode} ${connection.protocol}`;
   }
 
-  private async findAdapter(
-    vendorCode: string,
-  ): Promise<VendorAdapter<unknown> | undefined> {
+  private findAdapter(vendorCode: string): VendorAdapter<unknown> | undefined {
     return this.adapters.find((adapter) => adapter.vendorCode === vendorCode);
   }
 
-  private async findQueue(connectionId: string): Promise<SerialQueue> {
+  private findQueue(connectionId: string): SerialQueue {
     const existing = this.queues.get(connectionId);
     if (existing) {
       return existing;

@@ -48,10 +48,9 @@ export class PlcPointsService {
       take: query.size,
     });
 
-    const items: GetPlcPointEventsItemDto[] = [];
-    for (const row of rows) {
-      items.push(await this.toEventItem(row));
-    }
+    const items: GetPlcPointEventsItemDto[] = rows.map((row) =>
+      this.toEventItem(row),
+    );
 
     return { items, page: query.page, size: query.size, total };
   }
@@ -86,9 +85,7 @@ export class PlcPointsService {
     };
   }
 
-  private async toEventItem(
-    row: PlcPointEventRow,
-  ): Promise<GetPlcPointEventsItemDto> {
+  private toEventItem(row: PlcPointEventRow): GetPlcPointEventsItemDto {
     return {
       id: row.id.toString(),
       value: row.value,

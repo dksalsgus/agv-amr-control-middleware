@@ -62,7 +62,7 @@ export class ConnectionsProvider {
       );
       return count > 0;
     } catch (error) {
-      await this.throwIfDuplicateName(error, changes.name);
+      this.throwIfDuplicateName(error, changes.name);
       throw error;
     }
   }
@@ -87,7 +87,7 @@ export class ConnectionsProvider {
         config: connection.config as Prisma.InputJsonObject,
       });
     } catch (error) {
-      await this.throwIfDuplicateName(error, connection.name);
+      this.throwIfDuplicateName(error, connection.name);
       throw error;
     }
   }
@@ -96,10 +96,7 @@ export class ConnectionsProvider {
     await this.vendorsConnectionsRepository.deleteById(id);
   }
 
-  private async throwIfDuplicateName(
-    error: unknown,
-    name: string | undefined,
-  ): Promise<void> {
+  private throwIfDuplicateName(error: unknown, name: string | undefined): void {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === "P2002"
