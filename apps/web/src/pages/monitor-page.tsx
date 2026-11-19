@@ -7,6 +7,7 @@ import { ToastList } from "../components/toast-list";
 import { useToasts } from "../components/use-toasts";
 import { connectionsApi } from "../connections/connections.api";
 import { ConnectionItem } from "../connections/connections.types";
+import { useConnectionStats } from "../monitor/use-connection-stats";
 import { AlarmPanel } from "../monitor/alarm-panel";
 import { ConnBanner } from "../monitor/conn-banner";
 import { ConnectionPanel } from "../monitor/connection-panel";
@@ -42,6 +43,7 @@ export const MonitorPage = () => {
   const view = useRealtime();
   const { toasts, push } = useToasts();
   const [connections, setConnections] = useState<ConnectionItem[]>([]);
+  const connectionStats = useConnectionStats();
   const [selectedPlcId, setSelectedPlcId] = useState<string | null>(null);
   const [selectedRobotId, setSelectedRobotId] = useState<string | null>(null);
   const [vendors, setVendors] = useState<ReadonlySet<VendorKey>>(
@@ -208,7 +210,11 @@ export const MonitorPage = () => {
           style={{ gridTemplateRows: "minmax(0, 1fr)" }}
         >
           <div className="col-scroll">
-            <ConnectionPanel connections={connections} links={view.links} />
+            <ConnectionPanel
+              connections={connections}
+              links={view.links}
+              stats={connectionStats}
+            />
             <PlcPanel
               points={plcPoints}
               selectedId={selectedPlcId}
