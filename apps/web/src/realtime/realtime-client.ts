@@ -37,6 +37,15 @@ export class RealtimeClient {
     this.socket = null;
   }
 
+  /** 재시도를 기다리지 않고 바로 다시 붙는다. */
+  reconnectNow(): void {
+    if (!this.running || this.socket !== null) {
+      return;
+    }
+    this.clearTimers();
+    this.connect();
+  }
+
   subscribe(listener: Listener): () => void {
     this.listeners.add(listener);
     return () => {
@@ -87,7 +96,7 @@ export class RealtimeClient {
         this.markAnswered();
         break;
       case "delta": {
-        const result = this.store.applyDelta(message.data);
+        const result = this.store.applyDelta(message.data, Date.now());
         if (result === "GAP") {
           this.send(socket, "resync", { lastRev: this.store.getView().rev });
           return;
@@ -141,6 +150,7 @@ export class RealtimeClient {
     }
 
     this.disconnectedAt = this.disconnectedAt ?? Date.now();
+    this.store.setDisconnectedAt(this.disconnectedAt);
     this.store.setStatus("DISCONNECTED");
     this.emit();
 

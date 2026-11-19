@@ -106,4 +106,8 @@ export type RealtimeView = {
   alarms: ReadonlyMap<string, Alarm>;
   /** 마지막 재접속에서 소켓 종료부터 상태 반영까지 걸린 시간(ms) */
   lastRecoveryMs: number | null;
+  /** 서버 연결이 끊긴 시각(ms). 연결되어 있으면 null */
+  disconnectedAt: number | null;
+  /** 로봇별 종단 지연(ms): 장비의 sourceTs부터 브라우저가 delta를 받은 시각까지 */
+  latencies: ReadonlyMap<string, number>;
 };
