@@ -8,6 +8,11 @@ import {
   ConnectionsProvider,
   ConnectionWithLink,
 } from "./connections.provider";
+import {
+  ModbusConfigDto,
+  MqttConfigDto,
+  RestConfigDto,
+} from "./dto/connection-config.dto";
 import { GetConnectionResponseDto } from "./dto/get-connection.response.dto";
 import {
   GetConnectionsItemDto,
@@ -19,9 +24,9 @@ import { PostConnectionRequestDto } from "./dto/post-connection.request.dto";
 import { PostConnectionResponseDto } from "./dto/post-connection.response.dto";
 
 type ConfigParts = {
-  mqtt?: object;
-  rest?: object;
-  modbus?: object;
+  mqtt?: MqttConfigDto;
+  rest?: RestConfigDto;
+  modbus?: ModbusConfigDto;
 };
 
 @Injectable()
@@ -46,11 +51,25 @@ export class ConnectionsService {
     }
 
     const item = await this.toItem(entry);
-    const config = { ...(entry.row.config as Record<string, unknown>) };
-    const hasPassword = typeof config.password === "string";
-    delete config.password;
+    const savedConfig = entry.row.config as Record<string, unknown>;
+    const config = Object.fromEntries(
+      Object.entries(savedConfig).filter(([key]) => key !== "password"),
+    );
 
-    return { ...item, config, hasPassword };
+    return {
+      id: item.id,
+      name: item.name,
+      vendorCode: item.vendorCode,
+      vendorName: item.vendorName,
+      protocol: item.protocol,
+      enabled: item.enabled,
+      version: item.version,
+      deviceCount: item.deviceCount,
+      config,
+      hasPassword: typeof savedConfig.password === "string",
+      linkStatus: item.linkStatus,
+      linkChangedAt: item.linkChangedAt,
+    };
   }
 
   async patchConnection(
@@ -117,35 +136,67 @@ export class ConnectionsService {
   }
 
   /** 보낸 config가 protocol과 맞는지 확인하고 저장할 모양으로 만든다. */
+  /** 프로토콜에 맞는 config 하나만 받는다. 없으면 undefined */
   private async resolveConfig(
     protocol: string,
     parts: ConfigParts,
     savedConfig: unknown,
   ): Promise<Record<string, unknown> | undefined> {
-    const candidates: [string, object | undefined][] = [
-      ["MQTT", parts.mqtt],
-      ["REST", parts.rest],
-      ["MODBUS_TCP", parts.modbus],
-    ];
-    const provided = candidates.filter(([, config]) => config !== undefined);
-    if (provided.length === 0) {
+    const providedCount = [parts.mqtt, parts.rest, parts.modbus].filter(
+      (part) => part !== undefined,
+    ).length;
+    if (providedCount === 0) {
       return undefined;
     }
 
-    if (provided.length > 1 || provided[0][0] !== protocol) {
+    const config = await this.toConfig(protocol, parts, savedConfig);
+    if (providedCount > 1 || !config) {
       throw new BadRequestException(
         `${protocol} 연결에는 그에 맞는 config 하나만 보낼 수 있습니다.`,
       );
     }
 
-    const config: Record<string, unknown> = { ...provided[0][1] };
-    if (protocol === "MQTT") {
+    return config;
+  }
+
+  /** MQTT password를 빼고 보내면 저장된 값을 유지한다. */
+  private async toConfig(
+    protocol: string,
+    parts: ConfigParts,
+    savedConfig: unknown,
+  ): Promise<Record<string, unknown> | null> {
+    if (protocol === "MQTT" && parts.mqtt) {
       const saved = savedConfig as { password?: string | null };
-      config.username = config.username ?? null;
-      config.password = config.password ?? saved.password ?? null;
+      return {
+        url: parts.mqtt.url,
+        topicPattern: parts.mqtt.topicPattern,
+        qos: parts.mqtt.qos,
+        username: parts.mqtt.username ?? null,
+        password: parts.mqtt.password ?? saved.password ?? null,
+      };
     }
 
-    return config;
+    if (protocol === "REST" && parts.rest) {
+      return {
+        baseUrl: parts.rest.baseUrl,
+        pollIntervalMs: parts.rest.pollIntervalMs,
+        mode: parts.rest.mode,
+        timeoutMs: parts.rest.timeoutMs,
+      };
+    }
+
+    if (protocol === "MODBUS_TCP" && parts.modbus) {
+      return {
+        host: parts.modbus.host,
+        port: parts.modbus.port,
+        unitId: parts.modbus.unitId,
+        pollIntervalMs: parts.modbus.pollIntervalMs,
+        baseAddress: parts.modbus.baseAddress,
+        blockSize: parts.modbus.blockSize,
+      };
+    }
+
+    return null;
   }
 
   private async toItem(

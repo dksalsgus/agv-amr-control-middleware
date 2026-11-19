@@ -56,7 +56,12 @@ export class VendorsConnectionsRepository {
   ): Promise<number> {
     const result = await this.prisma.vendors_connections.updateMany({
       where: { id, version },
-      data: { ...data, version: { increment: 1 } },
+      data: {
+        name: data.name,
+        enabled: data.enabled,
+        config: data.config,
+        version: { increment: 1 },
+      },
     });
     return result.count;
   }

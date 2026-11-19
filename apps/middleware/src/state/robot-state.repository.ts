@@ -8,7 +8,15 @@ export class RobotStateRepository {
   private readonly deviceIdByExternalKey = new Map<string, string>();
 
   async register(device: RobotDevice): Promise<void> {
-    this.entries.set(device.deviceId, { ...device, state: null, rev: 0 });
+    this.entries.set(device.deviceId, {
+      deviceId: device.deviceId,
+      connectionId: device.connectionId,
+      externalId: device.externalId,
+      name: device.name,
+      type: device.type,
+      state: null,
+      rev: 0,
+    });
 
     const externalKey = this.toExternalKey(
       device.connectionId,
@@ -47,7 +55,7 @@ export class RobotStateRepository {
   }
 
   async findAll(): Promise<RobotEntry[]> {
-    return [...this.entries.values()];
+    return Array.from(this.entries.values());
   }
 
   async updateState(
