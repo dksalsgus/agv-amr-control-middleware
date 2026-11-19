@@ -4,11 +4,7 @@ import { VendorBPayloadBuilder } from "./vendor-b-payload";
 
 const VEHICLE_PATH = /^\/api\/vehicles\/([^/]+)$/;
 
-/**
- * 제조사 B의 REST 서버. 미들웨어가 폴링한다.
- * - GET /api/vehicles      : 전체 차량 한 번에 (가정 A4)
- * - GET /api/vehicles/{id} : 차량 한 대
- */
+/** 제조사 B REST 서버: GET /api/vehicles(전체), /api/vehicles/{id}(한 대) */
 export class VendorBServer {
   private readonly payloadBuilder = new VendorBPayloadBuilder();
   private server: Server | null = null;

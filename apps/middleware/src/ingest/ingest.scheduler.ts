@@ -9,10 +9,7 @@ import { PlcIngestService } from "./plc-ingest.service";
 
 type PollOnce = (connectionId: string) => Promise<number | null>;
 
-/**
- * Controller 위치의 스케줄러. 수집을 시작하고 폴링 연결마다 반복을 돌린다.
- * 연결마다 따로 돌아 한 연결이 느려도 다른 연결은 막히지 않는다.
- */
+/** 수집을 시작하고 폴링 연결마다 루프를 돌린다. 느린 연결이 다른 연결을 막지 않는다. */
 @Injectable()
 export class IngestScheduler
   implements OnApplicationBootstrap, OnApplicationShutdown
