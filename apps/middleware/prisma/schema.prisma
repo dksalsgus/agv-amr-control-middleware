@@ -6,3 +6,56 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+enum vendors_connections_protocol {
+  MQTT
+  REST
+  MODBUS_TCP
+}
+
+enum vendors_connections_devices_type {
+  AMR
+  AGV
+  PLC
+}
+
+/// 제조사. code로 코드의 어댑터 class를 찾는다.
+model vendors {
+  id         String   @id @default(uuid()) @db.Uuid
+  code       String   @unique
+  name       String
+  created_at DateTime @default(now()) @db.Timestamptz
+
+  vendors_connections vendors_connections[]
+}
+
+/// 연결 설정. 행 하나가 어댑터 인스턴스 하나다.
+model vendors_connections {
+  id         String                       @id @default(uuid()) @db.Uuid
+  vendors_id String                       @db.Uuid
+  name       String                       @unique
+  protocol   vendors_connections_protocol
+  enabled    Boolean                      @default(true)
+  config     Json
+  version    Int                          @default(1)
+  created_at DateTime                     @default(now()) @db.Timestamptz
+  updated_at DateTime                     @default(now()) @updatedAt @db.Timestamptz
+
+  vendors                     vendors                       @relation(fields: [vendors_id], references: [id])
+  vendors_connections_devices vendors_connections_devices[]
+}
+
+/// 로봇과 PLC 장비. id가 공통 모델의 deviceId다.
+model vendors_connections_devices {
+  id                     String                           @id @default(uuid()) @db.Uuid
+  vendors_connections_id String                           @db.Uuid
+  external_id            String
+  type                   vendors_connections_devices_type
+  name                   String
+  enabled                Boolean                          @default(true)
+  created_at             DateTime                         @default(now()) @db.Timestamptz
+
+  vendors_connections vendors_connections @relation(fields: [vendors_connections_id], references: [id])
+
+  @@unique([vendors_connections_id, external_id])
+}
