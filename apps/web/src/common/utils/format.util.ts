@@ -38,3 +38,15 @@ export const percentile = (sorted: number[], p: number): number => {
   );
   return sorted[index];
 };
+
+/** MM-DD HH:MM:SS */
+export const formatMonthDayTime = (ms: number): string => {
+  const date = new Date(ms);
+  return `${pad2(date.getMonth() + 1)}-${pad2(date.getDate())} ${formatTime(ms)}`;
+};
+
+/** YYYY-MM-DD HH:MM:SS.mmm */
+export const formatDateTimeMs = (ms: number): string => {
+  const date = new Date(ms);
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())} ${formatTimeMs(ms)}`;
+};
