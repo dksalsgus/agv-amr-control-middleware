@@ -5,15 +5,12 @@ import {
 } from "../../history/vendors-connections-devices-telemetry.repository";
 import { RobotOpState, RobotState } from "../../state/robot-state";
 
-export type LatestRobotState = {
+export type RobotTelemetry = {
   deviceId: string;
   state: RobotState;
 };
 
-/**
- * 로봇 이력 기록과 재시작 복구.
- * 기록은 완료를 기다리지 않는다: DB 장애가 실시간 전달을 멈추면 안 된다(설계 문서 6장 저장 흐름).
- */
+/** 로봇 이력 기록과 재시작 복구. 기록 실패는 밖으로 던지지 않는다(DB 장애가 수집을 멈추면 안 됨). */
 @Injectable()
 export class TelemetryProvider {
   private readonly logger = new Logger(TelemetryProvider.name);
@@ -23,36 +20,58 @@ export class TelemetryProvider {
     private readonly telemetryRepository: VendorsConnectionsDevicesTelemetryRepository,
   ) {}
 
-  record(deviceId: string, state: RobotState) {
-    this.telemetryRepository
-      .insert({
-        vendors_connections_devices_id: deviceId,
-        seq: state.seq,
-        source_ts: state.sourceTs,
-        received_ts: state.receivedTs,
-        x: state.x,
-        y: state.y,
-        theta: state.theta,
-        speed: state.speed,
-        battery_pct: state.batteryPct,
-        op_state: state.opState,
-        error_code: state.errorCode,
-        loaded: state.loaded,
-      })
-      .then(() => this.markRecovered())
-      .catch((error: unknown) => this.markFailed(error));
+  async recordAll(telemetries: RobotTelemetry[]): Promise<void> {
+    if (telemetries.length === 0) {
+      return;
+    }
+
+    const results = await Promise.allSettled(
+      telemetries.map((telemetry) => this.insert(telemetry)),
+    );
+
+    const failure = results.find((result) => result.status === "rejected");
+    if (failure) {
+      await this.markFailed(failure.reason);
+      return;
+    }
+
+    await this.markRecovered();
   }
 
-  async findLatestStates(): Promise<LatestRobotState[]> {
+  async findLatestStates(): Promise<RobotTelemetry[]> {
     const rows = await this.telemetryRepository.findLatestPerDevice();
 
-    return rows.map((row) => ({
-      deviceId: row.vendors_connections_devices_id,
-      state: this.toState(row),
-    }));
+    const latest: RobotTelemetry[] = [];
+    for (const row of rows) {
+      latest.push({
+        deviceId: row.vendors_connections_devices_id,
+        state: await this.toState(row),
+      });
+    }
+
+    return latest;
   }
 
-  private toState(row: TelemetryRow): RobotState {
+  private async insert(telemetry: RobotTelemetry): Promise<void> {
+    const state = telemetry.state;
+
+    await this.telemetryRepository.insert({
+      vendors_connections_devices_id: telemetry.deviceId,
+      seq: state.seq,
+      source_ts: state.sourceTs,
+      received_ts: state.receivedTs,
+      x: state.x,
+      y: state.y,
+      theta: state.theta,
+      speed: state.speed,
+      battery_pct: state.batteryPct,
+      op_state: state.opState,
+      error_code: state.errorCode,
+      loaded: state.loaded,
+    });
+  }
+
+  private async toState(row: TelemetryRow): Promise<RobotState> {
     return {
       seq: Number(row.seq),
       sourceTs: row.source_ts,
@@ -68,8 +87,8 @@ export class TelemetryProvider {
     };
   }
 
-  /** 실패가 시작될 때와 회복될 때만 로그를 남긴다. 초당 90건을 매번 찍지 않기 위해서다. */
-  private markFailed(error: unknown) {
+  /** 실패 시작과 회복 때만 로그를 남긴다. */
+  private async markFailed(error: unknown): Promise<void> {
     if (!this.failing) {
       this.logger.warn(`이력 기록 실패: ${String(error)}`);
     }
@@ -77,7 +96,7 @@ export class TelemetryProvider {
     this.failing = true;
   }
 
-  private markRecovered() {
+  private async markRecovered(): Promise<void> {
     if (this.failing) {
       this.logger.log("이력 기록 회복");
     }
