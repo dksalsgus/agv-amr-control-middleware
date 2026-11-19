@@ -2,6 +2,7 @@ import "reflect-metadata";
 import { ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { NestExpressApplication } from "@nestjs/platform-express";
+import { WsAdapter } from "@nestjs/platform-ws";
 import { AppModule } from "./app.module";
 import { AllExceptionsFilter } from "./common/filters/all-exceptions.filter";
 import { appConfig } from "./config/app.config";
@@ -14,6 +15,7 @@ const bootstrap = async () => {
   });
   app.useLogger(await app.resolve(AppLogger));
   app.useGlobalFilters(new AllExceptionsFilter(await app.resolve(AppLogger)));
+  app.useWebSocketAdapter(new WsAdapter(app));
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
   const config = app.get<ConfigType<typeof appConfig>>(appConfig.KEY);

@@ -66,6 +66,13 @@ curl "http://localhost:3000/logs?type=LINK_DOWN&page=1&size=100"
 curl "http://localhost:3000/robots/{id}/telemetry?from=2026-11-19T00:00:00Z&page=1&size=100"
 ```
 
+실시간 상태는 WebSocket `ws://localhost:3000/ws`로 받습니다. 메시지는 `{ "event", "data" }` JSON입니다.
+
+```bash
+# hello를 보내면 전체 상태(snapshot: epoch, rev, robots, plcPoints, links)가 온다
+npx wscat -c ws://localhost:3000/ws -x '{"event":"hello","data":{}}'
+```
+
 시작할 때 `prisma migrate deploy`로 테이블을 만들고 `prisma/seed.sql`로 데모 데이터(제조사, 연결, 장비)를 넣습니다. 시드는 여러 번 실행해도 결과가 같습니다.
 
 ## 로컬 개발
