@@ -36,7 +36,7 @@ type PolledConfig = { pollIntervalMs: number };
 @Injectable()
 export class IngestService {
   private readonly logger = new Logger(IngestService.name);
-  private connections: IngestConnection[] = [];
+  private readonly connections = new Map<string, IngestConnection>();
   private readonly queues = new Map<string, SerialQueue>();
 
   constructor(
@@ -52,36 +52,53 @@ export class IngestService {
     private readonly linkStateProvider: LinkStateProvider,
   ) {}
 
+  /** 장비를 등록하고 이력으로 상태를 되살린 뒤 수신을 시작한다. */
   async start(): Promise<void> {
-    const connections = await this.connectionProvider.findEnabledConnections();
-    this.connections = connections.filter(
-      (connection) => connection.robots.length > 0,
-    );
+    const connections = await this.loadConnections();
 
-    for (const connection of this.connections) {
-      await this.robotStateProvider.registerDevices(connection.robots);
-      await this.linkStateProvider.register(connection.id);
+    for (const connection of connections) {
+      await this.register(connection);
     }
 
     await this.restoreLatestStates();
 
-    for (const connection of this.connections) {
+    for (const connection of connections) {
       await this.startPushConnection(connection);
+    }
+  }
+
+  /** DB 설정과 맞춘다. 꺼지거나 지워진 연결은 내리고, 새 연결은 붙이고, version이 바뀐 연결은 다시 붙인다. */
+  async sync(): Promise<void> {
+    const latest = await this.loadConnections();
+    const latestIds = new Set(latest.map((connection) => connection.id));
+
+    for (const current of [...this.connections.values()]) {
+      if (!latestIds.has(current.id)) {
+        await this.close(current);
+      }
+    }
+
+    for (const connection of latest) {
+      const current = this.connections.get(connection.id);
+      if (!current) {
+        await this.register(connection);
+        await this.startPushConnection(connection);
+      } else if (current.version !== connection.version) {
+        await this.restart(current, connection);
+      }
     }
   }
 
   /** 폴링 연결(REST, Modbus)의 id 목록 */
   async findPolledConnectionIds(): Promise<string[]> {
-    return this.connections
+    return [...this.connections.values()]
       .filter((connection) => connection.protocol !== "MQTT")
       .map((connection) => connection.id);
   }
 
   /** 한 번 폴링하고 다음 폴링까지 기다릴 ms를 돌려준다. 연결이 없으면 null. */
   async poll(connectionId: string): Promise<number | null> {
-    const connection = this.connections.find(
-      (item) => item.id === connectionId,
-    );
+    const connection = this.connections.get(connectionId);
     if (!connection) {
       return null;
     }
@@ -99,6 +116,46 @@ export class IngestService {
     const config = connection.config as PolledConfig;
     const elapsedMs = Date.now() - startedAt;
     return Math.max(0, config.pollIntervalMs - elapsedMs);
+  }
+
+  private async loadConnections(): Promise<IngestConnection[]> {
+    const connections = await this.connectionProvider.findEnabledConnections();
+    return connections.filter((connection) => connection.robots.length > 0);
+  }
+
+  private async register(connection: IngestConnection): Promise<void> {
+    this.connections.set(connection.id, connection);
+    await this.robotStateProvider.registerDevices(connection.robots);
+    await this.linkStateProvider.register(connection.id);
+  }
+
+  private async close(connection: IngestConnection): Promise<void> {
+    this.connections.delete(connection.id);
+    this.queues.delete(connection.id);
+    await this.stopLink(connection);
+    await this.robotStateProvider.unregisterDevices(connection.robots);
+    await this.linkStateProvider.unregister(connection.id);
+    this.logger.log(`연결 내림: ${await this.toLabel(connection)}`);
+  }
+
+  /** 장비 상태는 두고 접속만 새 설정으로 바꾼다. 폴링 루프는 다음 차례에 새 설정을 읽는다. */
+  private async restart(
+    current: IngestConnection,
+    next: IngestConnection,
+  ): Promise<void> {
+    await this.stopLink(current);
+    this.connections.set(next.id, next);
+    await this.linkStateProvider.register(next.id);
+    await this.startPushConnection(next);
+    this.logger.log(`연결 다시 붙임: ${await this.toLabel(next)}`);
+  }
+
+  private async stopLink(connection: IngestConnection): Promise<void> {
+    if (connection.protocol === "MQTT") {
+      await this.mqttLinkProvider.stop(connection.id);
+    } else if (connection.protocol === "MODBUS_TCP") {
+      await this.modbusLinkProvider.disconnect(connection.id);
+    }
   }
 
   /** 장비별 마지막 이력 행으로 메모리 상태를 되살린다. */
