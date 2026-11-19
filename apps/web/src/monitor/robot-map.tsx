@@ -12,6 +12,7 @@ type Props = {
   plcPoints: PlcPoint[];
   filters: MapFilters;
   selectedId: string | null;
+  selectedPlcId: string | null;
   waiting: boolean;
   frozenAt: number | null;
   onSelect: (id: string | null) => void;
@@ -41,6 +42,7 @@ export const RobotMap = (props: Props) => {
     plcPoints: props.plcPoints,
     filters: props.filters,
     selectedId: props.selectedId,
+    selectedPlcId: props.selectedPlcId,
     hoverId,
     waiting: props.waiting,
   };

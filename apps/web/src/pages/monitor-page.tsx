@@ -230,6 +230,7 @@ export const MonitorPage = () => {
             plcPoints={plcPoints}
             filters={filters}
             selectedId={selectedRobotId}
+            selectedPlcId={selectedPlcId}
             waiting={mode === "connecting"}
             frozenAt={frozen ? view.disconnectedAt : null}
             onSelect={setSelectedRobotId}
