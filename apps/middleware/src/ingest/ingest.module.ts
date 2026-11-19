@@ -1,4 +1,7 @@
+import { BullModule } from "@nestjs/bullmq";
 import { Module } from "@nestjs/common";
+import { ConfigType } from "@nestjs/config";
+import { queueConfig } from "../config/queue.config";
 import { HistoryModule } from "../history/history.module";
 import { SettingsModule } from "../settings/settings.module";
 import { StateModule } from "../state/state.module";
@@ -7,12 +10,14 @@ import { VendorAAdapter } from "./adapters/vendor-a.adapter";
 import { VendorBAdapter } from "./adapters/vendor-b.adapter";
 import { VendorCAdapter } from "./adapters/vendor-c.adapter";
 import { VENDOR_ADAPTERS, VendorAdapter } from "./adapters/vendor-adapter";
+import { HISTORY_QUEUE } from "./history-queue.constants";
 import { HistoryProcessor } from "./history.processor";
 import { HistoryService } from "./history.service";
 import { IngestScheduler } from "./ingest.scheduler";
 import { IngestService } from "./ingest.service";
 import { PlcIngestService } from "./plc-ingest.service";
 import { ConnectionProvider } from "./providers/connection.provider";
+import { HistoryQueueProvider } from "./providers/history-queue.provider";
 import { LinkStateProvider } from "./providers/link-state.provider";
 import { ModbusLinkProvider } from "./providers/modbus-link.provider";
 import { MqttLinkProvider } from "./providers/mqtt-link.provider";
@@ -27,13 +32,30 @@ import { MqttClientRepository } from "./repositories/mqtt-client.repository";
 import { RestClientRepository } from "./repositories/rest-client.repository";
 
 @Module({
-  imports: [StateModule, HistoryModule, SettingsModule],
+  imports: [
+    StateModule,
+    HistoryModule,
+    SettingsModule,
+    BullModule.registerQueueAsync({
+      name: HISTORY_QUEUE,
+      inject: [queueConfig.KEY],
+      // Redis가 끊기면 넣기를 기다리지 않고 바로 실패시켜 수집이 멈추지 않게 한다.
+      useFactory: (config: ConfigType<typeof queueConfig>) => ({
+        connection: {
+          host: config.redisHost,
+          port: config.redisPort,
+          enableOfflineQueue: false,
+        },
+      }),
+    }),
+  ],
   providers: [
     IngestScheduler,
     IngestService,
     PlcIngestService,
     HistoryProcessor,
     HistoryService,
+    HistoryQueueProvider,
     ConnectionProvider,
     LinkStateProvider,
     ModbusLinkProvider,

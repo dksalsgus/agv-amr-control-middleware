@@ -15,6 +15,7 @@ import { RestLinkProvider } from "./providers/rest-link.provider";
 import { RestConnectionConfig } from "./providers/rest-link.types";
 import { RobotStateProvider } from "./providers/robot-state.provider";
 import { SeqJudgeProvider } from "./providers/seq-judge.provider";
+import { HistoryQueueProvider } from "./providers/history-queue.provider";
 import { TelemetryProvider } from "./providers/telemetry.provider";
 import { RobotTelemetry } from "./providers/telemetry.types";
 import { LinkStateProvider } from "./providers/link-state.provider";
@@ -38,6 +39,7 @@ export class IngestService {
     private readonly robotStateProvider: RobotStateProvider,
     private readonly seqJudgeProvider: SeqJudgeProvider,
     private readonly telemetryProvider: TelemetryProvider,
+    private readonly historyQueueProvider: HistoryQueueProvider,
     private readonly linkStateProvider: LinkStateProvider,
     private readonly logger: AppLogger,
   ) {
@@ -264,7 +266,7 @@ export class IngestService {
       this.applyReadings(connectionId, readings, receivedTs),
     );
 
-    await this.telemetryProvider.recordAll(accepted);
+    await this.historyQueueProvider.addTelemetry(accepted);
   }
 
   private async applyReadings(

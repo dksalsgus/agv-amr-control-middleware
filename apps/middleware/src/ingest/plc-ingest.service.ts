@@ -9,6 +9,7 @@ import {
   ModbusConnectionConfig,
   ModbusRawMessage,
 } from "./providers/modbus-link.types";
+import { HistoryQueueProvider } from "./providers/history-queue.provider";
 import { PlcEventProvider } from "./providers/plc-event.provider";
 import { PlcPointChange } from "./providers/plc-event.types";
 import { LinkStateProvider } from "./providers/link-state.provider";
@@ -28,6 +29,7 @@ export class PlcIngestService {
     private readonly seqJudgeProvider: SeqJudgeProvider,
     private readonly plcPointStateProvider: PlcPointStateProvider,
     private readonly plcEventProvider: PlcEventProvider,
+    private readonly historyQueueProvider: HistoryQueueProvider,
     private readonly linkStateProvider: LinkStateProvider,
     private readonly logger: AppLogger,
   ) {
@@ -195,7 +197,7 @@ export class PlcIngestService {
     });
 
     const changes = await this.applyChangedPoints(device, reading, receivedTs);
-    await this.plcEventProvider.recordAll(changes);
+    await this.historyQueueProvider.addPlcEvents(changes);
   }
 
   private async applyChangedPoints(
