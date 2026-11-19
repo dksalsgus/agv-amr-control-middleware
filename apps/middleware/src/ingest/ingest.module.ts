@@ -10,6 +10,7 @@ import { IngestScheduler } from "./ingest.scheduler";
 import { IngestService } from "./ingest.service";
 import { PlcIngestService } from "./plc-ingest.service";
 import { ConnectionProvider } from "./providers/connection.provider";
+import { LinkStateProvider } from "./providers/link-state.provider";
 import { ModbusLinkProvider } from "./providers/modbus-link.provider";
 import { MqttLinkProvider } from "./providers/mqtt-link.provider";
 import { PlcEventProvider } from "./providers/plc-event.provider";
@@ -30,6 +31,7 @@ import { VendorsConnectionsRepository } from "./repositories/vendors-connections
     IngestService,
     PlcIngestService,
     ConnectionProvider,
+    LinkStateProvider,
     ModbusLinkProvider,
     MqttLinkProvider,
     PlcEventProvider,
