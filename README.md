@@ -73,7 +73,7 @@ curl "http://localhost:3000/robots/{id}/telemetry?from=2026-11-19T00:00:00Z&page
 npx wscat -c ws://localhost:3000/ws -x '{"event":"hello","data":{}}'
 ```
 
-이후 100ms마다 바뀐 엔티티만 `delta`(fromRev, rev, robots, plcPoints, links, removed)로 옵니다. 다시 접속할 때 `hello`에 받은 `epoch`와 마지막 `rev`(lastRev)를 보내면 그 뒤의 변화만 받고, 서버가 재시작해 epoch가 다르면 snapshot을 받습니다. 화면이 `delta.fromRev`와 자기 rev가 다르면 `{"event":"resync","data":{"lastRev":R}}`을 보냅니다.
+이후 100ms마다 바뀐 엔티티만 `delta`(fromRev, rev, robots, plcPoints, links, removed)로 옵니다. 다시 접속할 때 `hello`에 받은 `epoch`와 마지막 `rev`(lastRev)를 보내면 그 뒤의 변화만 받고, 서버가 재시작해 epoch가 다르면 snapshot을 받습니다. 서버는 5초마다 `ping`을 보내고 `pong`이 두 번 연속 없으면 접속을 끊습니다. 화면도 `ping`을 보내면 `pong`을 받습니다. 화면이 `delta.fromRev`와 자기 rev가 다르면 `{"event":"resync","data":{"lastRev":R}}`을 보냅니다.
 
 시작할 때 `prisma migrate deploy`로 테이블을 만들고 `prisma/seed.sql`로 데모 데이터(제조사, 연결, 장비)를 넣습니다. 시드는 여러 번 실행해도 결과가 같습니다.
 

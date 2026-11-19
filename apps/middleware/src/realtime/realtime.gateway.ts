@@ -4,16 +4,19 @@ import { SchedulerRegistry } from "@nestjs/schedule";
 import {
   ConnectedSocket,
   MessageBody,
+  OnGatewayConnection,
   OnGatewayDisconnect,
   OnGatewayInit,
   SubscribeMessage,
   WebSocketGateway,
+  WsResponse,
 } from "@nestjs/websockets";
 import { WebSocket } from "ws";
 import { WsExceptionsFilter } from "../common/filters/ws-exceptions.filter";
 import { realtimeConfig } from "../config/realtime.config";
 import { DeltaMessageDto } from "./dto/delta.message.dto";
 import { HelloMessageDto } from "./dto/hello.message.dto";
+import { PingMessageDto } from "./dto/ping.message.dto";
 import { ResyncMessageDto } from "./dto/resync.message.dto";
 import { RealtimeService } from "./realtime.service";
 import { RealtimeReply } from "./realtime.types";
@@ -22,11 +25,16 @@ import { RealtimeReply } from "./realtime.types";
 @WebSocketGateway({ path: "/ws" })
 @UsePipes(new ValidationPipe({ whitelist: true }))
 @UseFilters(new WsExceptionsFilter())
-export class RealtimeGateway implements OnGatewayInit, OnGatewayDisconnect {
+export class RealtimeGateway
+  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
+{
   private static readonly DELTA_JOB = "realtime-delta";
+  private static readonly PING_JOB = "realtime-ping";
 
   /** hello를 보낸 화면과 그 화면에 마지막으로 보낸 rev */
   private readonly sentRevs = new Map<WebSocket, number>();
+  /** 화면별 마지막 pong 시각(ms) */
+  private readonly lastPongAts = new Map<WebSocket, number>();
   private pushing = false;
 
   constructor(
@@ -42,10 +50,21 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayDisconnect {
       this.config.deltaIntervalMs,
     );
     this.schedulerRegistry.addInterval(RealtimeGateway.DELTA_JOB, interval);
+
+    const heartbeat = setInterval(
+      () => this.pingClients(),
+      this.config.pingIntervalMs,
+    );
+    this.schedulerRegistry.addInterval(RealtimeGateway.PING_JOB, heartbeat);
+  }
+
+  handleConnection(client: WebSocket): void {
+    this.lastPongAts.set(client, Date.now());
   }
 
   handleDisconnect(client: WebSocket): void {
     this.sentRevs.delete(client);
+    this.lastPongAts.delete(client);
   }
 
   @SubscribeMessage("hello")
@@ -62,6 +81,18 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayDisconnect {
     @MessageBody() message: ResyncMessageDto,
   ): Promise<void> {
     this.reply(client, await this.realtimeService.resync(message.lastRev));
+  }
+
+  @SubscribeMessage("ping")
+  async ping(
+    @MessageBody() message: PingMessageDto,
+  ): Promise<WsResponse<PingMessageDto>> {
+    return { event: "pong", data: { t: message.t } };
+  }
+
+  @SubscribeMessage("pong")
+  async pong(@ConnectedSocket() client: WebSocket): Promise<void> {
+    this.lastPongAts.set(client, Date.now());
   }
 
   /** 답을 보낸 뒤에 rev를 기록해야 다음 delta가 답보다 먼저 가지 않는다. */
@@ -85,7 +116,11 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayDisconnect {
         }
 
         const delta = deltas.get(sentRev);
-        if (!delta || client.readyState !== WebSocket.OPEN) {
+        if (
+          !delta ||
+          client.readyState !== WebSocket.OPEN ||
+          client.bufferedAmount > this.config.maxBufferedBytes
+        ) {
           continue;
         }
 
@@ -94,6 +129,21 @@ export class RealtimeGateway implements OnGatewayInit, OnGatewayDisconnect {
       }
     } finally {
       this.pushing = false;
+    }
+  }
+
+  /** pong이 maxMissedPongs번 연속 없으면 끊는다. close가 오면 handleDisconnect가 정리한다. */
+  private pingClients(): void {
+    const now = Date.now();
+    const timeoutMs = this.config.pingIntervalMs * this.config.maxMissedPongs;
+
+    for (const [client, lastPongAt] of this.lastPongAts) {
+      if (now - lastPongAt > timeoutMs) {
+        client.terminate();
+        continue;
+      }
+
+      client.send(JSON.stringify({ event: "ping", data: { t: now } }));
     }
   }
 }
