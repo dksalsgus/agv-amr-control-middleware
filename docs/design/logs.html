@@ -1,0 +1,1005 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>이력 · AGV·AMR 통합 관제</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+/* OD-LAYOUT-PRIMITIVES v1 — structure only: display, flex/grid, overflow, wrapping, ratio, geometry.
+   Put this @layer first; product CSS outside the layer wins ordinary layout rules.
+   Native hidden and closed-dialog states take precedence over component display rules. */
+@layer od-layout {
+  [hidden]:not([hidden="until-found" i]) { display: none !important; }
+  dialog:not([open]) { display: none !important; }
+
+  :where(.od-stack,.od-row,.od-row-top,.od-cluster,.od-grid,.od-field,.od-stat,.od-cell,.od-tile) > :where(*) { min-width: 0; }
+
+  /* containers */
+  .od-stack   { display: flex; flex-direction: column; gap: var(--od-gap, 8px); }
+  .od-row     { display: flex; align-items: center; gap: var(--od-gap, 8px); }
+  .od-row-top { display: flex; align-items: flex-start; gap: var(--od-gap, 8px); }
+  .od-cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--od-gap, 8px); }
+  .od-fill    { flex: 1 1 0; min-width: 0; }
+  .od-fixed   { flex: none; }
+  .od-grid    { display: grid; gap: var(--od-gap, 12px); grid-template-columns: repeat(var(--od-cols, 3), minmax(0, 1fr)); }
+
+  /* stacked information: each piece is its own line — never sibling inline spans */
+  .od-stat, .od-field, .od-cell { display: grid; gap: var(--od-gap, 2px); }
+  :where(.od-stat,.od-field,.od-cell) > :where(*) { display: block; }
+  .od-tile { display: grid; grid-template-rows: auto 1fr; }
+  :where(.od-tile) > :where(*) { display: block; }
+
+  .od-media { display: block; width: 100%; height: auto; aspect-ratio: var(--od-ratio, auto); }
+  .od-media-cover { object-fit: cover; }
+
+  /* functional inline SVG icons opt into bounded geometry; content SVGs keep their own */
+  .od-icon { display: inline-block; inline-size: var(--od-icon-size, 1em); block-size: var(--od-icon-size, 1em); flex: none; }
+
+  /* data text only — authored copy is rewritten to its budget instead */
+  .od-truncate { display: block; max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .od-clamp-2, .od-clamp-3 { display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+  .od-clamp-2 { -webkit-line-clamp: 2; }
+  .od-clamp-3 { -webkit-line-clamp: 3; }
+  .od-lines-2 { min-height: calc(2 * 1.4em); }
+  .od-nowrap  { white-space: nowrap; }
+  .od-keep    { word-break: keep-all; overflow-wrap: anywhere; }
+
+  .od-screen { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; height: 100%; }
+  .od-scroll { overflow-y: auto; overscroll-behavior: contain; min-height: 0; }
+
+  .od-rail { display: flex; gap: var(--od-gap, 8px); overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none;
+             padding-inline: var(--od-rail-pad, 16px); scroll-padding-inline: var(--od-rail-pad, 16px); }
+  .od-rail::-webkit-scrollbar { display: none; }
+  :where(.od-rail) > :where(*) { flex: none; scroll-snap-align: start; }
+  :where(.od-rail) > :where(:last-child) { margin-inline-end: var(--od-rail-pad, 16px); }
+
+  .od-spacer { flex: none; visibility: hidden; pointer-events: none; }
+  .od-touch  { min-width: 44px; min-height: 44px; }
+}
+:root [hidden]:where(:not([hidden="until-found" i])) { display: none; }
+/* /OD-LAYOUT-PRIMITIVES v1 */
+
+/* =====================================================================
+   공통 디자인 토큰 — 관제 / 연결 설정 / 장애 주입 / 로그인 화면이 함께 씁니다.
+   색·글자·간격·모서리·모션 값은 여기에서만 바꿉니다.
+   ===================================================================== */
+:root {
+  color-scheme: dark;
+
+  /* 글꼴 */
+  --font-sans: "Pretendard Variable", Pretendard, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+
+  /* 글자 크기 단계 */
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-md: 14px;
+  --fs-lg: 16px;
+  --fs-xl: 20px;
+  --fs-2xl: 26px;
+  --lh-tight: 1.25;
+  --lh-body: 1.5;
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+
+  /* 간격 (4의 배수) */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+
+  /* 모서리 */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+
+  /* 바탕과 면 */
+  --bg: #0B0F13;
+  --surface-0: #0F141A;
+  --surface-1: #141A21;
+  --surface-2: #1B222B;
+  --surface-3: #232C37;
+  --line: #253039;
+  --line-strong: #364350;
+
+  /* 텍스트 */
+  --text-1: #E7ECF1;
+  --text-2: #A8B3BF;
+  --text-3: #8591A0;
+  --text-inverse: #0B0F13;
+
+  /* 강조(선택·주요 동작) */
+  --accent: #4CB4E6;
+  --accent-strong: #2B7FB0;
+  --accent-strong-hover: #236C97;
+  --accent-soft: rgba(76, 180, 230, 0.14);
+  --focus: #8FD3FF;
+
+  /* 운행 상태 */
+  --st-idle: #A3B4C6;
+  --st-moving: #3FCF8E;
+  --st-charging: #5AA8FF;
+  --st-paused: #F0BE3C;
+  --st-error: #FF5B61;
+  --st-stale: #6E7A87;
+
+  /* 알람 등급 */
+  --sev-info: #5AA8FF;
+  --sev-warn: #F0BE3C;
+  --sev-critical: #FF5B61;
+
+  /* 연결 상태 */
+  --link-up: #3FCF8E;
+  --link-down: #FF5B61;
+  --link-unknown: #95A1AE;
+
+  /* 상태 바탕(옅은 색) */
+  --ok-soft: rgba(63, 207, 142, 0.12);
+  --info-soft: rgba(90, 168, 255, 0.12);
+  --warn-soft: rgba(240, 190, 60, 0.12);
+  --danger-soft: rgba(255, 91, 97, 0.13);
+
+  /* 맵 */
+  --map-floor: #10161C;
+  --map-grid: #18202A;
+  --map-rack: #1A232C;
+  --map-rack-line: #2A3542;
+  --map-aisle: #2A3541;
+  --map-wall: #4A5867;
+  --map-label: #7F8B98;
+  --map-marker-line: #E7ECF1;
+
+  /* 크기 */
+  --gnb-h: 52px;
+  --control-h: 32px;
+  --control-h-sm: 28px;
+
+  /* 모션 */
+  --dur-fast: 150ms;
+  --dur-base: 220ms;
+  --dur-slow: 360ms;
+  --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ease-in: cubic-bezier(0.5, 0, 0.8, 0.4);
+
+  --shadow-pop: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
+/* ===== 기본 ===== */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text-1);
+  font-family: var(--font-sans);
+  font-size: var(--fs-md);
+  line-height: var(--lh-body);
+  -webkit-font-smoothing: antialiased;
+}
+button, input, select { font: inherit; color: inherit; }
+h1, h2, h3, p, ul, ol, dl, dd { margin: 0; }
+ul, ol { padding: 0; list-style: none; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.muted { color: var(--text-2); }
+.faint { color: var(--text-3); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ===== 공통 컴포넌트: 버튼 ===== */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-1);
+  height: var(--control-h); padding: 0 var(--sp-3);
+  border-radius: var(--radius-md); border: 1px solid var(--line-strong);
+  background: var(--surface-2); color: var(--text-1);
+  font-size: var(--fs-sm); font-weight: var(--fw-semibold); white-space: nowrap; cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+}
+.btn:hover { background: var(--surface-3); border-color: var(--text-3); }
+.btn:disabled { cursor: not-allowed; background: var(--surface-1); color: var(--text-3); border-color: var(--line); }
+.btn-primary { background: var(--accent-strong); border-color: var(--accent-strong); color: #FFFFFF; }
+.btn-primary:hover { background: var(--accent-strong-hover); border-color: var(--accent-strong-hover); color: #FFFFFF; }
+.btn-primary:disabled { background: var(--surface-1); border-color: var(--line); color: var(--text-3); }
+.btn-ghost { background: transparent; border-color: transparent; color: var(--text-2); }
+.btn-ghost:hover { background: var(--surface-2); border-color: var(--line); color: var(--text-1); }
+.btn-sm { height: var(--control-h-sm); padding: 0 var(--sp-2); font-size: var(--fs-xs); }
+.btn-icon { width: var(--control-h); padding: 0; }
+
+/* 칩(필터) */
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: var(--control-h-sm); padding: 0 var(--sp-2);
+  border-radius: var(--radius-sm); border: 1px solid var(--line-strong);
+  background: transparent; color: var(--text-3);
+  font-size: var(--fs-xs); font-weight: var(--fw-semibold); cursor: pointer; white-space: nowrap;
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.chip:hover { color: var(--text-1); border-color: var(--text-3); }
+.chip[aria-pressed="true"] { background: var(--surface-3); color: var(--text-1); border-color: var(--text-3); }
+.chip .swatch { opacity: 0.4; }
+.chip[aria-pressed="true"] .swatch { opacity: 1; }
+
+/* 상태 배지 */
+.badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  height: 22px; padding: 0 var(--sp-2); border-radius: var(--radius-sm);
+  font-size: var(--fs-xs); font-weight: var(--fw-semibold); white-space: nowrap;
+  background: var(--surface-3); color: var(--text-1);
+}
+.badge[data-tone="ok"] { background: var(--ok-soft); color: var(--link-up); }
+.badge[data-tone="info"] { background: var(--info-soft); color: var(--sev-info); }
+.badge[data-tone="warn"] { background: var(--warn-soft); color: var(--sev-warn); }
+.badge[data-tone="danger"] { background: var(--danger-soft); color: var(--sev-critical); }
+.badge[data-tone="neutral"] { background: var(--surface-3); color: var(--text-2); }
+.badge[data-tone="stale"] { background: transparent; color: var(--text-2); border: 1px dashed var(--st-stale); }
+
+.dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none; }
+
+/* =====================================================================
+   공통 상단 내비게이션 — 모든 화면에서 같은 자리, 같은 구조로 씁니다.
+   ===================================================================== */
+.gnb {
+  display: flex; align-items: center; gap: var(--sp-5);
+  height: var(--gnb-h); padding: 0 var(--sp-4) 0 var(--sp-5);
+  background: var(--surface-0); border-bottom: 1px solid var(--line);
+}
+.gnb-brand { display: flex; align-items: center; gap: var(--sp-2); flex: none; }
+.gnb-brand svg { display: block; }
+.gnb-title { font-size: var(--fs-lg); font-weight: var(--fw-bold); letter-spacing: -0.01em; white-space: nowrap; }
+.gnb-site { font-size: var(--fs-xs); color: var(--text-3); white-space: nowrap; }
+.gnb-tabs { display: flex; align-self: stretch; }
+.gnb-tab {
+  display: flex; align-items: center; padding: 0 var(--sp-4);
+  background: none; border: 0; border-bottom: 2px solid transparent;
+  color: var(--text-2); font-size: var(--fs-md); font-weight: var(--fw-semibold); cursor: pointer; white-space: nowrap;
+  transition: color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
+}
+.gnb-tab:hover { color: var(--text-1); background: var(--surface-1); }
+.gnb-tab[aria-current="page"] { color: var(--text-1); border-bottom-color: var(--accent); }
+.gnb-tab:focus-visible { outline-offset: -2px; }
+a.gnb-tab { text-decoration: none; }
+.gnb-end { display: flex; align-items: center; gap: var(--sp-3); margin-left: auto; }
+.gnb-clock { font-size: var(--fs-sm); color: var(--text-2); }
+.live-pill {
+  display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 var(--sp-2);
+  border-radius: 13px; font-size: var(--fs-xs); font-weight: var(--fw-semibold); white-space: nowrap;
+  background: var(--ok-soft); color: var(--link-up);
+}
+.live-pill[data-tone="info"] { background: var(--info-soft); color: var(--sev-info); }
+.live-pill[data-tone="warn"] { background: var(--warn-soft); color: var(--sev-warn); }
+.live-pill[data-tone="danger"] { background: var(--danger-soft); color: var(--sev-critical); }
+.live-pill[data-pulse="true"] .dot { animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: 0.35; } }
+.gnb-divider { width: 1px; height: 24px; background: var(--line); }
+.gnb-user { display: flex; align-items: center; gap: var(--sp-2); }
+.avatar {
+  display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%;
+  background: var(--surface-3); color: var(--text-1); font-size: var(--fs-xs); font-weight: var(--fw-bold);
+}
+.gnb-user-name { font-size: var(--fs-sm); font-weight: var(--fw-semibold); line-height: var(--lh-tight); white-space: nowrap; }
+
+
+/* ===== 화면 뼈대 (이력) ===== */
+.app { display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; height: 100vh; }
+.panel-title { font-size: var(--fs-md); font-weight: var(--fw-bold); white-space: nowrap; }
+.panel-meta { font-size: var(--fs-xs); color: var(--text-3); white-space: nowrap; }
+
+.page-head { display: flex; align-items: center; gap: var(--sp-4); padding: var(--sp-4) var(--sp-5); background: var(--surface-0); border-bottom: 1px solid var(--line); }
+.page-head .btn { margin-left: auto; }
+.page-title { font-size: var(--fs-xl); font-weight: var(--fw-bold); line-height: var(--lh-tight); }
+.page-desc { font-size: var(--fs-sm); color: var(--text-2); }
+
+.workspace { display: grid; grid-template-columns: minmax(0, 1fr) 384px; gap: 1px; min-height: 0; background: var(--line); }
+.list-col { display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; min-height: 0; background: var(--surface-1); }
+
+/* 필터 */
+.filters { display: grid; gap: var(--sp-3); padding: var(--sp-3) var(--sp-5); border-bottom: 1px solid var(--line); }
+.filter-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); }
+.filter-label { width: 32px; flex: none; font-size: var(--fs-xs); color: var(--text-3); white-space: nowrap; }
+.chip .count { font-family: var(--font-mono); font-weight: var(--fw-medium); color: var(--text-3); }
+.chip[aria-pressed="true"] .count { color: var(--text-2); }
+.field-inline { display: flex; align-items: center; gap: 6px; }
+.field-inline label { font-size: var(--fs-xs); color: var(--text-3); white-space: nowrap; }
+.select {
+  height: var(--control-h); min-width: 140px; padding: 0 32px 0 10px;
+  border: 1px solid var(--line-strong); border-radius: var(--radius-md); background-color: var(--surface-0); color: var(--text-1);
+  font-size: var(--fs-sm); cursor: pointer; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23A8B3BF' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center;
+}
+.select.wide { min-width: 220px; }
+.select:hover:not(:disabled) { border-color: var(--text-3); }
+.select:disabled { cursor: not-allowed; color: var(--text-3); border-color: var(--line); }
+.filter-row .btn-ghost { margin-left: auto; }
+
+/* 대상 범위 띠 */
+.scope { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); padding: var(--sp-2) var(--sp-5); background: #0F1E2E; border-bottom: 1px solid #1E3F63; color: #CFE5FF; font-size: var(--fs-sm); }
+.scope strong { font-family: var(--font-mono); font-weight: var(--fw-semibold); }
+.scope-title:focus-visible { outline-offset: 4px; }
+.scope .btn { margin-left: auto; }
+
+/* 표 */
+.table-wrap { position: relative; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+.log-table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
+.log-table th {
+  position: sticky; top: 0; z-index: 1; padding: var(--sp-2) var(--sp-3); text-align: left; white-space: nowrap;
+  background: var(--surface-1); border-bottom: 1px solid var(--line-strong); font-size: var(--fs-xs); font-weight: var(--fw-semibold); color: var(--text-3);
+}
+.log-table td { padding: var(--sp-2) var(--sp-3); border-bottom: 1px solid var(--line); vertical-align: top; }
+.log-table th:first-child, .log-table td:first-child { padding-left: var(--sp-5); }
+.log-table th:last-child, .log-table td:last-child { padding-right: var(--sp-5); }
+.log-table tbody tr { cursor: pointer; transition: background-color var(--dur-fast) var(--ease-out); }
+.log-table tbody tr:hover td { background: var(--surface-2); }
+.log-table tbody tr:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.log-table tbody tr[aria-selected="true"] td { background: var(--accent-soft); }
+.log-table tbody tr[aria-selected="true"] td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+.c-ts { font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--text-2); white-space: nowrap; }
+.c-type, .c-code { white-space: nowrap; }
+.c-type small, .c-code small { display: block; font-family: var(--font-mono); font-size: 11px; color: var(--text-3); }
+.type-tag { display: inline-flex; align-items: center; gap: 6px; font-weight: var(--fw-semibold); color: var(--text-1); }
+.type-tag .dot { width: 7px; height: 7px; }
+.type-tag[data-type="LINK_UP"] .dot, .type-tag[data-type="ALARM_CLEARED"] .dot { color: var(--link-up); }
+.type-tag[data-type="LINK_DOWN"] .dot { color: var(--link-down); }
+.type-tag[data-type="ALARM_RAISED"] .dot { color: var(--sev-warn); }
+.type-tag[data-type="ALARM_ACKED"] .dot { color: var(--sev-info); }
+.c-code { font-family: var(--font-mono); font-size: var(--fs-xs); }
+.c-none { color: var(--text-3); }
+.c-target { white-space: nowrap; }
+.tt-badge { display: inline-flex; align-items: center; height: 20px; padding: 0 6px; margin-right: 6px; border-radius: var(--radius-sm); background: var(--surface-3); color: var(--text-2); font-size: 11px; font-weight: var(--fw-semibold); vertical-align: 1px; }
+.target-link { padding: 0; border: 0; background: none; color: var(--accent); font-family: var(--font-mono); font-size: var(--fs-sm); cursor: pointer; text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 3px; }
+.target-link:hover { text-decoration-color: currentColor; }
+.c-msg { color: var(--text-2); min-width: 240px; }
+
+.sev { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: var(--fw-bold); font-family: var(--font-mono); white-space: nowrap; }
+.sev[data-sev="INFO"] { color: var(--sev-info); }
+.sev[data-sev="WARN"] { color: var(--sev-warn); }
+.sev[data-sev="CRITICAL"] { color: var(--sev-critical); }
+
+/* 불러오는 중 · 결과 없음 · 실패 */
+.skel-row td { cursor: default; }
+.skel-bar { display: block; height: 12px; border-radius: var(--radius-sm); background: linear-gradient(90deg, var(--surface-2) 0%, var(--surface-3) 50%, var(--surface-2) 100%); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
+@keyframes shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+.state-box { display: grid; justify-items: center; gap: var(--sp-2); max-width: 480px; margin: 0 auto; padding: var(--sp-6) var(--sp-4); text-align: center; color: var(--text-2); font-size: var(--fs-sm); }
+.state-box .od-icon { color: var(--text-3); }
+.state-box[data-tone="danger"] .od-icon { color: var(--sev-critical); }
+.state-box strong { color: var(--text-1); font-size: var(--fs-lg); }
+.state-box .mono { color: var(--text-3); font-size: var(--fs-xs); }
+.state-actions { display: flex; gap: var(--sp-2); margin-top: var(--sp-2); }
+
+/* 페이지 넘김 */
+.pager { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); padding: var(--sp-3) var(--sp-5); border-top: 1px solid var(--line); background: var(--surface-0); }
+.pager-info { margin-right: auto; font-size: var(--fs-sm); color: var(--text-2); white-space: nowrap; }
+.page-btn { min-width: var(--control-h); padding: 0 var(--sp-2); font-family: var(--font-mono); }
+.page-btn[aria-current="page"] { background: var(--accent-strong); border-color: var(--accent-strong); color: #FFFFFF; }
+.page-gap { color: var(--text-3); padding: 0 2px; }
+
+/* 상세 */
+.detail { display: grid; grid-template-rows: auto minmax(0, 1fr); min-height: 0; background: var(--surface-1); }
+.detail-head { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--line); }
+.detail-body { display: grid; align-content: start; gap: var(--sp-4); padding: var(--sp-4); overflow-y: auto; overscroll-behavior: contain; min-height: 0; }
+.detail-title { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); font-size: var(--fs-lg); font-weight: var(--fw-bold); }
+.kv { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-3); }
+.kv dt { font-size: var(--fs-xs); color: var(--text-3); }
+.kv dd { font-size: var(--fs-md); color: var(--text-1); overflow-wrap: anywhere; }
+.kv .span-2 { grid-column: span 2; }
+.kv .mono { font-family: var(--font-mono); font-size: var(--fs-sm); }
+.detail-actions { display: grid; gap: var(--sp-2); }
+.detail-actions .btn { width: 100%; height: 36px; }
+.recent { display: grid; gap: var(--sp-2); padding-top: var(--sp-4); border-top: 1px solid var(--line); }
+.recent-title { font-size: var(--fs-sm); font-weight: var(--fw-bold); }
+.recent-list { display: grid; gap: 4px; }
+.recent-item {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0 var(--sp-2); width: 100%; padding: 6px var(--sp-2);
+  border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--surface-0); text-align: left; cursor: pointer;
+}
+.recent-item:hover { border-color: var(--line-strong); background: var(--surface-2); }
+.recent-item[aria-current="true"] { border-color: var(--accent); }
+.recent-item .ts { grid-row: span 2; font-family: var(--font-mono); font-size: 11px; color: var(--text-3); white-space: nowrap; }
+.recent-item .t { font-size: var(--fs-sm); font-weight: var(--fw-semibold); color: var(--text-1); }
+.recent-item .m { font-size: var(--fs-xs); color: var(--text-2); }
+.empty { display: grid; justify-items: center; gap: var(--sp-2); padding: var(--sp-6) var(--sp-3); text-align: center; color: var(--text-2); font-size: var(--fs-sm); }
+.empty strong { color: var(--text-1); font-size: var(--fs-md); }
+
+/* 토스트 */
+.toasts { position: fixed; right: var(--sp-5); bottom: 64px; z-index: 20; display: grid; gap: var(--sp-2); pointer-events: none; }
+.toast {
+  display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); min-width: 260px; max-width: 420px;
+  border-radius: var(--radius-md); background: var(--surface-3); border: 1px solid var(--line-strong); box-shadow: var(--shadow-pop);
+  font-size: var(--fs-sm); animation: toast-in var(--dur-base) var(--ease-out);
+}
+.toast[data-tone="ok"] { border-left: 3px solid var(--link-up); }
+.toast[data-tone="warn"] { border-left: 3px solid var(--sev-warn); }
+.toast[data-tone="danger"] { border-left: 3px solid var(--sev-critical); }
+.toast[data-tone="info"] { border-left: 3px solid var(--sev-info); }
+@keyframes toast-in { from { transform: translateY(8px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* 데모 컨트롤 — 실제 제품 화면에는 없는 영역 */
+.demo-bar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-5);
+  padding: var(--sp-2) var(--sp-5);
+  background: repeating-linear-gradient(-45deg, #161B10, #161B10 10px, #191F12 10px, #191F12 20px);
+  border-top: 1px dashed #5C6B2E; color: #DCE7B5; font-size: var(--fs-xs);
+}
+.demo-tag { font-weight: var(--fw-bold); letter-spacing: 0.02em; white-space: nowrap; }
+.demo-group { display: flex; align-items: center; gap: 4px; border: 0; padding: 0; margin: 0; }
+.demo-group legend { float: left; margin-right: 6px; color: #B9C58F; }
+.demo-opt { position: relative; }
+.demo-opt input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.demo-opt span { display: inline-flex; align-items: center; height: 26px; padding: 0 var(--sp-2); border-radius: var(--radius-sm); border: 1px solid #4B5726; white-space: nowrap; cursor: pointer; }
+.demo-opt:hover span { background: #232B16; }
+.demo-opt input:checked + span { background: #DCE7B5; color: #12160B; border-color: #DCE7B5; font-weight: var(--fw-semibold); }
+.demo-opt input:focus-visible + span { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+
+/* 좁은 창: 세로로 쌓기 */
+@media (max-width: 1099px) {
+  .app { height: auto; min-height: 100vh; }
+  .workspace { grid-template-columns: minmax(0, 1fr); }
+  .table-wrap { max-height: 70vh; }
+  .detail-body { overflow: visible; }
+}
+@media (max-width: 767px) {
+  .gnb { gap: var(--sp-3); overflow-x: auto; }
+  .gnb-site, .gnb-clock { display: none; }
+  .page-head { flex-wrap: wrap; }
+  .filter-row .btn-ghost { margin-left: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
+}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+
+  <!-- ===== 공통 상단 내비게이션 ===== -->
+  <header class="gnb">
+    <div class="gnb-brand">
+      <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true">
+        <rect x="1" y="1" width="24" height="24" rx="5" fill="none" stroke="#4CB4E6" stroke-width="2"/>
+        <path d="M6 18 L11 8 L15 14 L20 7" fill="none" stroke="#E7ECF1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="20" cy="7" r="2" fill="#4CB4E6"/>
+      </svg>
+      <div class="od-stack" style="--od-gap:0">
+        <span class="gnb-title">AGV·AMR 통합 관제</span>
+        <span class="gnb-site">1공장 · 로봇 90대 · PLC 16점</span>
+      </div>
+    </div>
+    <nav class="gnb-tabs" aria-label="주 메뉴">
+      <a class="gnb-tab" href="monitor.html">관제</a>
+      <a class="gnb-tab" href="logs.html" aria-current="page">이력</a>
+      <a class="gnb-tab" href="connections.html">연결 설정</a>
+      <button type="button" class="gnb-tab" data-nav="faults">장애 주입</button>
+    </nav>
+    <div class="gnb-end">
+      <span class="live-pill" data-tone="ok" role="status"><span class="dot"></span><span>서버 연결됨</span></span>
+      <span class="gnb-clock mono" id="clock">--:--:--</span>
+      <span class="gnb-divider" aria-hidden="true"></span>
+      <div class="gnb-user">
+        <span class="avatar" aria-hidden="true">김</span>
+        <span class="gnb-user-name">김도윤</span>
+      </div>
+      <button type="button" class="btn btn-ghost btn-sm" id="logoutBtn">
+        <svg class="od-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l-5-5 5-5"/><path d="M5 12h11"/></svg>
+        로그아웃
+      </button>
+    </div>
+  </header>
+
+  <!-- 페이지 머리 -->
+  <section class="page-head">
+    <div class="od-stack" style="--od-gap:2px">
+      <h1 class="page-title">이력</h1>
+      <p class="page-desc">연결 상태 변화와 알람 발생·확인·해제 기록입니다. 최신 기록이 맨 위에 옵니다.</p>
+    </div>
+    <button type="button" class="btn" id="refreshBtn">
+      <svg class="od-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>
+      새로 고침
+    </button>
+  </section>
+
+  <main class="workspace">
+    <section class="list-col" aria-labelledby="listTitle">
+      <h2 class="sr-only" id="listTitle">이력 목록</h2>
+      <div class="filters">
+        <div class="filter-row" role="group" aria-label="로그 유형">
+          <span class="filter-label">유형</span>
+          <div class="od-cluster" style="--od-gap:6px" id="typeChips"></div>
+        </div>
+        <div class="filter-row">
+          <span class="filter-label">대상</span>
+          <div class="field-inline">
+            <label for="ttSelect">대상 유형</label>
+            <select class="select" id="ttSelect"></select>
+          </div>
+          <div class="field-inline">
+            <label for="tnSelect">대상 이름</label>
+            <select class="select wide" id="tnSelect"></select>
+          </div>
+          <button type="button" class="btn btn-ghost btn-sm" id="resetBtn">필터 초기화</button>
+        </div>
+      </div>
+      <div class="scope" id="scope" hidden></div>
+      <div class="table-wrap" id="tableWrap">
+        <table class="log-table" id="logTable">
+          <thead>
+            <tr>
+              <th scope="col">발생 시각</th>
+              <th scope="col">유형</th>
+              <th scope="col">등급</th>
+              <th scope="col">알람 코드</th>
+              <th scope="col">대상</th>
+              <th scope="col">메시지</th>
+            </tr>
+          </thead>
+          <tbody id="logBody"></tbody>
+        </table>
+        <div id="stateBox" hidden></div>
+      </div>
+      <nav class="pager" id="pager" aria-label="페이지 넘김"></nav>
+      <p class="sr-only" id="srStatus" aria-live="polite"></p>
+    </section>
+
+    <aside class="detail" aria-labelledby="detailTitle">
+      <div class="detail-head"><h2 class="panel-title" id="detailTitle" tabindex="-1">로그 상세</h2></div>
+      <div class="detail-body" id="detailBody"></div>
+    </aside>
+  </main>
+
+  <!-- 데모 컨트롤: 실제 제품 화면에는 없는 영역입니다 -->
+  <footer class="demo-bar" aria-label="데모 컨트롤">
+    <span class="demo-tag">데모 컨트롤 · 실제 화면에는 없음</span>
+    <fieldset class="demo-group" id="demoOutcome">
+      <legend>GET /logs 응답</legend>
+      <label class="demo-opt"><input type="radio" name="outcome" value="ok" checked><span>정상</span></label>
+      <label class="demo-opt"><input type="radio" name="outcome" value="loading"><span>불러오는 중</span></label>
+      <label class="demo-opt"><input type="radio" name="outcome" value="empty"><span>결과 없음</span></label>
+      <label class="demo-opt"><input type="radio" name="outcome" value="fail"><span>불러오기 실패</span></label>
+    </fieldset>
+  </footer>
+</div>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script>
+'use strict';
+
+/* ===== 상수 ===== */
+const PAGE_SIZE = 100;
+const LOAD_MS = 450;
+const SKELETON_ROWS = 12;
+const RECENT_COUNT = 6;
+const LOG_TYPES = ['LINK_UP', 'LINK_DOWN', 'ALARM_RAISED', 'ALARM_CLEARED', 'ALARM_ACKED'];
+const LOG_LABEL = { LINK_UP: '연결됨', LINK_DOWN: '연결 끊김', ALARM_RAISED: '알람 발생', ALARM_CLEARED: '알람 해제', ALARM_ACKED: '알람 확인' };
+const ALARM_LABEL = { ROBOT_ERROR: '로봇 오류', DEVICE_STALE: '데이터 끊김', PLC_ABNORMAL: 'PLC 비정상', LOW_BATTERY: '배터리 부족' };
+const TARGET_TYPES = ['CONNECTION', 'DEVICE', 'PLC_POINT'];
+const TARGET_LABEL = { CONNECTION: '연결', DEVICE: '장비', PLC_POINT: 'PLC 점' };
+const USERS = ['김도윤', '박서연', '정하늘', '이현수'];
+const ERROR_CODES = {
+  'E-214': '경로 장애물 감지로 정지',
+  'E-031': '구동 모터 과전류',
+  'E-118': '안전 범퍼 접촉',
+  'E-402': '위치 추정 실패',
+  'E-077': '리프트 동작 시간 초과',
+};
+const CRITICAL_CODES = ['E-214', 'E-402'];
+
+/* ===== 유틸 ===== */
+let seed = 20261119;
+const rand = () => {
+  seed = (seed + 0x6D2B79F5) | 0;
+  let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+};
+const randIn = (a, b) => a + rand() * (b - a);
+const pick = (arr) => arr[Math.floor(rand() * arr.length)];
+const pad2 = (n) => String(n).padStart(2, '0');
+const fmtTime = (ts) => { const d = new Date(ts); return `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`; };
+const fmtShort = (ts) => { const d = new Date(ts); return `${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${fmtTime(ts)}`; };
+const fmtFull = (ts) => { const d = new Date(ts); return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${fmtTime(ts)}.${String(d.getMilliseconds()).padStart(3, '0')}`; };
+const fmtNum = (n) => Number(n).toLocaleString('ko-KR');
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const ICON_PATHS = {
+  info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><path d="M12 7.5v.5"/>',
+  warn: '<path d="M12 3.5 2.8 19.5h18.4z"/><path d="M12 10v4.5"/><path d="M12 17.2v.3"/>',
+  critical: '<path d="M8.2 3h7.6L21 8.2v7.6L15.8 21H8.2L3 15.8V8.2z"/><path d="M12 8v5"/><path d="M12 16v.3"/>',
+  search: '<circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4.2-4.2"/>',
+  refresh: '<path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/>',
+  filter: '<path d="M4 5h16l-6 7.5V19l-4-2v-4.5z"/>',
+  prev: '<path d="M15 6l-6 6 6 6"/>',
+  next: '<path d="M9 6l6 6-6 6"/>',
+  back: '<path d="M10 6l-6 6 6 6"/><path d="M4 12h16"/>',
+};
+const icon = (name, size) => `<svg class="od-icon"${size ? ` style="--od-icon-size:${size}px"` : ''} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON_PATHS[name]}</svg>`;
+const SEV_ICON = { INFO: 'info', WARN: 'warn', CRITICAL: 'critical' };
+const sevHtml = (sev) => `<span class="sev" data-sev="${sev}">${icon(SEV_ICON[sev])}${sev}</span>`;
+
+/* ===== 대상 목록 ===== */
+const PLC_NAMES = ['도어 1 열림', '도어 2 열림', '도어 3 열림', '도어 4 열림', '교차로 1 점유', '교차로 2 점유', '교차로 3 점유', '교차로 4 점유',
+  '비상정지 1', '비상정지 2', '비상정지 3', '비상정지 4', '컨베이어 1 가동', '충전소 전원', '경광등 점등', '공기압 정상'];
+const TARGETS = {
+  CONNECTION: ['제조사 A MQTT', '제조사 B REST', '제조사 C Modbus', 'PLC Modbus'],
+  DEVICE: [
+    ...Array.from({ length: 40 }, (_, i) => `A-AMR-${pad2(i + 1)}`),
+    ...Array.from({ length: 30 }, (_, i) => `B-AGV-${pad2(i + 1)}`),
+    ...Array.from({ length: 20 }, (_, i) => `C-AGV-${pad2(i + 1)}`),
+  ],
+  PLC_POINT: PLC_NAMES.map((n, i) => `점 ${pad2(i)} · ${n}`),
+};
+const CONN_DEVICES = { '제조사 A MQTT': 40, '제조사 B REST': 30, '제조사 C Modbus': 20, 'PLC Modbus': 1 };
+
+/* ===== 가짜 데이터: GET /logs 원본 ===== */
+const NOW = Date.now();
+const SPAN_MS = 7 * 86400e3;
+const TARGET_COUNT = 1240;
+const allLogs = [];
+let logSeq = 1;
+const push = (log) => { if (log.ts <= NOW) allLogs.push({ id: logSeq++, alarmCode: null, ...log }); };
+
+const alarmIncident = ({ code, severity, targetType, targetName, raised, cleared, ackRate, t0, clearAfter }) => {
+  push({ type: 'ALARM_RAISED', severity, alarmCode: code, targetType, targetName, message: raised, ts: t0 });
+  if (rand() < ackRate) push({ type: 'ALARM_ACKED', severity, alarmCode: code, targetType, targetName, message: `${pick(USERS)} 확인`, ts: t0 + randIn(15, 150) * 1000 });
+  push({ type: 'ALARM_CLEARED', severity, alarmCode: code, targetType, targetName, message: cleared, ts: t0 + clearAfter * 1000 });
+};
+const pickDevice = () => (rand() < 0.06 ? 'B-AGV-07' : pick(TARGETS.DEVICE));
+
+while (allLogs.length < TARGET_COUNT) {
+  const t0 = NOW - rand() * SPAN_MS;
+  const r = rand();
+  if (r < 0.14) {
+    const c = pick(TARGETS.CONNECTION);
+    const gap = Math.round(randIn(6, 180));
+    push({ type: 'LINK_DOWN', severity: gap > 60 ? 'CRITICAL' : 'WARN', targetType: 'CONNECTION', targetName: c,
+      message: c.includes('REST') ? 'HTTP 폴링 실패 — 응답 시간 초과 (3회 연속)' : c.includes('MQTT') ? '브로커 세션 끊김 — keepalive 응답 없음' : 'Modbus TCP 소켓 끊김 (ECONNRESET)', ts: t0 });
+    push({ type: 'LINK_UP', severity: 'INFO', targetType: 'CONNECTION', targetName: c, message: `연결 복구 (끊김 ${gap}초)`, ts: t0 + gap * 1000 });
+  } else if (r < 0.42) {
+    const code = pick(Object.keys(ERROR_CODES));
+    alarmIncident({ code: 'ROBOT_ERROR', severity: CRITICAL_CODES.includes(code) ? 'CRITICAL' : 'WARN', targetType: 'DEVICE', targetName: pickDevice(),
+      raised: `${code} ${ERROR_CODES[code]}`, cleared: '오류 해제 — 운행 재개', ackRate: 0.75, t0, clearAfter: randIn(90, 900) });
+  } else if (r < 0.66) {
+    const b = Math.round(randIn(9, 19));
+    alarmIncident({ code: 'LOW_BATTERY', severity: b < 15 ? 'WARN' : 'INFO', targetType: 'DEVICE', targetName: pickDevice(),
+      raised: `배터리 ${b}%`, cleared: '충전 시작 — 기준 이상 회복', ackRate: 0.35, t0, clearAfter: randIn(300, 1200) });
+  } else if (r < 0.84) {
+    if (rand() < 0.12) {
+      const c = pick(TARGETS.CONNECTION);
+      alarmIncident({ code: 'DEVICE_STALE', severity: 'CRITICAL', targetType: 'CONNECTION', targetName: c,
+        raised: `연결 DOWN — 소속 장비 ${CONN_DEVICES[c]}대 데이터 끊김`, cleared: '연결 복구 — 데이터 수신 재개', ackRate: 0.6, t0, clearAfter: randIn(20, 240) });
+    } else {
+      alarmIncident({ code: 'DEVICE_STALE', severity: 'WARN', targetType: 'DEVICE', targetName: pickDevice(),
+        raised: `${randIn(3.1, 9).toFixed(1)}초 동안 데이터 없음`, cleared: '데이터 수신 재개', ackRate: 0.2, t0, clearAfter: randIn(4, 60) });
+    }
+  } else {
+    const no = Math.floor(rand() * 12);
+    const name = PLC_NAMES[no];
+    const estop = no >= 8;
+    const cross = no >= 4 && no < 8;
+    alarmIncident({ code: 'PLC_ABNORMAL', severity: estop ? 'CRITICAL' : 'WARN', targetType: 'PLC_POINT', targetName: TARGETS.PLC_POINT[no],
+      raised: cross ? `${name} 시간 초과 (30초 넘게 ON)` : `${estop ? `${name} 눌림` : name} — 정상 OFF, 현재 ON`,
+      cleared: '정상 값으로 복귀', ackRate: estop ? 0.9 : 0.6, t0, clearAfter: randIn(15, 400) });
+  }
+}
+allLogs.sort((a, b) => b.ts - a.ts);
+const logById = new Map(allLogs.map((l) => [l.id, l]));
+
+/* ===== 화면 상태 ===== */
+const state = {
+  type: 'ALL',
+  targetType: 'ALL',
+  targetName: 'ALL',
+  page: 1,
+  outcome: 'ok',
+  status: 'loading',   // loading | ok | empty | error
+  items: [],
+  total: 0,
+  selectedId: null,
+  reqId: 0,
+  pendingFocus: null,
+};
+const hasFilter = () => state.type !== 'ALL' || state.targetType !== 'ALL';
+const matchTarget = (l) => (state.targetType === 'ALL' || l.targetType === state.targetType) && (state.targetName === 'ALL' || l.targetName === state.targetName);
+const queryString = () => {
+  const q = [];
+  if (state.type !== 'ALL') q.push(`type=${state.type}`);
+  if (state.targetType !== 'ALL') q.push(`targetType=${state.targetType}`);
+  if (state.targetName !== 'ALL') q.push(`targetName=${encodeURIComponent(state.targetName)}`);
+  q.push(`page=${state.page}`, `size=${PAGE_SIZE}`);
+  return `GET /logs?${q.join('&')}`;
+};
+
+/* ===== 서버 요청 흉내 ===== */
+const fetchLogs = () => {
+  const req = ++state.reqId;
+  state.status = 'loading';
+  render();
+  if (state.outcome === 'loading') return;
+  setTimeout(() => {
+    if (req !== state.reqId) return;
+    if (state.outcome === 'fail') { state.status = 'error'; render(); return; }
+    const rows = state.outcome === 'empty' ? [] : allLogs.filter((l) => matchTarget(l) && (state.type === 'ALL' || l.type === state.type));
+    state.total = rows.length;
+    const pages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+    if (state.page > pages) state.page = pages;
+    state.items = rows.slice((state.page - 1) * PAGE_SIZE, state.page * PAGE_SIZE);
+    state.status = rows.length ? 'ok' : 'empty';
+    render();
+  }, LOAD_MS);
+};
+
+/* ===== 렌더: 필터 ===== */
+const renderFilters = () => {
+  const base = allLogs.filter(matchTarget);
+  const counts = { ALL: base.length };
+  LOG_TYPES.forEach((t) => { counts[t] = 0; });
+  base.forEach((l) => { counts[l.type] += 1; });
+  document.getElementById('typeChips').innerHTML = ['ALL', ...LOG_TYPES].map((t) => `
+    <button type="button" class="chip" data-type="${t}" aria-pressed="${state.type === t}">${t === 'ALL' ? '전체' : LOG_LABEL[t]} <span class="count">${fmtNum(counts[t])}</span></button>`).join('');
+
+  const tt = document.getElementById('ttSelect');
+  tt.innerHTML = `<option value="ALL">전체</option>${TARGET_TYPES.map((t) => `<option value="${t}">${TARGET_LABEL[t]} (${t})</option>`).join('')}`;
+  tt.value = state.targetType;
+  const tn = document.getElementById('tnSelect');
+  tn.disabled = state.targetType === 'ALL';
+  tn.innerHTML = state.targetType === 'ALL'
+    ? '<option value="ALL">대상 유형을 먼저 고르세요</option>'
+    : `<option value="ALL">${TARGET_LABEL[state.targetType]} 전체 (${TARGETS[state.targetType].length})</option>${TARGETS[state.targetType].map((n) => `<option value="${esc(n)}">${esc(n)}</option>`).join('')}`;
+  tn.value = state.targetName;
+  document.getElementById('resetBtn').disabled = !hasFilter();
+};
+
+/* ===== 렌더: 대상 범위 띠 ===== */
+const renderScope = () => {
+  const el = document.getElementById('scope');
+  if (state.targetName === 'ALL') { el.hidden = true; el.innerHTML = ''; return; }
+  el.hidden = false;
+  const count = state.status === 'ok' || state.status === 'empty' ? ` · ${fmtNum(state.total)}건` : '';
+  el.innerHTML = `${icon('filter', 16)}<span class="scope-title" id="scopeTitle" tabindex="-1">${TARGET_LABEL[state.targetType]} <strong>${esc(state.targetName)}</strong>의 이력만 보는 중${count}</span>
+    <button type="button" class="btn btn-sm" data-act="clear-target">${icon('back')}전체 이력으로</button>`;
+};
+
+/* ===== 렌더: 표 ===== */
+const rowHtml = (l) => `
+  <tr data-id="${l.id}" tabindex="0" aria-selected="${l.id === state.selectedId}">
+    <td class="c-ts">${fmtShort(l.ts)}</td>
+    <td class="c-type"><span class="type-tag" data-type="${l.type}"><span class="dot"></span>${LOG_LABEL[l.type]}</span><small>${l.type}</small></td>
+    <td>${sevHtml(l.severity)}</td>
+    <td class="c-code">${l.alarmCode ? `${l.alarmCode}<small>${ALARM_LABEL[l.alarmCode]}</small>` : '<span class="c-none" aria-label="해당 없음">—</span>'}</td>
+    <td class="c-target"><span class="tt-badge">${TARGET_LABEL[l.targetType]}</span><button type="button" class="target-link" data-target="${l.id}" title="이 대상의 이력만 보기">${esc(l.targetName)}</button></td>
+    <td class="c-msg">${esc(l.message)}</td>
+  </tr>`;
+const skeletonHtml = () => Array.from({ length: SKELETON_ROWS }, () => `
+  <tr class="skel-row" aria-hidden="true">${[96, 80, 64, 88, 120, 220].map((w) => `<td><span class="skel-bar" style="width:${w}px"></span></td>`).join('')}</tr>`).join('');
+
+const renderTable = () => {
+  const body = document.getElementById('logBody');
+  const box = document.getElementById('stateBox');
+  const wrap = document.getElementById('tableWrap');
+  const table = document.getElementById('logTable');
+  wrap.setAttribute('aria-busy', String(state.status === 'loading'));
+  if (state.status === 'loading') {
+    table.hidden = false; box.hidden = true;
+    body.innerHTML = skeletonHtml();
+    return;
+  }
+  if (state.status === 'ok') {
+    table.hidden = false; box.hidden = true;
+    body.innerHTML = state.items.map(rowHtml).join('');
+    return;
+  }
+  table.hidden = true;
+  box.hidden = false;
+  if (state.status === 'empty') {
+    const cond = `유형 ${state.type === 'ALL' ? '전체' : LOG_LABEL[state.type]} · 대상 ${state.targetType === 'ALL' ? '전체' : state.targetName === 'ALL' ? `${TARGET_LABEL[state.targetType]} 전체` : state.targetName}`;
+    box.innerHTML = `<div class="state-box">${icon('search', 32)}
+      <strong>${hasFilter() ? '조건에 맞는 이력이 없습니다' : '기록된 이력이 없습니다'}</strong>
+      <span>${hasFilter() ? '고른 조건으로는 기록이 없습니다. 유형이나 대상을 바꾸거나 필터를 초기화해 보세요.' : '연결 상태가 바뀌거나 알람이 생기면 여기에 기록됩니다.'}</span>
+      <span class="mono">${esc(cond)}</span>
+      ${hasFilter() ? '<div class="state-actions"><button type="button" class="btn" data-act="reset">필터 초기화</button></div>' : ''}</div>`;
+  } else {
+    box.innerHTML = `<div class="state-box" data-tone="danger" role="alert">${icon('critical', 32)}
+      <strong>이력을 불러오지 못했습니다</strong>
+      <span>서버가 일시적으로 응답하지 않습니다. 잠시 후 다시 시도하세요. 필터 조건은 그대로 유지됩니다.</span>
+      <span class="mono">${esc(queryString())} → 503 Service Unavailable</span>
+      <div class="state-actions"><button type="button" class="btn btn-primary" data-act="retry">${icon('refresh')}다시 시도</button></div></div>`;
+  }
+};
+
+/* ===== 렌더: 페이지 넘김 ===== */
+const pageList = (cur, last) => {
+  const set = new Set([1, last, cur - 1, cur, cur + 1].filter((p) => p >= 1 && p <= last));
+  const sorted = [...set].sort((a, b) => a - b);
+  const out = [];
+  sorted.forEach((p, i) => { if (i && p - sorted[i - 1] > 1) out.push('gap'); out.push(p); });
+  return out;
+};
+const renderPager = () => {
+  const el = document.getElementById('pager');
+  const sr = document.getElementById('srStatus');
+  if (state.status === 'loading') {
+    el.innerHTML = '<span class="pager-info">불러오는 중…</span>';
+    sr.textContent = '이력을 불러오는 중입니다.';
+    return;
+  }
+  if (state.status !== 'ok') {
+    el.innerHTML = `<span class="pager-info">${state.status === 'empty' ? '0건' : '불러오기 실패'}</span>`;
+    sr.textContent = state.status === 'empty' ? '조건에 맞는 이력이 없습니다.' : '이력을 불러오지 못했습니다.';
+    return;
+  }
+  const last = Math.max(1, Math.ceil(state.total / PAGE_SIZE));
+  const from = (state.page - 1) * PAGE_SIZE + 1;
+  const to = Math.min(state.total, state.page * PAGE_SIZE);
+  const info = `${fmtNum(from)}–${fmtNum(to)} / 총 ${fmtNum(state.total)}건`;
+  el.innerHTML = `
+    <span class="pager-info mono">${info}</span>
+    <button type="button" class="btn btn-sm" data-page="${state.page - 1}" data-act="prev" ${state.page <= 1 ? 'disabled' : ''}>${icon('prev')}이전</button>
+    ${pageList(state.page, last).map((p) => (p === 'gap' ? '<span class="page-gap" aria-hidden="true">…</span>'
+      : `<button type="button" class="btn btn-sm page-btn" data-page="${p}" ${p === state.page ? 'aria-current="page"' : ''} aria-label="${p}페이지">${p}</button>`)).join('')}
+    <button type="button" class="btn btn-sm" data-page="${state.page + 1}" data-act="next" ${state.page >= last ? 'disabled' : ''}>다음${icon('next')}</button>`;
+  sr.textContent = `${info} 표시 중, ${state.page}/${last}페이지`;
+};
+
+/* ===== 렌더: 상세 ===== */
+const renderDetail = () => {
+  const host = document.getElementById('detailBody');
+  const l = logById.get(state.selectedId);
+  if (!l) {
+    host.innerHTML = '<div class="empty"><strong>고른 기록이 없습니다</strong><span>표에서 행을 고르면 상세 내용과 같은 대상의 최근 이력이 여기에 나옵니다.</span></div>';
+    return;
+  }
+  const scoped = state.targetType === l.targetType && state.targetName === l.targetName;
+  const recent = allLogs.filter((x) => x.targetType === l.targetType && x.targetName === l.targetName).slice(0, RECENT_COUNT);
+  host.innerHTML = `
+    <div class="detail-title"><span class="type-tag" data-type="${l.type}"><span class="dot"></span>${LOG_LABEL[l.type]}</span>${sevHtml(l.severity)}</div>
+    <dl class="kv">
+      <div class="span-2"><dt>발생 시각</dt><dd class="mono">${fmtFull(l.ts)}</dd></div>
+      <div><dt>유형</dt><dd class="mono">${l.type}</dd></div>
+      <div><dt>등급</dt><dd class="mono">${l.severity}</dd></div>
+      <div class="span-2"><dt>알람 코드</dt><dd>${l.alarmCode ? `<span class="mono">${l.alarmCode}</span> · ${ALARM_LABEL[l.alarmCode]}` : '해당 없음 (연결 로그)'}</dd></div>
+      <div><dt>대상 유형</dt><dd>${TARGET_LABEL[l.targetType]} <span class="mono faint">${l.targetType}</span></dd></div>
+      <div><dt>대상 이름</dt><dd class="mono">${esc(l.targetName)}</dd></div>
+      <div class="span-2"><dt>메시지</dt><dd>${esc(l.message)}</dd></div>
+      <div class="span-2"><dt>로그 ID</dt><dd class="mono">#${l.id}</dd></div>
+    </dl>
+    <div class="detail-actions">
+      ${scoped
+        ? `<button type="button" class="btn" data-act="clear-target">${icon('back')}전체 이력으로 돌아가기</button>`
+        : `<button type="button" class="btn btn-primary" data-act="scope-selected">${icon('filter')}이 대상의 이력만 보기</button>`}
+    </div>
+    <section class="recent" aria-labelledby="recentTitle">
+      <h3 class="recent-title" id="recentTitle">${esc(l.targetName)}의 최근 이력</h3>
+      <div class="recent-list">${recent.map((x) => `
+        <button type="button" class="recent-item" data-recent="${x.id}" aria-current="${x.id === l.id}">
+          <span class="ts">${fmtShort(x.ts)}</span>
+          <span class="t">${LOG_LABEL[x.type]}</span>
+          <span class="m od-truncate">${esc(x.message)}</span>
+        </button>`).join('')}</div>
+    </section>`;
+};
+
+/* ===== 전체 렌더 ===== */
+const render = () => {
+  renderFilters();
+  renderScope();
+  renderTable();
+  renderPager();
+  renderDetail();
+  if (state.pendingFocus && state.status !== 'loading') {
+    const target = document.querySelector(state.pendingFocus);
+    state.pendingFocus = null;
+    if (target) target.focus();
+  }
+};
+
+/* ===== 동작 ===== */
+const applyFilter = (patch, focusSel = null) => {
+  Object.assign(state, patch, { page: 1 });
+  state.pendingFocus = focusSel;
+  document.getElementById('tableWrap').scrollTop = 0;
+  fetchLogs();
+};
+const scopeToLog = (l) => applyFilter({ type: 'ALL', targetType: l.targetType, targetName: l.targetName, selectedId: l.id }, '#scopeTitle');
+const clearTarget = () => applyFilter({ targetType: 'ALL', targetName: 'ALL' }, `#logBody tr[data-id="${state.selectedId}"]`);
+const resetFilters = () => applyFilter({ type: 'ALL', targetType: 'ALL', targetName: 'ALL' }, '#typeChips [data-type="ALL"]');
+const selectLog = (id) => {
+  state.selectedId = id;
+  document.querySelectorAll('#logBody tr[data-id]').forEach((tr) => tr.setAttribute('aria-selected', String(Number(tr.dataset.id) === id)));
+  renderDetail();
+};
+
+document.getElementById('typeChips').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-type]');
+  if (!b || b.dataset.type === state.type) return;
+  applyFilter({ type: b.dataset.type }, `#typeChips [data-type="${b.dataset.type}"]`);
+});
+document.getElementById('ttSelect').addEventListener('change', (e) => applyFilter({ targetType: e.target.value, targetName: 'ALL' }, '#ttSelect'));
+document.getElementById('tnSelect').addEventListener('change', (e) => applyFilter({ targetName: e.target.value }, '#tnSelect'));
+document.getElementById('resetBtn').addEventListener('click', resetFilters);
+document.getElementById('refreshBtn').addEventListener('click', () => { state.pendingFocus = '#refreshBtn'; fetchLogs(); });
+
+document.getElementById('logBody').addEventListener('click', (e) => {
+  const link = e.target.closest('[data-target]');
+  if (link) { scopeToLog(logById.get(Number(link.dataset.target))); return; }
+  const tr = e.target.closest('tr[data-id]');
+  if (tr) selectLog(Number(tr.dataset.id));
+});
+document.getElementById('logBody').addEventListener('keydown', (e) => {
+  if (e.target.closest('[data-target]')) return;
+  const tr = e.target.closest('tr[data-id]');
+  if (!tr) return;
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectLog(Number(tr.dataset.id)); }
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    const next = e.key === 'ArrowDown' ? tr.nextElementSibling : tr.previousElementSibling;
+    if (next) next.focus();
+  }
+});
+
+document.getElementById('pager').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-page]');
+  if (!b || b.disabled) return;
+  state.page = Number(b.dataset.page);
+  state.pendingFocus = b.dataset.act ? `#pager [data-act="${b.dataset.act}"]` : `#pager [data-page="${state.page}"].page-btn`;
+  document.getElementById('tableWrap').scrollTop = 0;
+  fetchLogs();
+});
+
+document.querySelector('.workspace').addEventListener('click', (e) => {
+  const act = e.target.closest('[data-act]');
+  if (act && !act.closest('#pager')) {
+    const a = act.dataset.act;
+    if (a === 'clear-target') clearTarget();
+    if (a === 'reset') resetFilters();
+    if (a === 'retry') { state.pendingFocus = '#refreshBtn'; fetchLogs(); }
+    if (a === 'scope-selected') scopeToLog(logById.get(state.selectedId));
+    return;
+  }
+  const rec = e.target.closest('[data-recent]');
+  if (rec) {
+    selectLog(Number(rec.dataset.recent));
+    const again = document.querySelector(`[data-recent="${rec.dataset.recent}"]`);
+    if (again) again.focus();
+  }
+});
+
+// 상단 내비게이션
+document.querySelector('[data-nav="faults"]').addEventListener('click', () => toast('‘장애 주입’ 화면은 다음 단계에서 같은 스타일로 만듭니다.', 'info'));
+document.getElementById('logoutBtn').addEventListener('click', () => toast('로그아웃하면 로그인 화면으로 이동합니다 (데모).', 'info'));
+
+// 데모 컨트롤
+document.getElementById('demoOutcome').addEventListener('change', (e) => {
+  if (e.target.name !== 'outcome') return;
+  state.outcome = e.target.value;
+  fetchLogs();
+});
+
+/* ===== 토스트 ===== */
+function toast(text, tone = 'info') {
+  const host = document.getElementById('toasts');
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.dataset.tone = tone;
+  el.textContent = text;
+  host.appendChild(el);
+  setTimeout(() => el.remove(), 4200);
+  while (host.children.length > 3) host.firstElementChild.remove();
+}
+
+/* ===== 시작 ===== */
+const clockEl = document.getElementById('clock');
+const tickClock = () => { clockEl.textContent = fmtTime(Date.now()); };
+tickClock();
+setInterval(tickClock, 1000);
+fetchLogs();
+</script>
+</body>
+</html>
