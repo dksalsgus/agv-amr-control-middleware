@@ -41,7 +41,7 @@ curl http://localhost:3000/health
 # {"success":true,"data":{"status":"ok"},"error":null}
 
 # 데모 계정 로그인 (viewer/viewer1234, operator/operator1234, admin/admin1234)
-# health와 login 말고는 모두 토큰이 필요하다 (없거나 틀리면 401). 역할별 기능 차이는 두지 않는다 (docs/design-rationale.md 16장)
+# health와 login 말고는 모두 토큰이 필요합니다 (없거나 틀리면 401). 역할별 기능 차이는 두지 않습니다 (docs/design-rationale.md 16장)
 TOKEN=$(curl -s -X POST http://localhost:3000/auth/login -H 'content-type: application/json' \
   -d '{"username":"operator","password":"operator1234"}' | sed 's/.*"accessToken":"\([^"]*\)".*/\1/')
 AUTH="authorization: Bearer $TOKEN"
@@ -57,14 +57,14 @@ curl -H "$AUTH" "http://localhost:3000/robots/{id}/telemetry?from=2026-11-19T00:
 curl -H "$AUTH" http://localhost:3000/plc-points
 curl -H "$AUTH" "http://localhost:3000/plc-points/{id}/events?page=1&size=100"
 
-# 인터록 제어: PLC 점 값 쓰기 (Modbus 코일 쓰기). 값은 다음 폴링에서 화면에 반영되고 logs에 PLC_WRITE가 남는다
-# 관제 화면에서는 맵의 PLC 표시를 눌러 상세를 열고 "ON으로 쓰기"·"OFF로 쓰기"를 누른다
+# 인터록 제어: PLC 점 값 쓰기 (Modbus 코일 쓰기). 값은 다음 폴링에서 화면에 반영되고 logs에 PLC_WRITE가 남습니다
+# 관제 화면에서는 맵의 PLC 표시를 눌러 상세를 열고 "ON으로 쓰기"·"OFF로 쓰기"를 누릅니다
 curl -H "$AUTH" -X PUT http://localhost:3000/plc-points/{id}/value -H 'content-type: application/json' -d '{"value":true}'
 
 # 연결 목록과 연결 상태 (UP, DOWN, UNKNOWN)
 curl -H "$AUTH" http://localhost:3000/connections
 
-# 시스템 로그 (연결 끊김·복구 등, 최신 순, type으로 거를 수 있다)
+# 시스템 로그 (연결 끊김·복구 등, 최신 순, type으로 거를 수 있습니다)
 curl -H "$AUTH" "http://localhost:3000/logs?type=LINK_DOWN&page=1&size=100"
 
 # 지금 열린 알람(최근 순)과 알람 확인 (이미 풀린 알람이면 404)
@@ -72,14 +72,14 @@ curl -H "$AUTH" http://localhost:3000/alarms
 curl -H "$AUTH" -X POST http://localhost:3000/alarms/{id}/ack
 
 # 측정 스크립트 (Node 22, 의존성 없음, 약 2분 30초, 끝에 에뮬레이터를 다시 켬): 지연 p50·p95, 유실률, 복구 시간, CPU·메모리를 표로 출력
-# 장애를 직접 주입했다가 되돌린다. 결과 예시는 docs/measurements.md
+# 장애를 직접 주입했다가 되돌립니다. 결과 예시는 docs/measurements.md
 node scripts/measure.mjs
 
 # 측정: 연결별 수신·중복·뒤바뀜·유실 건수, 수집 구간 지연 p50·p95, 프로세스 CPU·메모리 (reset으로 구간을 새로 시작)
 curl -H "$AUTH" http://localhost:3000/metrics
 curl -H "$AUTH" -X POST http://localhost:3000/metrics/reset
 
-# 연결별 최근 30초 받음·중복 버림·늦어서 버림·유실률 (관제 화면 연결 카드에 같은 값이 나온다)
+# 연결별 최근 30초 받음·중복 버림·늦어서 버림·유실률 (관제 화면 연결 카드에 같은 값이 나옵니다)
 curl -H "$AUTH" http://localhost:3000/metrics/connections
 
 # 에뮬레이터 원본 데이터 확인
@@ -97,14 +97,14 @@ curl -H "$AUTH" http://localhost:3000/connections/{id}
 curl -H "$AUTH" -X PATCH http://localhost:3000/connections/{id} -H 'content-type: application/json' \
   -d '{"version":1,"rest":{"baseUrl":"http://emulator:8081","pollIntervalMs":1000,"mode":"bulk","timeoutMs":800}}'
 
-# 연결 만들기와 지우기 (장비가 딸린 연결은 지우지 않고 enabled=false로 끈다)
+# 연결 만들기와 지우기 (장비가 딸린 연결은 지우지 않고 enabled=false로 끕니다)
 curl -H "$AUTH" http://localhost:3000/vendors
 curl -H "$AUTH" -X POST http://localhost:3000/connections -H 'content-type: application/json' \
   -d '{"vendorId":"{vendorId}","name":"새 연결","protocol":"REST","rest":{"baseUrl":"http://emulator:8081","pollIntervalMs":1000,"mode":"bulk","timeoutMs":800}}'
 curl -H "$AUTH" -X DELETE http://localhost:3000/connections/{id}
 ```
 
-연결 설정을 저장하면 미들웨어가 저장한 그 연결 하나만 바로 내렸다가 새 설정으로 다시 붙입니다. 다른 연결은 끊기지 않습니다.
+연결 설정을 저장하면 미들웨어는 그 연결 하나만 바로 내렸다가 새 설정으로 다시 붙이므로 다른 연결은 끊기지 않습니다.
 
 ### 장애 확인
 
@@ -114,17 +114,17 @@ docker compose start emulator   # 1초에서 10초까지 늘어나는 간격으�
 docker compose restart middleware  # 이력의 마지막 행으로 로봇 90대와 PLC 16점 상태를 되살림
 ```
 
-에뮬레이터에 그룹(A, B, C, PLC)별로 장애를 걸 수 있습니다. 미들웨어는 이 설정을 모르고, 받은 데이터만으로 판단합니다.
+에뮬레이터에 그룹(A, B, C, PLC)별로 장애를 걸 수 있습니다. 미들웨어는 이 설정을 모른 채 받은 데이터만으로 판단합니다.
 
 ```bash
 curl http://localhost:8090/faults
-# B 끊김: 응답 없이 소켓을 닫는다 → 3회 실패 후 LINK_DOWN, B 30대 stale
+# B 끊김: 응답 없이 소켓을 닫습니다 → 3회 실패 후 LINK_DOWN, B 30대 stale
 curl -X PUT http://localhost:8090/faults/B -H 'content-type: application/json' \
   -d '{"disconnected":true,"delayMs":0,"duplicatePct":0,"reorderPct":0,"lossPct":0}'
-# C 지연 5초: 5초 전 데이터를 준다 → 연결은 UP, C 20대 stale
+# C 지연 5초: 5초 전 데이터를 줍니다 → 연결은 UP, C 20대 stale
 curl -X PUT http://localhost:8090/faults/C -H 'content-type: application/json' \
   -d '{"disconnected":false,"delayMs":5000,"duplicatePct":0,"reorderPct":0,"lossPct":0}'
-# A 중복 30%·순서 뒤바뀜 30%: 미들웨어가 seq로 걸러 화면의 seq는 뒤로 가지 않는다
+# A 중복 30%·순서 뒤바뀜 30%: 미들웨어가 seq로 걸러 화면의 seq는 뒤로 가지 않습니다
 curl -X PUT http://localhost:8090/faults/A -H 'content-type: application/json' \
   -d '{"disconnected":false,"delayMs":0,"duplicatePct":30,"reorderPct":30,"lossPct":0}'
 # PLC 도어 1(점 0) 열림 → PLC_ABNORMAL 알람. {"on":false}로 풀면 알람 해제
@@ -133,13 +133,13 @@ curl -X PUT http://localhost:8090/faults/plc-points/0 -H 'content-type: applicat
 curl -X PUT http://localhost:8090/faults/robots/A-001 -H 'content-type: application/json' -d '{"error":true}'
 ```
 
-| 장애       | A (MQTT 푸시)                     | B·C·PLC (폴링)                             |
-| ---------- | --------------------------------- | ------------------------------------------ |
-| 끊김       | 발행을 멈춘다                     | REST는 소켓을 닫고, Modbus는 답하지 않는다 |
-| 지연 (ms)  | 발생 시각은 그대로 두고 늦게 보냄 | 그만큼 전의 스냅샷을 준다                  |
-| 중복 (%)   | 같은 메시지를 두 번 보냄          | 직전에 준 값을 다시 준다                   |
-| 뒤바뀜 (%) | 다음 메시지보다 늦게 보냄         | 하나 앞(더 오래된) 스냅샷을 준다           |
-| 유실 (%)   | 그 로봇의 메시지를 건너뜀         | REST는 503, Modbus는 예외 응답             |
+| 장애       | A (MQTT 푸시)                     | B·C·PLC (폴링)                               |
+| ---------- | --------------------------------- | -------------------------------------------- |
+| 끊김       | 발행을 멈춥니다                   | REST는 소켓을 닫고, Modbus는 답하지 않습니다 |
+| 지연 (ms)  | 발생 시각은 그대로 두고 늦게 보냄 | 그만큼 전의 스냅샷을 줍니다                  |
+| 중복 (%)   | 같은 메시지를 두 번 보냄          | 직전에 준 값을 다시 줍니다                   |
+| 뒤바뀜 (%) | 다음 메시지보다 늦게 보냄         | 하나 앞(더 오래된) 스냅샷을 줍니다           |
+| 유실 (%)   | 그 로봇의 메시지를 건너뜀         | REST는 503, Modbus는 예외 응답               |
 
 ### 실시간 (WebSocket)
 
@@ -189,13 +189,13 @@ flowchart LR
   WS -- "snapshot / delta" --> WEB
 ```
 
-- 미들웨어는 프로세스 하나입니다. 수집부터 WebSocket 전달까지 함수 호출로 잇습니다.
-- **현재 상태는 메모리**, **DB에는 이력만 INSERT**합니다. 서버를 재시작하면 이력의 장비별 마지막 행으로 메모리를 되살립니다.
-- 이력 저장만 Redis + BullMQ 작업으로 넘깁니다. DB가 멈추면 작업이 Redis에 쌓였다가 2초 간격으로(최대 30분) 다시 시도되어 빠진 이력이 채워집니다. Redis가 멈추면 그동안의 이력만 빠지고 수집과 화면은 그대로입니다.
+- 미들웨어는 프로세스 하나이고 수집부터 WebSocket 전달까지 함수 호출로 잇습니다.
+- 현재 상태는 메모리에 두고 DB에는 이력만 INSERT합니다. 서버를 재시작하면 이력의 장비별 마지막 행으로 메모리를 되살립니다.
+- 이력 저장만 Redis + BullMQ 작업으로 넘깁니다. DB가 멈추면 작업이 Redis에 쌓였다가 2초 간격으로(최대 30분) 다시 시도하면서 빠진 이력을 채웁니다. Redis가 멈추면 그동안의 이력만 빠지고 수집과 화면은 그대로입니다.
 
 ### 미들웨어 계층
 
-각 계층은 바로 아래 계층만 부릅니다. 건너뛰기와 같은 계층끼리의 호출은 없습니다.
+각 계층은 바로 아래 계층만 부르며 계층을 건너뛰거나 같은 계층끼리 호출하지 않습니다.
 
 ```mermaid
 flowchart TB
@@ -208,7 +208,7 @@ flowchart TB
 
 ### 새 제조사를 추가할 때 바뀌는 범위
 
-제조사 어댑터는 `VendorAdapter` 인터페이스 하나(`toCommon(raw) → RobotReading[]`)를 구현하고, 미들웨어는 `vendors.code`로 어댑터를 찾습니다.
+제조사 어댑터는 `VendorAdapter` 인터페이스 하나(`toCommon(raw) → RobotReading[]`)를 구현하고 미들웨어는 `vendors.code`로 어댑터를 찾습니다.
 
 | 경우                                              | 바뀌는 것                                                                                                                                                                                                                                                                                                                                             | 바뀌지 않는 것                                                       |
 | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
@@ -241,7 +241,7 @@ sequenceDiagram
 
 ### seq 판정 (장비별)
 
-장비마다 마지막으로 받아들인 `seq`와 `sourceTs`를 기억하고, 새 메시지를 이렇게 판정합니다. 로봇 상태는 **최신값만 의미가 있다**고 보고 늦게 온 과거 위치는 버립니다.
+장비마다 마지막으로 받아들인 `seq`와 `sourceTs`를 기억하고 새 메시지를 이렇게 판정합니다. 로봇 상태는 최신값만 의미가 있다고 보고 늦게 온 과거 위치는 버립니다.
 
 ```mermaid
 flowchart TD
@@ -258,7 +258,7 @@ flowchart TD
   RS -- 아니오 --> OOO["순서 뒤바뀜: 버림"]
 ```
 
-PLC는 같은 판정을 통과한 뒤, 이전 값과 비트를 비교해 **바뀐 점만** 이벤트로 기록합니다.
+PLC는 같은 판정을 통과한 뒤 이전 값과 비트를 비교해 바뀐 점만 이벤트로 기록합니다.
 
 ### STALE과 연결 끊김
 
@@ -272,7 +272,7 @@ PLC는 같은 판정을 통과한 뒤, 이전 값과 비트를 비교해 **바�
 
 ### WebSocket 이어받기 (epoch + rev)
 
-미들웨어는 로봇, PLC 점, 연결을 엔티티로 들고, 바뀔 때마다 **전역 rev**를 1 올려 붙입니다. 화면이 "rev R까지 봤다"고 하면 R 이후 바뀐 엔티티만 보내면 되므로, 처음 접속과 재접속이 같은 코드입니다. **epoch**는 서버가 켜질 때마다 새로 만드는 값이라, epoch가 다르면 rev가 이어지지 않는 것으로 보고 전체 상태를 보냅니다.
+미들웨어는 로봇, PLC 점, 연결을 엔티티로 들고, 바뀔 때마다 **전역 rev**를 1 올려 붙입니다. 화면이 "rev R까지 봤다"고 하면 R 이후 바뀐 엔티티만 보내면 되므로 처음 접속과 재접속이 같은 코드입니다. epoch는 서버가 켜질 때마다 새로 만드는 값이라 epoch가 다르면 rev가 이어지지 않는 것으로 보고 전체 상태를 보냅니다.
 
 ```mermaid
 sequenceDiagram
@@ -300,7 +300,7 @@ sequenceDiagram
   Note over S: pong이 2번 연속 없으면 접속을 끊음
 ```
 
-느린 화면은 전송 버퍼가 1MB를 넘으면 그 프레임을 건너뛰고, 다음 delta가 그 사이 변화를 합쳐서 보냅니다.
+느린 화면은 전송 버퍼가 1MB를 넘으면 그 프레임을 건너뛰고 다음 delta가 그 사이 변화를 합쳐서 보냅니다.
 
 ## DB 스키마
 
@@ -364,7 +364,7 @@ erDiagram
 
 - 설정 테이블: `vendors`, `vendors_connections`, `vendors_connections_devices`, `vendors_connections_devices_plc_points`
 - 이력 테이블: `..._telemetry`(받아들인 로봇 상태 전부), `..._plc_points_events`(값이 바뀔 때만), `logs`(연결과 알람 기록, 추가만)
-- 현재 상태 테이블은 따로 두지 않습니다. 이력의 마지막 행이 곧 현재 값입니다.
+- 이력의 마지막 행이 곧 현재 값이라 현재 상태 테이블은 따로 두지 않습니다.
 - 계정 테이블: `users`(데모 계정, 비밀번호는 argon2id 해시), `roles`(VIEWER, OPERATOR, ADMIN), 매핑 테이블 `user_roles`. `logs.users_id`는 알람을 확인하거나 연결 설정을 바꾼 사용자입니다.
 
 ## 과제 요구 사항과 구현
