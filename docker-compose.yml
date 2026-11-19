@@ -1,0 +1,36 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: middleware
+      POSTGRES_PASSWORD: middleware
+      POSTGRES_DB: middleware
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U middleware"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./infra/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+
+  middleware:
+    build:
+      context: .
+      dockerfile: apps/middleware/Dockerfile
+    environment:
+      DATABASE_URL: postgresql://middleware:middleware@postgres:5432/middleware
+      PORT: "3000"
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mosquitto:
+        condition: service_started
