@@ -1,4 +1,22 @@
 import { Robot } from "./robot";
+import { RouteMap } from "./route-map";
+import { RouteNode } from "./route-map.types";
+
+const nodeById = (id: string) =>
+  RouteMap.NODES.find((node) => node.id === id) as RouteNode;
+
+const isOnLane = (x: number, y: number) =>
+  RouteMap.LANES.some((lane) => {
+    const a = nodeById(lane[0]);
+    const b = nodeById(lane[1]);
+    const cross = (b.x - a.x) * (y - a.y) - (b.y - a.y) * (x - a.x);
+    const withinX =
+      x >= Math.min(a.x, b.x) - 1e-6 && x <= Math.max(a.x, b.x) + 1e-6;
+    const withinY =
+      y >= Math.min(a.y, b.y) - 1e-6 && y <= Math.max(a.y, b.y) + 1e-6;
+
+    return Math.abs(cross) < 1e-6 && withinX && withinY;
+  });
 
 describe("Robot", () => {
   it("step마다 seq가 1씩 오른다", () => {
@@ -10,33 +28,33 @@ describe("Robot", () => {
     expect(robot.seq).toBe(2);
   });
 
-  it("목표 쪽으로 초당 1m 움직이고 방향각을 맞춘다", () => {
+  it("통로 위로만 초당 1m 이하로 움직인다", () => {
     const robot = new Robot("A-001");
-    robot.x = 0;
-    robot.y = 0;
     robot.batteryPct = 100;
-    robot.setTarget(10, 0);
 
-    robot.step(1);
+    Array.from({ length: 300 }).forEach(() => {
+      robot.step(1);
 
-    expect(robot.x).toBeCloseTo(1);
-    expect(robot.y).toBeCloseTo(0);
-    expect(robot.theta).toBeCloseTo(0);
-    expect(robot.speed).toBeCloseTo(1);
-    expect(robot.mode).toBe("DRIVING");
+      expect(isOnLane(robot.x, robot.y)).toBe(true);
+      expect(robot.speed).toBeLessThanOrEqual(1);
+    });
   });
 
-  it("배터리가 20% 아래로 내려가면 멈추고 충전한다", () => {
+  it("배터리가 20% 아래로 내려가면 충전소까지 가서 충전한다", () => {
     const robot = new Robot("A-001");
-    robot.x = 0;
-    robot.y = 0;
     robot.batteryPct = 20.01;
-    robot.setTarget(10, 0);
 
-    robot.step(1);
+    Array.from({ length: 300 }).some(() => {
+      robot.step(1);
+      return robot.mode === "CHARGING";
+    });
 
+    const chargers = RouteMap.NODES.filter((node) => node.kind === "CHARGER");
     expect(robot.mode).toBe("CHARGING");
     expect(robot.speed).toBe(0);
+    expect(
+      chargers.some((node) => node.x === robot.x && node.y === robot.y),
+    ).toBe(true);
   });
 
   it("충전이 끝나면 IDLE이 된다", () => {
