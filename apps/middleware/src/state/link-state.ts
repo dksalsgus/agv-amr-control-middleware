@@ -7,4 +7,6 @@ export type LinkState = {
   changedAt: Date | null;
   /** 연속 실패 횟수. 성공하면 0 */
   failureCount: number;
+  /** 상태가 바뀔 때만 올린다. 실패 횟수만 바뀌면 그대로 */
+  rev: number;
 };

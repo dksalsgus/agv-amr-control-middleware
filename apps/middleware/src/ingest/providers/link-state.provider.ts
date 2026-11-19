@@ -3,6 +3,8 @@ import { LogsRepository } from "../../history/logs.repository";
 import { LogLevel, LogType } from "../../log/log";
 import { LinkState, LinkStatus } from "../../state/link-state";
 import { LinkStateRepository } from "../../state/link-state.repository";
+import { RemovedEntityRepository } from "../../state/removed-entity.repository";
+import { RevisionRepository } from "../../state/revision.repository";
 
 /** 폴링 연결은 이만큼 연속 실패하면 끊김으로 본다. */
 const DOWN_AFTER_FAILURES = 3;
@@ -17,6 +19,8 @@ export class LinkStateProvider {
   constructor(
     private readonly linkStateRepository: LinkStateRepository,
     private readonly logsRepository: LogsRepository,
+    private readonly revisionRepository: RevisionRepository,
+    private readonly removedEntityRepository: RemovedEntityRepository,
   ) {}
 
   async register(connectionId: string): Promise<void> {
@@ -24,11 +28,18 @@ export class LinkStateProvider {
       status: "UNKNOWN",
       changedAt: null,
       failureCount: 0,
+      rev: await this.revisionRepository.next(),
     });
+    await this.removedEntityRepository.remove("LINK", connectionId);
   }
 
   async unregister(connectionId: string): Promise<void> {
     await this.linkStateRepository.remove(connectionId);
+    await this.removedEntityRepository.save({
+      kind: "LINK",
+      id: connectionId,
+      rev: await this.revisionRepository.next(),
+    });
   }
 
   async markUp(connectionId: string, label: string): Promise<void> {
@@ -38,6 +49,7 @@ export class LinkStateProvider {
         status: state.status,
         changedAt: state.changedAt,
         failureCount: 0,
+        rev: state.rev,
       });
       return;
     }
@@ -60,6 +72,7 @@ export class LinkStateProvider {
         status: state.status,
         changedAt: state.changedAt,
         failureCount,
+        rev: state.rev,
       });
       return;
     }
@@ -96,7 +109,9 @@ export class LinkStateProvider {
 
   private async findState(connectionId: string): Promise<LinkState> {
     const state = await this.linkStateRepository.findById(connectionId);
-    return state ?? { status: "UNKNOWN", changedAt: null, failureCount: 0 };
+    return (
+      state ?? { status: "UNKNOWN", changedAt: null, failureCount: 0, rev: 0 }
+    );
   }
 
   private async change(
@@ -108,6 +123,7 @@ export class LinkStateProvider {
       status,
       changedAt: new Date(),
       failureCount,
+      rev: await this.revisionRepository.next(),
     });
   }
 
