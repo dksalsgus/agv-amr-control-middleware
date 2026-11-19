@@ -52,6 +52,7 @@ export type FieldErrors = Record<string, string>;
 
 export type ConnectionWriteBody = {
   name: string;
+  protocol: Protocol;
   mqtt?: Record<string, unknown>;
   rest?: Record<string, unknown>;
   modbus?: Record<string, unknown>;
