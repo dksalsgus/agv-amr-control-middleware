@@ -21,8 +21,11 @@ export class VendorAPayloadBuilder {
       pose: { x: robot.x, y: robot.y, theta: robot.theta },
       velocity: robot.speed,
       battery: { soc: robot.batteryPct / 100 },
-      mode: VendorAPayloadBuilder.MODE_MAP[robot.mode],
-      fault: null,
+      mode:
+        robot.errorCode === null
+          ? VendorAPayloadBuilder.MODE_MAP[robot.mode]
+          : "fault",
+      fault: robot.errorCode === null ? null : { code: `E${robot.errorCode}` },
       payload: { loaded: robot.loaded },
     };
   }

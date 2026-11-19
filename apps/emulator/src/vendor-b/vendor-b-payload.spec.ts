@@ -30,3 +30,15 @@ describe("VendorBPayloadBuilder", () => {
     });
   });
 });
+
+describe("VendorBPayloadBuilder 오류", () => {
+  it("오류 코드가 있으면 status ERR와 E 코드를 보낸다", () => {
+    const robot = new Robot("B-001");
+    robot.errorCode = 101;
+
+    const vehicle = new VendorBPayloadBuilder().build(robot, new Date());
+
+    expect(vehicle.status).toBe("ERR");
+    expect(vehicle.errorCode).toBe("E101");
+  });
+});

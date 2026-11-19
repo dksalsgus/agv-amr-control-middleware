@@ -12,7 +12,7 @@ export class VendorCEmulator {
   private readonly fleet = new RobotFleet("C", VENDOR_C_ROBOT_COUNT);
   private readonly server: VendorCServer;
 
-  constructor(faults: FaultSettings) {
+  constructor(private readonly faults: FaultSettings) {
     this.server = new VendorCServer(VENDOR_C_PORT, this.fleet, faults);
   }
 
@@ -22,7 +22,7 @@ export class VendorCEmulator {
 
     const dtSec = VENDOR_C_STEP_INTERVAL_MS / 1000;
     await runEvery(VENDOR_C_STEP_INTERVAL_MS, async () => {
-      this.fleet.step(dtSec);
+      this.fleet.step(dtSec, this.faults.robotErrors);
       this.server.refresh();
     });
   }

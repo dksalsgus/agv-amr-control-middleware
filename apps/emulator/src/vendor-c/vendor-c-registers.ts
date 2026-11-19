@@ -19,6 +19,7 @@ export class VendorCRegisterEncoder {
     DRIVING: 1,
     CHARGING: 2,
   };
+  private static readonly ERROR_STATE_CODE = 4;
 
   encode(robot: Robot, sampledAt: Date): number[] {
     const registers = new Array<number>(VENDOR_C_BLOCK_SIZE).fill(0);
@@ -32,8 +33,11 @@ export class VendorCRegisterEncoder {
     registers[7] = radianToDecidegree(robot.theta);
     registers[8] = Math.round(robot.speed * 100);
     registers[9] = Math.round(robot.batteryPct);
-    registers[10] = VendorCRegisterEncoder.OP_STATE_CODE[robot.mode];
-    registers[11] = 0;
+    registers[10] =
+      robot.errorCode === null
+        ? VendorCRegisterEncoder.OP_STATE_CODE[robot.mode]
+        : VendorCRegisterEncoder.ERROR_STATE_CODE;
+    registers[11] = robot.errorCode ?? 0;
     registers[12] = robot.loaded ? 1 : 0;
 
     return registers;
