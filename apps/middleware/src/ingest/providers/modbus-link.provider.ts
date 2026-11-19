@@ -45,8 +45,14 @@ export class ModbusLinkProvider {
     const lastBlock = Math.max(...blockNumbers);
     const blocksPerRead = Math.floor(MAX_REGISTERS_PER_READ / config.blockSize);
 
+    const readCount = Math.ceil((lastBlock - firstBlock + 1) / blocksPerRead);
+    const starts = Array.from(
+      { length: readCount },
+      (_, index) => firstBlock + index * blocksPerRead,
+    );
+
     const raws: ModbusRawMessage[] = [];
-    for (let start = firstBlock; start <= lastBlock; start += blocksPerRead) {
+    for (const start of starts) {
       const count = Math.min(blocksPerRead, lastBlock - start + 1);
       raws.push(await this.readBlocks(connectionId, config, start, count));
     }

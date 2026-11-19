@@ -13,7 +13,7 @@ export class PlcSimulator {
   constructor(private readonly random: () => number = Math.random) {}
 
   step() {
-    for (let pointNo = 0; pointNo < this.points.length; pointNo += 1) {
+    for (const pointNo of this.points.keys()) {
       if (this.random() < FLIP_PROBABILITY) {
         this.points[pointNo] = !this.points[pointNo];
       }
