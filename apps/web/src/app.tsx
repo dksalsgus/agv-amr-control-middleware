@@ -1,19 +1,44 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { RequireAuth } from "./auth/require-auth";
+import { LoginPage } from "./pages/login-page";
 import { PlaceholderPage } from "./pages/placeholder-page";
 
 export const App = () => (
   <BrowserRouter>
     <Routes>
-      <Route path="/" element={<PlaceholderPage title="관제" />} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route
+        path="/"
+        element={
+          <RequireAuth>
+            <PlaceholderPage title="관제" />
+          </RequireAuth>
+        }
+      />
       <Route
         path="/connections"
-        element={<PlaceholderPage title="연결 설정" />}
+        element={
+          <RequireAuth>
+            <PlaceholderPage title="연결 설정" />
+          </RequireAuth>
+        }
       />
       <Route
         path="/logs"
-        element={<PlaceholderPage title="로그·알람 이력" />}
+        element={
+          <RequireAuth>
+            <PlaceholderPage title="로그·알람 이력" />
+          </RequireAuth>
+        }
       />
-      <Route path="/faults" element={<PlaceholderPage title="장애 주입" />} />
+      <Route
+        path="/faults"
+        element={
+          <RequireAuth>
+            <PlaceholderPage title="장애 주입" />
+          </RequireAuth>
+        }
+      />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   </BrowserRouter>
