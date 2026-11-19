@@ -355,15 +355,15 @@ erDiagram
 
 ## 과제 요구 사항과 구현
 
-| 과제 요구                                                  | 상태  | 구현                                                                                                                                                                              |
-| ---------------------------------------------------------- | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 필수 1. 에뮬레이터 (90대와 PLC, 끊김·지연·중복·순서 주입)  | API만 | `apps/emulator`: A 40대 MQTT, B 30대 REST, C 20대 Modbus, PLC 16점. `GET/PUT :8090/faults`로 그룹별 끊김·지연·중복·뒤바뀜·유실 주입. 화면은 TODO                                  |
-| 필수 2. 어댑터 3종과 공통 모델, 새 제조사 추가 범위 증명   | 완료  | `ingest/adapters/vendor-{a,b,c}.adapter.ts`, `plc.adapter.ts`. 범위는 위 "새 제조사" 표                                                                                           |
-| 필수 3. 연결 설정 (드롭다운·토글, 재배포 없이 변경)        | 완료  | `POST/PATCH/DELETE /connections`, version 충돌 409, config 검증 400. 연결 설정 화면(`/connections`): 프로토콜 드롭다운, 켬·끔 토글, 저장 후 재연결 확인, 409 비교                 |
-| 필수 4. 실시간 전달 (WebSocket, 재접속 복구, 중복·순서)    | 완료  | `/ws` snapshot·delta·resync·ping, epoch와 rev. 수집 구간은 seq 판정                                                                                                               |
-| 필수 5. 관제 UI (맵, 상태, 연결, PLC, 장애 알림)           | 완료  | 관제 화면(`/`): 공장 맵(Canvas, 90대), 상태 요약, 연결·PLC 패널, 로봇 상세, 열린 알람과 확인, 서버 끊김·복구 표시. 알람 4종(ROBOT_ERROR, DEVICE_STALE, PLC_ABNORMAL, LOW_BATTERY) |
-| 필수 6. 측정 (지연 p50·p95, 유실률, 복구 시간, CPU·메모리) | 완료  | `node scripts/measure.mjs` 한 번으로 4종 수치가 표로 나옴. 결과는 [docs/measurements.md](docs/measurements.md). 브라우저 종단 지연 p50·p95는 관제 화면 상단 요약에                |
-| 제출물. `docker compose up` 한 번으로 실행                 | 완료  | `docker-compose.yml`                                                                                                                                                              |
+| 과제 요구                                                  | 상태 | 구현                                                                                                                                                                                                       |
+| ---------------------------------------------------------- | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 필수 1. 에뮬레이터 (90대와 PLC, 끊김·지연·중복·순서 주입)  | 완료 | `apps/emulator`: A 40대 MQTT, B 30대 REST, C 20대 Modbus, PLC 16점. `GET/PUT :8090/faults`로 그룹별 끊김·지연·중복·뒤바뀜·유실 주입. 장애 주입 화면(`/faults`): 그룹별 설정, 시연용 빠른 설정, 전체 초기화 |
+| 필수 2. 어댑터 3종과 공통 모델, 새 제조사 추가 범위 증명   | 완료 | `ingest/adapters/vendor-{a,b,c}.adapter.ts`, `plc.adapter.ts`. 범위는 위 "새 제조사" 표                                                                                                                    |
+| 필수 3. 연결 설정 (드롭다운·토글, 재배포 없이 변경)        | 완료 | `POST/PATCH/DELETE /connections`, version 충돌 409, config 검증 400. 연결 설정 화면(`/connections`): 프로토콜 드롭다운, 켬·끔 토글, 저장 후 재연결 확인, 409 비교                                          |
+| 필수 4. 실시간 전달 (WebSocket, 재접속 복구, 중복·순서)    | 완료 | `/ws` snapshot·delta·resync·ping, epoch와 rev. 수집 구간은 seq 판정                                                                                                                                        |
+| 필수 5. 관제 UI (맵, 상태, 연결, PLC, 장애 알림)           | 완료 | 관제 화면(`/`): 공장 맵(Canvas, 90대), 상태 요약, 연결·PLC 패널, 로봇 상세, 열린 알람과 확인, 서버 끊김·복구 표시. 알람 4종(ROBOT_ERROR, DEVICE_STALE, PLC_ABNORMAL, LOW_BATTERY)                          |
+| 필수 6. 측정 (지연 p50·p95, 유실률, 복구 시간, CPU·메모리) | 완료 | `node scripts/measure.mjs` 한 번으로 4종 수치가 표로 나옴. 결과는 [docs/measurements.md](docs/measurements.md). 브라우저 종단 지연 p50·p95는 관제 화면 상단 요약에                                         |
+| 제출물. `docker compose up` 한 번으로 실행                 | 완료 | `docker-compose.yml`                                                                                                                                                                                       |
 
 ## 저장소 구조
 
@@ -386,12 +386,14 @@ apps/
       alarm/     알람 판정과 조회·확인 API
       realtime/  WebSocket
       config/    설정값 (@nestjs/config)
-  web/           관제 웹 (React + Vite, 운영은 nginx가 정적 파일과 /api·/ws 프록시)
+  web/           관제 웹 (React + Vite, 운영은 nginx가 정적 파일과 /api·/ws·/emulator 프록시)
     src/api/     미들웨어 HTTP 클라이언트
-    src/auth/    토큰 로그인
+    src/auth/    로그인 화면과 토큰
     src/realtime/ WebSocket 클라이언트 (snapshot·delta 반영, 재접속 이어받기)
     src/monitor/ 관제 화면 부품 (맵 그리기, 요약, 패널)
     src/connections/ 연결 설정 화면 부품 (편집 폼, 저장 흐름)
+    src/logs/    이력 화면 부품 (필터, 표, 상세)
+    src/faults/  장애 주입 화면 부품 (그룹 카드, 빠른 설정)
     src/pages/   화면
 infra/mosquitto/ MQTT 브로커 설정
 ```

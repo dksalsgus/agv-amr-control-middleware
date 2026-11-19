@@ -49,6 +49,8 @@ services:
     depends_on:
       middleware:
         condition: service_started
+      emulator:
+        condition: service_started
 
   redis:
     image: redis:7.4-alpine
