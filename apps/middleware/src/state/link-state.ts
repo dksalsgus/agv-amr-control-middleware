@@ -14,4 +14,6 @@ export type LinkState = {
   failureCount: number;
   /** 상태가 바뀔 때만 올린다. 실패 횟수만 바뀌면 그대로 */
   rev: number;
+  /** MQTT 무수신 감시 기준 시각. 감시하지 않는 연결은 null */
+  lastReceivedAt: Date | null;
 };
