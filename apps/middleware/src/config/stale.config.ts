@@ -1,6 +1,5 @@
 import { registerAs } from "@nestjs/config";
 
-/** STALE 판정 기준 */
 export const staleConfig = registerAs("stale", () => ({
   /** 로봇이 이만큼 조용하면 STALE */
   robotSilenceMs: 3000,

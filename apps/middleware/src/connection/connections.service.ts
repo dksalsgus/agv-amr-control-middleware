@@ -121,7 +121,6 @@ export class ConnectionsService {
   }
 
   /** 보낸 config가 protocol과 맞는지 확인하고 저장할 모양으로 만든다. */
-  /** 프로토콜에 맞는 config 하나만 받는다. 없으면 undefined */
   private resolveConfig(
     protocol: string,
     parts: ConfigParts,

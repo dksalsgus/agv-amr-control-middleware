@@ -5,7 +5,6 @@ import { RemovedEntityRepository } from "./removed-entity.repository";
 import { RevisionRepository } from "./revision.repository";
 import { RobotStateRepository } from "./robot-state.repository";
 
-/** 메모리 상태 저장소 */
 @Module({
   providers: [
     RobotStateRepository,

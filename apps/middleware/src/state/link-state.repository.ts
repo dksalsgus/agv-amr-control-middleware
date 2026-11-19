@@ -1,7 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { LinkState } from "./link-state";
 
-/** 연결별 상태(메모리) */
 @Injectable()
 export class LinkStateRepository {
   private readonly states = new Map<string, LinkState>();

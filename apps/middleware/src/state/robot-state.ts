@@ -1,4 +1,3 @@
-/** op_state 컬럼(varchar)의 허용값 */
 export const ROBOT_OP_STATES = [
   "IDLE",
   "MOVING",

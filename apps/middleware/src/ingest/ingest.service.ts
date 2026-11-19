@@ -161,7 +161,6 @@ export class IngestService {
     this.logger.log(`로봇 상태 ${latestStates.length}대 복구`);
   }
 
-  /** MQTT 연결은 시작할 때 수신 핸들러를 등록한다. */
   private async startPushConnection(
     connection: IngestConnection,
   ): Promise<void> {

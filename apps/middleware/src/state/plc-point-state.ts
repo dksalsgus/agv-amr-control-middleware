@@ -1,4 +1,3 @@
-/** plc_points.type 컬럼(varchar)의 허용값 */
 export const PLC_POINT_TYPES = [
   "DOOR",
   "INTERSECTION",

@@ -7,7 +7,6 @@ import {
 import { RobotFleet } from "../simulation/robot-fleet";
 import { VendorBServer } from "./vendor-b-server";
 
-/** 제조사 B: 로봇을 움직이고 REST 요청에 현재 상태로 답한다. */
 export class VendorBEmulator {
   private readonly fleet = new RobotFleet("B", VENDOR_B_ROBOT_COUNT);
   private readonly server = new VendorBServer(VENDOR_B_PORT, this.fleet);
