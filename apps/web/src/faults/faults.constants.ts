@@ -1,4 +1,10 @@
-import { FaultConfig, FieldDef, GroupDef, Preset } from "./faults.types";
+import {
+  DevicePreset,
+  FaultConfig,
+  FieldDef,
+  GroupDef,
+  Preset,
+} from "./faults.types";
 
 /** 화면은 같은 출처의 /emulator로 부르고, 개발 서버와 nginx가 에뮬레이터로 넘긴다. */
 export const EMULATOR_BASE_PATH = "/emulator";
@@ -76,4 +82,13 @@ export const PRESETS: Preset[] = [
   { label: "C 지연 5초", group: "C", patch: { delayMs: 5000 } },
   { label: "PLC 유실 20%", group: "PLC", patch: { lossPct: 20 } },
   { label: "A 순서 뒤바뀜 25%", group: "A", patch: { reorderPct: 25 } },
+];
+
+/** 알람이 걸리는 PLC 점(도어 0~3, 비상정지 8·9)과 제조사별 로봇 하나 */
+export const DEVICE_PRESETS: DevicePreset[] = [
+  { label: "도어 1 열림", tag: "PLC 00", kind: "plc", pointNo: 0 },
+  { label: "비상정지 1", tag: "PLC 08", kind: "plc", pointNo: 8 },
+  { label: "AMR A-001 오류", tag: "A", kind: "robot", serial: "A-001" },
+  { label: "AGV B-001 오류", tag: "B", kind: "robot", serial: "B-001" },
+  { label: "AGV C-001 오류", tag: "C", kind: "robot", serial: "C-001" },
 ];

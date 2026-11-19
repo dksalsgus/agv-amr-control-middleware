@@ -6,11 +6,13 @@ import { ToastList } from "../components/toast-list";
 import { useToasts } from "../components/use-toasts";
 import { FaultAlert } from "../faults/fault-alert";
 import { FaultGroupCard } from "../faults/fault-group-card";
+import { DevicePresets } from "../faults/device-presets";
 import { FaultPresets } from "../faults/fault-presets";
 import { FaultSummary } from "../faults/fault-summary";
 import { faultsOf } from "../faults/fault-draft.util";
 import { EMULATOR_HOST, GROUPS } from "../faults/faults.constants";
 import { FaultGroup } from "../faults/faults.types";
+import { useDeviceFaults } from "../faults/use-device-faults";
 import { useFaultInjection } from "../faults/use-fault-injection";
 import { SocketStatus } from "../realtime/realtime.types";
 import { useRealtime } from "../realtime/use-realtime";
@@ -37,6 +39,7 @@ export const FaultsPage = () => {
   const view = useRealtime();
   const { toasts, push } = useToasts();
   const faults = useFaultInjection(push);
+  const deviceFaults = useDeviceFaults(push);
   const { status, groups } = faults;
 
   const anyFault =
@@ -115,6 +118,22 @@ export const FaultsPage = () => {
             <FaultPresets
               groups={status === "ready" ? groups : null}
               onToggle={faults.togglePreset}
+            />
+          </section>
+          <section aria-labelledby="deviceTitle">
+            <div className="section-head">
+              <h2 className="section-title" id="deviceTitle">
+                장비 값 주입
+              </h2>
+              <span className="section-meta">
+                PLC 신호를 켜거나 로봇에 오류를 넣어 알람을 띄웁니다. 한 번 더
+                누르면 풉니다.
+              </span>
+            </div>
+            <DevicePresets
+              devices={deviceFaults.devices}
+              busy={deviceFaults.busy}
+              onToggle={(preset) => void deviceFaults.toggle(preset)}
             />
           </section>
           <section aria-labelledby="groupTitle">
