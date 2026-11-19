@@ -120,13 +120,13 @@ sequenceDiagram
   participant W as 화면
   participant API as REST API
   participant DB as PostgreSQL
-  participant SC as 수집 스케줄러
+  participant SC as 수집 서비스
   W->>API: PATCH /connections/{id} {version, config}
   API->>DB: version이 같으면 저장, version + 1
+  API->>SC: reloadConnection(id) 호출
+  SC->>DB: 그 연결 설정 확인
+  SC->>SC: 그 연결만 내리고 새 설정으로 붙임
   API-->>W: 200 {version} (다르면 409)
-  API-)SC: reloadConnections() 호출
-  SC->>DB: 연결 목록 확인
-  SC->>SC: version이 바뀐 연결만 내리고 새 설정으로 붙임
   Note over W: 연결 상태 변화는 WebSocket delta의 links로 옴
   W->>API: POST /alarms/{id}/ack
   API-->>W: 200 {ackedAt}

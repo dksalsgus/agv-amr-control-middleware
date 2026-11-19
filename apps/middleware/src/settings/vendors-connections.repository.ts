@@ -21,6 +21,15 @@ export class VendorsConnectionsRepository {
     });
   }
 
+  async findEnabledByIdWithVendorAndDevices(
+    id: string,
+  ): Promise<ConnectionWithDevicesRow | null> {
+    return await this.prisma.vendors_connections.findFirst({
+      where: { id, enabled: true },
+      include: WITH_VENDOR_AND_DEVICES,
+    });
+  }
+
   async findAllWithVendor(): Promise<ConnectionSummaryRow[]> {
     return await this.prisma.vendors_connections.findMany({
       include: WITH_VENDOR_AND_DEVICE_COUNT,

@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { AuthUser } from "../auth/auth.types";
-import { IngestScheduler } from "../ingest/ingest.scheduler";
+import { ConnectionReloadService } from "../ingest/connection-reload.service";
 import { VENDOR_PROTOCOLS } from "../ingest/providers/connection.constants";
 import { ConnectionsProvider } from "./connections.provider";
 import { ConnectionWithLink } from "./connections.types";
@@ -22,7 +22,7 @@ import { ConfigParts } from "./connections.types";
 export class ConnectionsService {
   constructor(
     private readonly connectionsProvider: ConnectionsProvider,
-    private readonly ingestScheduler: IngestScheduler,
+    private readonly connectionReloadService: ConnectionReloadService,
   ) {}
 
   async getConnections(): Promise<GetConnectionsResponseDto> {
@@ -103,7 +103,7 @@ export class ConnectionsService {
       `${entry.row.name} 설정 변경${detail} · ${user.username}`,
       user.sub,
     );
-    this.reloadIngest();
+    await this.connectionReloadService.reloadConnection(id);
     return { id, version: request.version + 1 };
   }
 
@@ -133,7 +133,7 @@ export class ConnectionsService {
       `${request.name} 연결 추가(${request.protocol}) · ${user.username}`,
       user.sub,
     );
-    this.reloadIngest();
+    await this.connectionReloadService.reloadConnection(created.id);
     return created;
   }
 
@@ -156,7 +156,7 @@ export class ConnectionsService {
       `${entry.row.name} 연결 삭제 · ${user.username}`,
       user.sub,
     );
-    this.reloadIngest();
+    await this.connectionReloadService.removeConnection(id);
   }
 
   /** 이력에 남길 바뀐 항목. 예: ["REST→MQTT", "접속 정보"] */
@@ -180,11 +180,6 @@ export class ConnectionsService {
       isEnabledChanged ? enabledText : null,
       isConfigSent && !isProtocolChanged ? "접속 정보" : null,
     ].filter((text): text is string => text !== null);
-  }
-
-  /** 저장한 설정을 수집에 바로 반영한다. 다시 붙는 동안 응답을 붙잡지 않도록 기다리지 않는다. */
-  private reloadIngest(): void {
-    void this.ingestScheduler.reloadConnections();
   }
 
   /** 장비가 보내지 않거나 어댑터가 읽지 못하는 프로토콜이면 400 */
