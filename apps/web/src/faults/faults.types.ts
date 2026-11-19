@@ -57,6 +57,17 @@ export type FieldDef = {
   hint: string;
 };
 
+/** 에뮬레이터 장비 값 주입 상태: 켠 PLC 점 번호, 오류를 넣은 로봇 serial */
+export type DeviceFaults = {
+  plcPointsOn: number[];
+  robotErrors: string[];
+};
+
+/** 장비 값 주입 빠른 설정. PLC 점을 켜거나 로봇에 오류를 넣는다. */
+export type DevicePreset =
+  | { label: string; tag: string; kind: "plc"; pointNo: number }
+  | { label: string; tag: string; kind: "robot"; serial: string };
+
 export type Preset = {
   label: string;
   group: FaultGroup;
