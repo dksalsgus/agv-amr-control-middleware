@@ -2,14 +2,12 @@ import { Injectable, Logger } from "@nestjs/common";
 import { VendorsConnectionsDevicesPlcPointsEventsRepository } from "../../history/vendors-connections-devices-plc-points-events.repository";
 import { PlcPointValue } from "../../state/plc-point-state";
 
-export type LatestPlcPointValue = {
+export type PlcPointChange = {
   pointId: string;
   current: PlcPointValue;
 };
 
-/**
- * PLC 점 이벤트 기록과 재시작 복구. 기록은 완료를 기다리지 않는다(설계 문서 6장 저장 흐름).
- */
+/** PLC 점 이벤트 기록과 재시작 복구. 기록 실패는 밖으로 던지지 않는다. */
 @Injectable()
 export class PlcEventProvider {
   private readonly logger = new Logger(PlcEventProvider.name);
@@ -19,20 +17,25 @@ export class PlcEventProvider {
     private readonly eventsRepository: VendorsConnectionsDevicesPlcPointsEventsRepository,
   ) {}
 
-  record(pointId: string, current: PlcPointValue) {
-    this.eventsRepository
-      .insert({
-        vendors_connections_devices_plc_points_id: pointId,
-        value: current.value,
-        seq: current.seq,
-        source_ts: current.sourceTs,
-        received_ts: current.receivedTs,
-      })
-      .then(() => this.markRecovered())
-      .catch((error: unknown) => this.markFailed(error));
+  async recordAll(changes: PlcPointChange[]): Promise<void> {
+    if (changes.length === 0) {
+      return;
+    }
+
+    const results = await Promise.allSettled(
+      changes.map((change) => this.insert(change)),
+    );
+
+    const failure = results.find((result) => result.status === "rejected");
+    if (failure) {
+      await this.markFailed(failure.reason);
+      return;
+    }
+
+    await this.markRecovered();
   }
 
-  async findLatestValues(): Promise<LatestPlcPointValue[]> {
+  async findLatestValues(): Promise<PlcPointChange[]> {
     const rows = await this.eventsRepository.findLatestPerPoint();
 
     return rows.map((row) => ({
@@ -46,7 +49,18 @@ export class PlcEventProvider {
     }));
   }
 
-  private markFailed(error: unknown) {
+  private async insert(change: PlcPointChange): Promise<void> {
+    await this.eventsRepository.insert({
+      vendors_connections_devices_plc_points_id: change.pointId,
+      value: change.current.value,
+      seq: change.current.seq,
+      source_ts: change.current.sourceTs,
+      received_ts: change.current.receivedTs,
+    });
+  }
+
+  /** 실패 시작과 회복 때만 로그를 남긴다. */
+  private async markFailed(error: unknown): Promise<void> {
     if (!this.failing) {
       this.logger.warn(`PLC 이벤트 기록 실패: ${String(error)}`);
     }
@@ -54,7 +68,7 @@ export class PlcEventProvider {
     this.failing = true;
   }
 
-  private markRecovered() {
+  private async markRecovered(): Promise<void> {
     if (this.failing) {
       this.logger.log("PLC 이벤트 기록 회복");
     }

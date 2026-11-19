@@ -1,4 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { PlcPointValue } from "../state/plc-point-state";
 import { PlcAdapter, PlcReading } from "./adapters/plc.adapter";
 import {
   ConnectionProvider,
@@ -9,14 +10,14 @@ import {
   ModbusConnectionConfig,
   ModbusLinkProvider,
 } from "./providers/modbus-link.provider";
-import { PlcEventProvider } from "./providers/plc-event.provider";
+import {
+  PlcEventProvider,
+  PlcPointChange,
+} from "./providers/plc-event.provider";
 import { PlcPointStateProvider } from "./providers/plc-point-state.provider";
 import { SeqJudgeProvider } from "./providers/seq-judge.provider";
 
-/**
- * PLC 수집: 16점을 한 번에 폴링 → seq 판정 → 값이 바뀐 점만 메모리 반영과 이벤트 기록.
- * 폴링이라 주기(500ms)보다 짧은 펄스는 잡지 못한다(설계 문서 6장).
- */
+/** PLC 수집: 16점 폴링 → seq 판정 → 값이 바뀐 점만 반영·기록. 500ms보다 짧은 펄스는 놓친다. */
 @Injectable()
 export class PlcIngestService {
   private readonly logger = new Logger(PlcIngestService.name);
@@ -31,7 +32,7 @@ export class PlcIngestService {
     private readonly plcEventProvider: PlcEventProvider,
   ) {}
 
-  async start() {
+  async start(): Promise<void> {
     const connections = await this.connectionProvider.findEnabledConnections();
     this.connections = connections.filter(
       (connection) => connection.plcDevices.length > 0,
@@ -39,7 +40,7 @@ export class PlcIngestService {
 
     for (const connection of this.connections) {
       for (const device of connection.plcDevices) {
-        this.plcPointStateProvider.registerPoints(device.points);
+        await this.plcPointStateProvider.registerPoints(device.points);
       }
     }
 
@@ -67,12 +68,12 @@ export class PlcIngestService {
     return Math.max(0, config.pollIntervalMs - elapsedMs);
   }
 
-  /** 점별 마지막 이벤트로 현재 값을 되살린다. seq 기준은 되살리지 않고 첫 수신부터 다시 잡는다. */
-  private async restoreLatestValues() {
+  /** 점 값만 되살린다. 이벤트는 값이 바뀔 때만 쌓여 seq 기준으로는 쓸 수 없다. */
+  private async restoreLatestValues(): Promise<void> {
     const latestValues = await this.plcEventProvider.findLatestValues();
 
     for (const latest of latestValues) {
-      this.plcPointStateProvider.apply(latest.pointId, latest.current);
+      await this.plcPointStateProvider.apply(latest.pointId, latest.current);
     }
 
     this.logger.log(`PLC 점 ${latestValues.length}개 복구`);
@@ -81,20 +82,23 @@ export class PlcIngestService {
   private async pollOnce(
     connection: IngestConnection,
     config: ModbusConnectionConfig,
-  ) {
+  ): Promise<void> {
     try {
       const raw = await this.modbusLinkProvider.pollInputBlock(
         connection.id,
         config,
       );
-      const reading = this.plcAdapter.toCommon(raw);
-      this.applyReading(connection, reading);
+      const reading = await this.plcAdapter.toCommon(raw);
+      await this.applyReading(connection, reading);
     } catch (error) {
       this.logger.warn(`PLC 폴링 실패 (${connection.id}): ${String(error)}`);
     }
   }
 
-  private applyReading(connection: IngestConnection, reading: PlcReading) {
+  private async applyReading(
+    connection: IngestConnection,
+    reading: PlcReading,
+  ): Promise<void> {
     const device = connection.plcDevices.find(
       (item) => item.externalId === reading.externalId,
     );
@@ -102,39 +106,45 @@ export class PlcIngestService {
       return;
     }
 
-    const last = this.plcPointStateProvider.findLastSeq(device.deviceId);
-    const judgement = this.seqJudgeProvider.judge(last, reading);
+    const last = await this.plcPointStateProvider.findLastSeq(device.deviceId);
+    const judgement = await this.seqJudgeProvider.judge(last, reading);
     if (!judgement.accept) {
       return;
     }
 
-    this.plcPointStateProvider.updateLastSeq(device.deviceId, {
+    await this.plcPointStateProvider.updateLastSeq(device.deviceId, {
       seq: reading.seq,
       sourceTs: reading.sourceTs,
     });
-    this.applyChangedPoints(device, reading, new Date());
+
+    const changes = await this.applyChangedPoints(device, reading, new Date());
+    await this.plcEventProvider.recordAll(changes);
   }
 
-  private applyChangedPoints(
+  private async applyChangedPoints(
     device: PlcDevice,
     reading: PlcReading,
     receivedTs: Date,
-  ) {
+  ): Promise<PlcPointChange[]> {
+    const changes: PlcPointChange[] = [];
+
     for (const point of device.points) {
       const value = reading.values[point.pointNo];
-      const entry = this.plcPointStateProvider.findById(point.pointId);
+      const entry = await this.plcPointStateProvider.findById(point.pointId);
       if (entry?.current?.value === value) {
         continue;
       }
 
-      const current = {
+      const current: PlcPointValue = {
         value,
         seq: reading.seq,
         sourceTs: reading.sourceTs,
         receivedTs,
       };
-      this.plcPointStateProvider.apply(point.pointId, current);
-      this.plcEventProvider.record(point.pointId, current);
+      await this.plcPointStateProvider.apply(point.pointId, current);
+      changes.push({ pointId: point.pointId, current });
     }
+
+    return changes;
   }
 }
