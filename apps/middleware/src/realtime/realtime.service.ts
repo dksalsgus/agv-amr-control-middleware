@@ -1,5 +1,7 @@
-import { Injectable } from "@nestjs/common";
-import { StaleJudgeProvider } from "../device/stale-judge.provider";
+import { Inject, Injectable } from "@nestjs/common";
+import { ConfigType } from "@nestjs/config";
+import { isRobotStale, isPlcStale } from "../common/utils/stale-judge.util";
+import { staleConfig } from "../config/stale.config";
 import { AlarmEntry } from "../state/alarm-state";
 import { LinkStateEntry } from "../state/link-state";
 import { PlcPointEntry } from "../state/plc-point-state";
@@ -22,7 +24,8 @@ export class RealtimeService {
 
   constructor(
     private readonly realtimeStateProvider: RealtimeStateProvider,
-    private readonly staleJudgeProvider: StaleJudgeProvider,
+    @Inject(staleConfig.KEY)
+    private readonly staleSettings: ConfigType<typeof staleConfig>,
   ) {}
 
   /** 같은 epoch에서 이어받을 수 있으면 delta, 아니면 snapshot */
@@ -136,11 +139,7 @@ export class RealtimeService {
       name: entry.name,
       type: entry.type,
       rev: entry.rev,
-      stale: await this.staleJudgeProvider.isRobotStale(
-        entry.state,
-        linkStatus,
-        now,
-      ),
+      stale: isRobotStale(entry.state, linkStatus, now, this.staleSettings),
       state: entry.state ? this.toRobotState(entry.state) : null,
     };
   }
@@ -184,11 +183,7 @@ export class RealtimeService {
       value,
       abnormal: value !== null && value !== entry.normalValue,
       changedAt: entry.current?.sourceTs.toISOString() ?? null,
-      stale: await this.staleJudgeProvider.isPlcStale(
-        lastRead,
-        linkStatus,
-        now,
-      ),
+      stale: isPlcStale(lastRead, linkStatus, now, this.staleSettings),
       rev: entry.rev,
     };
   }
