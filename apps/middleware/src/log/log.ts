@@ -4,6 +4,7 @@ export const LOG_TYPES = [
   "ALARM_RAISED",
   "ALARM_CLEARED",
   "ALARM_ACKED",
+  "CONFIG_CHANGED",
 ] as const;
 export type LogType = (typeof LOG_TYPES)[number];
 

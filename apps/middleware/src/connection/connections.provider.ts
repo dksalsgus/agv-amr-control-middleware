@@ -4,6 +4,8 @@ import {
   Injectable,
 } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
+import { LogsRepository } from "../history/logs.repository";
+import { AppLogger } from "../logger/app-logger";
 import { VendorsConnectionsRepository } from "../settings/vendors-connections.repository";
 import { VendorsRepository } from "../settings/vendors.repository";
 import { VendorRow } from "../settings/vendors.types";
@@ -21,7 +23,11 @@ export class ConnectionsProvider {
     private readonly vendorsConnectionsRepository: VendorsConnectionsRepository,
     private readonly linkStateRepository: LinkStateRepository,
     private readonly vendorsRepository: VendorsRepository,
-  ) {}
+    private readonly logsRepository: LogsRepository,
+    private readonly logger: AppLogger,
+  ) {
+    this.logger.setContext(ConnectionsProvider.name);
+  }
 
   async findAll(): Promise<ConnectionWithLink[]> {
     const rows = await this.vendorsConnectionsRepository.findAllWithVendor();
@@ -106,6 +112,28 @@ export class ConnectionsProvider {
 
   async delete(id: string): Promise<void> {
     await this.vendorsConnectionsRepository.deleteById(id);
+  }
+
+  /** 누가 무엇을 바꿨는지 연결 이력에 남긴다. 기록 실패로 저장을 되돌리지는 않는다. */
+  async writeChangeLog(
+    connectionId: string,
+    message: string,
+    rolesUsersId: string,
+  ): Promise<void> {
+    this.logger.log(message);
+
+    try {
+      await this.logsRepository.insert({
+        type: "CONFIG_CHANGED",
+        level: "INFO",
+        target_type: "CONNECTION",
+        target_id: connectionId,
+        message,
+        roles_users_id: rolesUsersId,
+      });
+    } catch (error) {
+      this.logger.warn(`로그 기록 실패: ${String(error)}`);
+    }
   }
 
   private throwIfDuplicateName(error: unknown, name: string | undefined): void {

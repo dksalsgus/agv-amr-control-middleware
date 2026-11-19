@@ -3,7 +3,8 @@ export type LogType =
   | "LINK_DOWN"
   | "ALARM_RAISED"
   | "ALARM_CLEARED"
-  | "ALARM_ACKED";
+  | "ALARM_ACKED"
+  | "CONFIG_CHANGED";
 
 export type LogTargetType = "CONNECTION" | "DEVICE" | "PLC_POINT";
 

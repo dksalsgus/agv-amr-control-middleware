@@ -1,12 +1,24 @@
 -- 데모 시드. 여러 번 실행해도 같은 결과가 되도록 충돌 시 건너뛴다.
 
+-- 연결 이름에서 프로토콜을 뺐다. 프로토콜을 바꾸면 이름이 맞지 않아서다. 예전 이름으로 만든 DB도 고친다.
+UPDATE vendors_connections c
+SET name = r.new_name
+FROM (VALUES
+  ('제조사 A MQTT', '제조사 A'),
+  ('제조사 B REST', '제조사 B'),
+  ('제조사 C Modbus', '제조사 C'),
+  ('PLC Modbus', 'PLC 인터록')
+) AS r(old_name, new_name)
+WHERE c.name = r.old_name
+  AND NOT EXISTS (SELECT 1 FROM vendors_connections e WHERE e.name = r.new_name);
+
 -- 제조사 A: MQTT로 상태를 푸시하는 AMR 40대
 INSERT INTO vendors (id, code, name)
 VALUES (gen_random_uuid(), 'VENDOR_A', '제조사 A')
 ON CONFLICT (code) DO NOTHING;
 
 INSERT INTO vendors_connections (id, vendors_id, name, protocol, config)
-SELECT gen_random_uuid(), v.id, '제조사 A MQTT', 'MQTT',
+SELECT gen_random_uuid(), v.id, '제조사 A', 'MQTT',
   '{"url":"mqtt://mosquitto:1883","topicPattern":"vendorA/amr/+/state","qos":1,"username":null,"password":null}'::jsonb
 FROM vendors v
 WHERE v.code = 'VENDOR_A'
@@ -15,7 +27,7 @@ ON CONFLICT (name) DO NOTHING;
 INSERT INTO vendors_connections_devices (id, vendors_connections_id, external_id, type, name)
 SELECT gen_random_uuid(), c.id, 'A-' || lpad(n::text, 3, '0'), 'AMR', 'AMR A-' || lpad(n::text, 3, '0')
 FROM vendors_connections c, generate_series(1, 40) AS n
-WHERE c.name = '제조사 A MQTT'
+WHERE c.name = '제조사 A'
 ON CONFLICT (vendors_connections_id, external_id) DO NOTHING;
 
 -- 제조사 B: REST로 폴링하는 AGV 30대
@@ -24,7 +36,7 @@ VALUES (gen_random_uuid(), 'VENDOR_B', '제조사 B')
 ON CONFLICT (code) DO NOTHING;
 
 INSERT INTO vendors_connections (id, vendors_id, name, protocol, config)
-SELECT gen_random_uuid(), v.id, '제조사 B REST', 'REST',
+SELECT gen_random_uuid(), v.id, '제조사 B', 'REST',
   '{"baseUrl":"http://emulator:8081","pollIntervalMs":1000,"mode":"bulk","timeoutMs":800}'::jsonb
 FROM vendors v
 WHERE v.code = 'VENDOR_B'
@@ -33,7 +45,7 @@ ON CONFLICT (name) DO NOTHING;
 INSERT INTO vendors_connections_devices (id, vendors_connections_id, external_id, type, name)
 SELECT gen_random_uuid(), c.id, 'B-' || lpad(n::text, 3, '0'), 'AGV', 'AGV B-' || lpad(n::text, 3, '0')
 FROM vendors_connections c, generate_series(1, 30) AS n
-WHERE c.name = '제조사 B REST'
+WHERE c.name = '제조사 B'
 ON CONFLICT (vendors_connections_id, external_id) DO NOTHING;
 
 -- 제조사 C: Modbus TCP로 폴링하는 AGV 20대. external_id는 레지스터 블록 번호(0부터)
@@ -42,7 +54,7 @@ VALUES (gen_random_uuid(), 'VENDOR_C', '제조사 C')
 ON CONFLICT (code) DO NOTHING;
 
 INSERT INTO vendors_connections (id, vendors_id, name, protocol, config)
-SELECT gen_random_uuid(), v.id, '제조사 C Modbus', 'MODBUS_TCP',
+SELECT gen_random_uuid(), v.id, '제조사 C', 'MODBUS_TCP',
   '{"host":"emulator","port":5020,"unitId":1,"pollIntervalMs":1000,"baseAddress":100,"blockSize":16}'::jsonb
 FROM vendors v
 WHERE v.code = 'VENDOR_C'
@@ -51,7 +63,7 @@ ON CONFLICT (name) DO NOTHING;
 INSERT INTO vendors_connections_devices (id, vendors_connections_id, external_id, type, name)
 SELECT gen_random_uuid(), c.id, n::text, 'AGV', 'AGV C-' || lpad((n + 1)::text, 3, '0')
 FROM vendors_connections c, generate_series(0, 19) AS n
-WHERE c.name = '제조사 C Modbus'
+WHERE c.name = '제조사 C'
 ON CONFLICT (vendors_connections_id, external_id) DO NOTHING;
 
 -- PLC 인터록: Modbus TCP로 폴링하는 PLC 1대, 16점
@@ -60,7 +72,7 @@ VALUES (gen_random_uuid(), 'PLC', 'PLC 인터록')
 ON CONFLICT (code) DO NOTHING;
 
 INSERT INTO vendors_connections (id, vendors_id, name, protocol, config)
-SELECT gen_random_uuid(), v.id, 'PLC Modbus', 'MODBUS_TCP',
+SELECT gen_random_uuid(), v.id, 'PLC 인터록', 'MODBUS_TCP',
   '{"host":"emulator","port":5021,"unitId":1,"pollIntervalMs":500,"baseAddress":0,"blockSize":6}'::jsonb
 FROM vendors v
 WHERE v.code = 'PLC'
@@ -69,7 +81,7 @@ ON CONFLICT (name) DO NOTHING;
 INSERT INTO vendors_connections_devices (id, vendors_connections_id, external_id, type, name)
 SELECT gen_random_uuid(), c.id, '0', 'PLC', 'PLC 1'
 FROM vendors_connections c
-WHERE c.name = 'PLC Modbus'
+WHERE c.name = 'PLC 인터록'
 ON CONFLICT (vendors_connections_id, external_id) DO NOTHING;
 
 INSERT INTO vendors_connections_devices_plc_points
@@ -95,7 +107,7 @@ CROSS JOIN (VALUES
   (14, '신호 15', 'GENERIC', false),
   (15, '신호 16', 'GENERIC', false)
 ) AS p(point_no, name, type, alarm)
-WHERE c.name = 'PLC Modbus' AND d.external_id = '0'
+WHERE c.name = 'PLC 인터록' AND d.external_id = '0'
 ON CONFLICT (vendors_connections_devices_id, point_no) DO NOTHING;
 
 -- 역할 3종과 데모 계정 (비밀번호는 아이디 + 1234, argon2id 해시)

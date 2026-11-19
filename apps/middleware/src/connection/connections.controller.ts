@@ -1,3 +1,5 @@
+import { AuthUser } from "../auth/auth.types";
+import { CurrentUser } from "../common/decorators/current-user.decorator";
 import {
   Body,
   Controller,
@@ -41,10 +43,12 @@ export class ConnectionsController {
   async patchConnection(
     @Param() param: PatchConnectionParamDto,
     @Body() request: PatchConnectionRequestDto,
+    @CurrentUser() user: AuthUser,
   ): Promise<ApiResult<PatchConnectionResponseDto>> {
     const response = await this.connectionsService.patchConnection(
       param.id,
       request,
+      user,
     );
     return ApiResult.ofSuccess(response);
   }
@@ -52,16 +56,21 @@ export class ConnectionsController {
   @Post()
   async postConnection(
     @Body() request: PostConnectionRequestDto,
+    @CurrentUser() user: AuthUser,
   ): Promise<ApiResult<PostConnectionResponseDto>> {
-    const response = await this.connectionsService.postConnection(request);
+    const response = await this.connectionsService.postConnection(
+      request,
+      user,
+    );
     return ApiResult.ofSuccess(response);
   }
 
   @Delete(":id")
   async deleteConnection(
     @Param() param: DeleteConnectionParamDto,
+    @CurrentUser() user: AuthUser,
   ): Promise<ApiResult<null>> {
-    await this.connectionsService.deleteConnection(param.id);
+    await this.connectionsService.deleteConnection(param.id, user);
     return ApiResult.ofSuccess();
   }
 }
