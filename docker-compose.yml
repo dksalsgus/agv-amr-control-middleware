@@ -40,6 +40,16 @@ services:
       redis:
         condition: service_started
 
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    ports:
+      - "8080:80"
+    depends_on:
+      middleware:
+        condition: service_started
+
   redis:
     image: redis:7.4-alpine
     ports:

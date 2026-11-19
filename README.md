@@ -17,10 +17,11 @@ Docker와 Docker Compose만 있으면 됩니다.
 docker compose up --build
 ```
 
-PostgreSQL, Redis, MQTT 브로커, 에뮬레이터, 미들웨어 다섯 컨테이너가 뜹니다. 미들웨어는 시작할 때 테이블을 만들고(`prisma migrate deploy`) 데모 데이터(제조사, 연결, 장비)를 넣습니다. 시드는 여러 번 실행해도 결과가 같습니다.
+PostgreSQL, Redis, MQTT 브로커, 에뮬레이터, 미들웨어, 관제 웹 여섯 컨테이너가 뜹니다. 브라우저에서 http://localhost:8080 을 열고 데모 계정(operator/operator1234)으로 로그인하면 관제 화면이 나옵니다. 미들웨어는 시작할 때 테이블을 만들고(`prisma migrate deploy`) 데모 데이터(제조사, 연결, 장비)를 넣습니다. 시드는 여러 번 실행해도 결과가 같습니다.
 
 | 서비스                | 주소                                     |
 | --------------------- | ---------------------------------------- |
+| 관제 웹               | http://localhost:8080                    |
 | 미들웨어 REST         | http://localhost:3000                    |
 | 미들웨어 WebSocket    | ws://localhost:3000/ws                   |
 | 에뮬레이터 B (REST)   | http://localhost:8081                    |
@@ -354,15 +355,15 @@ erDiagram
 
 ## 과제 요구 사항과 구현
 
-| 과제 요구                                                  | 상태  | 구현                                                                                                                                               |
-| ---------------------------------------------------------- | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 필수 1. 에뮬레이터 (90대와 PLC, 끊김·지연·중복·순서 주입)  | API만 | `apps/emulator`: A 40대 MQTT, B 30대 REST, C 20대 Modbus, PLC 16점. `GET/PUT :8090/faults`로 그룹별 끊김·지연·중복·뒤바뀜·유실 주입. 화면은 TODO   |
-| 필수 2. 어댑터 3종과 공통 모델, 새 제조사 추가 범위 증명   | 완료  | `ingest/adapters/vendor-{a,b,c}.adapter.ts`, `plc.adapter.ts`. 범위는 위 "새 제조사" 표                                                            |
-| 필수 3. 연결 설정 (드롭다운·토글, 재배포 없이 변경)        | API만 | `POST/PATCH/DELETE /connections`, version 충돌 409, config 검증 400. 설정 화면은 TODO                                                              |
-| 필수 4. 실시간 전달 (WebSocket, 재접속 복구, 중복·순서)    | 완료  | `/ws` snapshot·delta·resync·ping, epoch와 rev. 수집 구간은 seq 판정                                                                                |
-| 필수 5. 관제 UI (맵, 상태, 연결, PLC, 장애 알림)           | 일부  | 알람 4종(ROBOT_ERROR, DEVICE_STALE, PLC_ABNORMAL, LOW_BATTERY) 판정과 `GET /alarms`, `POST /alarms/{id}/ack`, WebSocket 알람 전달. 화면은 TODO     |
-| 필수 6. 측정 (지연 p50·p95, 유실률, 복구 시간, CPU·메모리) | 완료  | `node scripts/measure.mjs` 한 번으로 4종 수치가 표로 나옴. 결과는 [docs/measurements.md](docs/measurements.md). 브라우저 종단 지연은 화면 조각에서 |
-| 제출물. `docker compose up` 한 번으로 실행                 | 완료  | `docker-compose.yml`                                                                                                                               |
+| 과제 요구                                                  | 상태  | 구현                                                                                                                                                                              |
+| ---------------------------------------------------------- | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 필수 1. 에뮬레이터 (90대와 PLC, 끊김·지연·중복·순서 주입)  | API만 | `apps/emulator`: A 40대 MQTT, B 30대 REST, C 20대 Modbus, PLC 16점. `GET/PUT :8090/faults`로 그룹별 끊김·지연·중복·뒤바뀜·유실 주입. 화면은 TODO                                  |
+| 필수 2. 어댑터 3종과 공통 모델, 새 제조사 추가 범위 증명   | 완료  | `ingest/adapters/vendor-{a,b,c}.adapter.ts`, `plc.adapter.ts`. 범위는 위 "새 제조사" 표                                                                                           |
+| 필수 3. 연결 설정 (드롭다운·토글, 재배포 없이 변경)        | 완료  | `POST/PATCH/DELETE /connections`, version 충돌 409, config 검증 400. 연결 설정 화면(`/connections`): 프로토콜 드롭다운, 켬·끔 토글, 저장 후 재연결 확인, 409 비교                 |
+| 필수 4. 실시간 전달 (WebSocket, 재접속 복구, 중복·순서)    | 완료  | `/ws` snapshot·delta·resync·ping, epoch와 rev. 수집 구간은 seq 판정                                                                                                               |
+| 필수 5. 관제 UI (맵, 상태, 연결, PLC, 장애 알림)           | 완료  | 관제 화면(`/`): 공장 맵(Canvas, 90대), 상태 요약, 연결·PLC 패널, 로봇 상세, 열린 알람과 확인, 서버 끊김·복구 표시. 알람 4종(ROBOT_ERROR, DEVICE_STALE, PLC_ABNORMAL, LOW_BATTERY) |
+| 필수 6. 측정 (지연 p50·p95, 유실률, 복구 시간, CPU·메모리) | 완료  | `node scripts/measure.mjs` 한 번으로 4종 수치가 표로 나옴. 결과는 [docs/measurements.md](docs/measurements.md). 브라우저 종단 지연 p50·p95는 관제 화면 상단 요약에                |
+| 제출물. `docker compose up` 한 번으로 실행                 | 완료  | `docker-compose.yml`                                                                                                                                                              |
 
 ## 저장소 구조
 
@@ -385,9 +386,12 @@ apps/
       alarm/     알람 판정과 조회·확인 API
       realtime/  WebSocket
       config/    설정값 (@nestjs/config)
-  web/           관제 웹 (React + Vite)
+  web/           관제 웹 (React + Vite, 운영은 nginx가 정적 파일과 /api·/ws 프록시)
     src/api/     미들웨어 HTTP 클라이언트
     src/auth/    토큰 로그인
+    src/realtime/ WebSocket 클라이언트 (snapshot·delta 반영, 재접속 이어받기)
+    src/monitor/ 관제 화면 부품 (맵 그리기, 요약, 패널)
+    src/connections/ 연결 설정 화면 부품 (편집 폼, 저장 흐름)
     src/pages/   화면
 infra/mosquitto/ MQTT 브로커 설정
 ```
