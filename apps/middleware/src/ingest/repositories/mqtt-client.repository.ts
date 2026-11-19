@@ -23,11 +23,11 @@ export class MqttClientRepository implements OnModuleDestroy {
   private readonly logger = new Logger(MqttClientRepository.name);
   private readonly clients = new Map<string, MqttClient>();
 
-  subscribe(
+  async subscribe(
     connectionId: string,
     options: MqttSubscribeOptions,
-    onMessage: (message: MqttRawMessage) => void,
-  ) {
+    onMessage: (message: MqttRawMessage) => Promise<void>,
+  ): Promise<void> {
     const client = mqtt.connect(options.url, {
       clientId: `middleware-${connectionId}`,
       clean: true,
@@ -36,15 +36,14 @@ export class MqttClientRepository implements OnModuleDestroy {
       password: options.password ?? undefined,
     });
 
-    client.on("connect", () => {
-      this.logger.log(`connected ${options.url} (${connectionId})`);
-      client.subscribe(options.topic, { qos: options.qos });
+    client.on("connect", async () => {
+      await this.handleConnect(client, connectionId, options);
     });
     client.on("error", (error) => {
       this.logger.warn(`${connectionId}: ${error.message}`);
     });
-    client.on("message", (topic, payload) => {
-      onMessage({ topic, payload });
+    client.on("message", async (topic, payload) => {
+      await onMessage({ topic, payload });
     });
 
     this.clients.set(connectionId, client);
@@ -55,5 +54,20 @@ export class MqttClientRepository implements OnModuleDestroy {
       client.endAsync(),
     );
     await Promise.all(closing);
+  }
+
+  /** 세션을 유지하지 않으므로 접속할 때마다 다시 구독한다. */
+  private async handleConnect(
+    client: MqttClient,
+    connectionId: string,
+    options: MqttSubscribeOptions,
+  ): Promise<void> {
+    this.logger.log(`connected ${options.url} (${connectionId})`);
+
+    try {
+      await client.subscribeAsync(options.topic, { qos: options.qos });
+    } catch (error) {
+      this.logger.warn(`구독 실패 (${connectionId}): ${String(error)}`);
+    }
   }
 }

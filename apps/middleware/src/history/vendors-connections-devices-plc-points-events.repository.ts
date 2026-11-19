@@ -19,24 +19,28 @@ export type PlcPointEventPageQuery = {
 export class VendorsConnectionsDevicesPlcPointsEventsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  insert(
+  async insert(
     data: Prisma.vendors_connections_devices_plc_points_eventsUncheckedCreateInput,
-  ) {
-    return this.prisma.vendors_connections_devices_plc_points_events.create({
-      data,
-    });
+  ): Promise<PlcPointEventRow> {
+    return await this.prisma.vendors_connections_devices_plc_points_events.create(
+      {
+        data,
+      },
+    );
   }
 
   /** 점별 마지막 이벤트. 그 값이 곧 현재 값이라 재시작 복구에 쓴다. */
-  findLatestPerPoint(): Promise<PlcPointEventRow[]> {
-    return this.prisma.$queryRaw<PlcPointEventRow[]>`
+  async findLatestPerPoint(): Promise<PlcPointEventRow[]> {
+    return await this.prisma.$queryRaw<PlcPointEventRow[]>`
       SELECT DISTINCT ON (vendors_connections_devices_plc_points_id) *
       FROM vendors_connections_devices_plc_points_events
       ORDER BY vendors_connections_devices_plc_points_id, source_ts DESC
     `;
   }
 
-  async findPage(query: PlcPointEventPageQuery) {
+  async findPage(
+    query: PlcPointEventPageQuery,
+  ): Promise<{ rows: PlcPointEventRow[]; total: number }> {
     const where: Prisma.vendors_connections_devices_plc_points_eventsWhereInput =
       {
         vendors_connections_devices_plc_points_id: query.pointId,

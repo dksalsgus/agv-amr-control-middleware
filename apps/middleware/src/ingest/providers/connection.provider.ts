@@ -1,7 +1,10 @@
 import { Injectable } from "@nestjs/common";
 import { PlcPoint, PlcPointType } from "../../state/plc-point-state";
 import { RobotDevice } from "../../state/robot-state";
-import { VendorsConnectionsRepository } from "../repositories/vendors-connections.repository";
+import {
+  ConnectionWithDevicesRow,
+  VendorsConnectionsRepository,
+} from "../repositories/vendors-connections.repository";
 
 /** vendors_connections.protocol 컬럼(varchar)의 허용값 */
 export const CONNECTION_PROTOCOLS = ["MQTT", "REST", "MODBUS_TCP"] as const;
@@ -22,10 +25,6 @@ export type IngestConnection = {
   robots: RobotDevice[];
   plcDevices: PlcDevice[];
 };
-
-type ConnectionWithDevicesRow = Awaited<
-  ReturnType<VendorsConnectionsRepository["findEnabledWithVendorAndDevices"]>
->[number];
 
 type DeviceRow =
   ConnectionWithDevicesRow["vendors_connections_devices"][number];
