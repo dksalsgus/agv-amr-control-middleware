@@ -48,7 +48,7 @@ export class VendorCAdapter implements VendorAdapter<ModbusRawMessage> {
       speed: block[8] / 100,
       batteryPct: block[9],
       opState: VendorCAdapter.OP_STATE_BY_CODE[block[10]] ?? "ERROR",
-      errorCode: errorCode === 0 ? null : String(errorCode),
+      errorCode: errorCode === 0 ? null : `E${errorCode}`,
       loaded: (block[12] & 1) === 1,
     };
   }
