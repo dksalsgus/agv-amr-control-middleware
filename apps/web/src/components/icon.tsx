@@ -67,6 +67,21 @@ const ICON_PATHS = {
     </>
   ),
   plus: <path d="M12 5v14M5 12h14" />,
+  search: (
+    <>
+      <circle cx="11" cy="11" r="6.5" />
+      <path d="M20 20l-4.2-4.2" />
+    </>
+  ),
+  filter: <path d="M4 5h16l-6 7.5V19l-4-2v-4.5z" />,
+  prev: <path d="M15 6l-6 6 6 6" />,
+  next: <path d="M9 6l6 6-6 6" />,
+  back: (
+    <>
+      <path d="M10 6l-6 6 6 6" />
+      <path d="M4 12h16" />
+    </>
+  ),
   logout: (
     <>
       <path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3" />
