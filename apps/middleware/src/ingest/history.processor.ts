@@ -1,7 +1,7 @@
 import { OnWorkerEvent, Processor, WorkerHost } from "@nestjs/bullmq";
 import { Job } from "bullmq";
-import { HISTORY_QUEUE } from "../history/history-queue.constants";
-import { HistoryJobData } from "../history/history-queue.types";
+import { HISTORY_QUEUE } from "./history-queue.constants";
+import { HistoryJobData } from "./history-queue.types";
 import { AppLogger } from "../logger/app-logger";
 import { HistoryService } from "./history.service";
 

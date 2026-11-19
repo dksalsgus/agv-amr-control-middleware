@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { HistoryJobData } from "../history/history-queue.types";
+import { HistoryJobData } from "./history-queue.types";
 import { PlcEventProvider } from "./providers/plc-event.provider";
 import { TelemetryProvider } from "./providers/telemetry.provider";
 
