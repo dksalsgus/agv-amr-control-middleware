@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { LinkStatus } from "../../state/link-state";
+import { LinkState } from "../../state/link-state";
 import { LinkStateRepository } from "../../state/link-state.repository";
 import { PlcDeviceLastRead, PlcPointEntry } from "../../state/plc-point-state";
 import { PlcPointStateRepository } from "../../state/plc-point-state.repository";
@@ -25,9 +25,8 @@ export class AlarmTargetProvider {
     return await this.plcPointStateRepository.findAll();
   }
 
-  async findLinkStatus(connectionId: string): Promise<LinkStatus> {
-    const link = await this.linkStateRepository.findById(connectionId);
-    return link?.status ?? "UNKNOWN";
+  async findLink(connectionId: string): Promise<LinkState | null> {
+    return (await this.linkStateRepository.findById(connectionId)) ?? null;
   }
 
   async findLastRead(deviceId: string): Promise<PlcDeviceLastRead | null> {

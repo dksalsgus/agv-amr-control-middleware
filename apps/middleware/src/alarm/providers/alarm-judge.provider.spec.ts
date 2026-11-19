@@ -47,7 +47,7 @@ describe("AlarmJudgeProvider", () => {
   const judge = new AlarmJudgeProvider(alarmConfig());
 
   const activeCodes = async (robot: RobotEntry, stale: boolean) =>
-    (await judge.judgeRobot(robot, stale, "UP"))
+    (await judge.judgeRobot(robot, stale, true))
       .filter((candidate) => candidate.active)
       .map((candidate) => candidate.code);
 
@@ -60,16 +60,12 @@ describe("AlarmJudgeProvider", () => {
     ]);
   });
 
-  it("STALE이면 DEVICE_STALE을 열되, 연결 판정 전(UNKNOWN)에는 열지 않는다", async () => {
+  it("STALE이면 DEVICE_STALE을 열되, 열 수 없는 연결 상태면 열지 않는다", async () => {
     expect(await activeCodes(toRobot("MOVING", 50), true)).toEqual([
       "DEVICE_STALE",
     ]);
 
-    const unknown = await judge.judgeRobot(
-      toRobot("MOVING", 50),
-      true,
-      "UNKNOWN",
-    );
+    const unknown = await judge.judgeRobot(toRobot("MOVING", 50), true, false);
     expect(unknown.every((candidate) => !candidate.active)).toBe(true);
   });
 
