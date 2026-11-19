@@ -4,7 +4,7 @@ import { RobotDevice } from "../../state/robot-state";
 import {
   ConnectionWithDevicesRow,
   VendorsConnectionsRepository,
-} from "../repositories/vendors-connections.repository";
+} from "../../settings/vendors-connections.repository";
 
 /** vendors_connections.protocol 컬럼(varchar)의 허용값 */
 export const CONNECTION_PROTOCOLS = ["MQTT", "REST", "MODBUS_TCP"] as const;

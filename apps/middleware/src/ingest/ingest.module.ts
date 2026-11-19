@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { HistoryModule } from "../history/history.module";
+import { SettingsModule } from "../settings/settings.module";
 import { StateModule } from "../state/state.module";
 import { PlcAdapter } from "./adapters/plc.adapter";
 import { VendorAAdapter } from "./adapters/vendor-a.adapter";
@@ -22,10 +23,9 @@ import { TelemetryProvider } from "./providers/telemetry.provider";
 import { ModbusClientRepository } from "./repositories/modbus-client.repository";
 import { MqttClientRepository } from "./repositories/mqtt-client.repository";
 import { RestClientRepository } from "./repositories/rest-client.repository";
-import { VendorsConnectionsRepository } from "./repositories/vendors-connections.repository";
 
 @Module({
-  imports: [StateModule, HistoryModule],
+  imports: [StateModule, HistoryModule, SettingsModule],
   providers: [
     IngestScheduler,
     IngestService,
@@ -52,7 +52,6 @@ import { VendorsConnectionsRepository } from "./repositories/vendors-connections
     ModbusClientRepository,
     MqttClientRepository,
     RestClientRepository,
-    VendorsConnectionsRepository,
   ],
 })
 export class IngestModule {}

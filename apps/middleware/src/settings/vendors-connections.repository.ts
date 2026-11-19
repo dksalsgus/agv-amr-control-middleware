@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
-import { PrismaService } from "../../prisma/prisma.service";
+import { PrismaService } from "../prisma/prisma.service";
 
 const WITH_VENDOR_AND_DEVICES = {
   vendors: true,
@@ -14,6 +14,15 @@ export type ConnectionWithDevicesRow = Prisma.vendors_connectionsGetPayload<{
   include: typeof WITH_VENDOR_AND_DEVICES;
 }>;
 
+const WITH_VENDOR_AND_DEVICE_COUNT = {
+  vendors: true,
+  _count: { select: { vendors_connections_devices: true } },
+} satisfies Prisma.vendors_connectionsInclude;
+
+export type ConnectionSummaryRow = Prisma.vendors_connectionsGetPayload<{
+  include: typeof WITH_VENDOR_AND_DEVICE_COUNT;
+}>;
+
 @Injectable()
 export class VendorsConnectionsRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -22,6 +31,13 @@ export class VendorsConnectionsRepository {
     return await this.prisma.vendors_connections.findMany({
       where: { enabled: true },
       include: WITH_VENDOR_AND_DEVICES,
+    });
+  }
+
+  async findAllWithVendor(): Promise<ConnectionSummaryRow[]> {
+    return await this.prisma.vendors_connections.findMany({
+      include: WITH_VENDOR_AND_DEVICE_COUNT,
+      orderBy: { name: "asc" },
     });
   }
 }
