@@ -30,8 +30,8 @@ describe("RouteMap", () => {
   });
 
   it("경로는 통로로 이어진 지점만 거쳐 목적지에 닿는다", () => {
-    const from = nodeById("WS-1");
-    const to = nodeById("STO-3");
+    const from = nodeById("N-3-3");
+    const to = nodeById("N-47-27.5");
 
     const path = routeMap.findPath(from, to);
 
@@ -54,7 +54,8 @@ describe("RouteMap", () => {
   });
 
   it("가장 적은 지점을 거치는 충전소를 고른다", () => {
-    expect(routeMap.nearestCharger(nodeById("WS-7")).id).toBe("CHG-3");
-    expect(routeMap.nearestCharger(nodeById("CHG-2")).id).toBe("CHG-2");
+    expect(routeMap.nearestCharger(nodeById("N-30-3")).id).toBe("CHG-1");
+    expect(routeMap.nearestCharger(nodeById("N-47-27.5")).id).toBe("CHG-8");
+    expect(routeMap.nearestCharger(nodeById("CHG-4")).id).toBe("CHG-4");
   });
 });
