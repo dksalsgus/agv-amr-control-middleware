@@ -76,5 +76,5 @@ export const plcPointOptions = (
     .sort((a, b) => a.pointNo - b.pointNo)
     .map((point) => ({
       id: point.id,
-      name: `점 ${pad2(point.pointNo)} · ${point.name}`,
+      name: `${pad2(point.pointNo)} · ${point.name}`,
     }));
