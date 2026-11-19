@@ -6,7 +6,7 @@ import { PlcPointEntry } from "../../state/plc-point-state";
 import { RobotEntry } from "../../state/robot-state";
 import { AlarmCandidate } from "../alarm.types";
 
-/** 장비 상태로 알람 4종을 판정한다. */
+/** 장비와 연결 상태로 알람 5종을 판정한다. */
 @Injectable()
 export class AlarmJudgeProvider {
   constructor(
@@ -51,6 +51,22 @@ export class AlarmJudgeProvider {
     return this.toStaleCandidate(deviceId, "PLC", stale, linkStatus);
   }
 
+  /** 연결이 끊기면 소속 장비마다 알람을 여는 대신 연결 알람 하나만 연다. */
+  async judgeLink(
+    connectionId: string,
+    linkStatus: LinkStatus,
+    deviceCount: number,
+  ): Promise<AlarmCandidate> {
+    return {
+      code: "LINK_DOWN",
+      level: "CRITICAL",
+      targetType: "CONNECTION",
+      targetId: connectionId,
+      message: `연결 끊김, 소속 장비 ${deviceCount}대 데이터 끊김`,
+      active: linkStatus === "DOWN",
+    };
+  }
+
   /** 알람을 켜 둔 점만 판정한다. 값을 아직 모르면 열지 않는다. */
   async judgePlcPoint(point: PlcPointEntry): Promise<AlarmCandidate | null> {
     if (!point.alarmOnAbnormal) {
@@ -68,7 +84,10 @@ export class AlarmJudgeProvider {
     };
   }
 
-  /** 연결 판정 전(UNKNOWN)에는 재시작 직후의 오래된 상태로 알람을 열지 않는다. */
+  /**
+   * 연결이 UP일 때만 연다. 연결 판정 전(UNKNOWN)에는 재시작 직후의 오래된 상태로 열지 않고,
+   * DOWN이면 LINK_DOWN 알람 하나가 대신한다.
+   */
   private toStaleCandidate(
     deviceId: string,
     name: string,
@@ -81,7 +100,7 @@ export class AlarmJudgeProvider {
       targetType: "DEVICE",
       targetId: deviceId,
       message: `${name} 데이터 끊김`,
-      active: stale && linkStatus !== "UNKNOWN",
+      active: stale && linkStatus === "UP",
     };
   }
 }

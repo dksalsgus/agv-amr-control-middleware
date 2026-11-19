@@ -208,14 +208,15 @@ PATCH /connections/{id}
 }
 ```
 
-| code           | level    | 열리는 조건                                       |
-| -------------- | -------- | ------------------------------------------------- |
-| `ROBOT_ERROR`  | CRITICAL | 로봇 `opState`가 `ERROR`                          |
-| `PLC_ABNORMAL` | CRITICAL | `alarmOnAbnormal`인 PLC 점의 값이 비정상          |
-| `DEVICE_STALE` | WARN     | 로봇이나 PLC가 STALE (연결 판정 전에는 열지 않음) |
-| `LOW_BATTERY`  | WARN     | 배터리 20% 미만                                   |
+| code           | level    | 열리는 조건                              |
+| -------------- | -------- | ---------------------------------------- |
+| `ROBOT_ERROR`  | CRITICAL | 로봇 `opState`가 `ERROR`                 |
+| `PLC_ABNORMAL` | CRITICAL | `alarmOnAbnormal`인 PLC 점의 값이 비정상 |
+| `LINK_DOWN`    | CRITICAL | 연결이 DOWN. `targetType`은 `CONNECTION` |
+| `DEVICE_STALE` | WARN     | 연결이 UP인데 로봇이나 PLC가 STALE       |
+| `LOW_BATTERY`  | WARN     | 배터리 20% 미만                          |
 
-조건이 풀리면 알람이 닫힙니다. `POST /alarms/{id}/ack` → `{ id, ackedAt, rev }`. 이미 풀린 알람이면 404입니다. 확인한 사용자는 `logs`의 `ALARM_ACKED` 행에 남습니다.
+연결이 끊기면 소속 장비마다 `DEVICE_STALE`을 여는 대신 `LINK_DOWN` 하나만 엽니다. 장비의 `stale` 표시는 그대로 바뀝니다. 조건이 풀리면 알람이 닫힙니다. `POST /alarms/{id}/ack` → `{ id, ackedAt, rev }`. 이미 풀린 알람이면 404입니다. 확인한 사용자는 `logs`의 `ALARM_ACKED` 행에 남습니다.
 
 ### 로그
 

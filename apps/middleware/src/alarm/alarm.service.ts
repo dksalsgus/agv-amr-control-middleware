@@ -68,6 +68,13 @@ export class AlarmService {
 
   private async collectCandidates(now: Date): Promise<AlarmCandidate[]> {
     const candidates: AlarmCandidate[] = [];
+    const deviceCountByConnection = new Map<string, number>();
+    const countDevice = (connectionId: string) => {
+      deviceCountByConnection.set(
+        connectionId,
+        (deviceCountByConnection.get(connectionId) ?? 0) + 1,
+      );
+    };
 
     for (const robot of await this.alarmTargetProvider.findRobots()) {
       const linkStatus = await this.alarmTargetProvider.findLinkStatus(
@@ -79,6 +86,8 @@ export class AlarmService {
         now,
         this.staleSettings,
       );
+      countDevice(robot.connectionId);
+      await this.alarmTargetProvider.touchIfStaleChanged(robot.deviceId, stale);
       for (const candidate of await this.alarmJudgeProvider.judgeRobot(
         robot,
         stale,
@@ -110,6 +119,8 @@ export class AlarmService {
         now,
         this.staleSettings,
       );
+      countDevice(points[0].connectionId);
+      await this.alarmTargetProvider.touchIfStaleChanged(deviceId, stale);
       candidates.push(
         await this.alarmJudgeProvider.judgePlcDevice(
           deviceId,
@@ -119,10 +130,19 @@ export class AlarmService {
       );
     }
 
+    for (const link of await this.alarmTargetProvider.findLinks()) {
+      candidates.push(
+        await this.alarmJudgeProvider.judgeLink(
+          link.connectionId,
+          link.state.status,
+          deviceCountByConnection.get(link.connectionId) ?? 0,
+        ),
+      );
+    }
+
     return candidates;
   }
 
-  /** DEVICE_STALE이 열리고 풀릴 때는 장비 rev도 올려 화면의 stale 표시를 바꾼다. */
   private async apply(candidate: AlarmCandidate): Promise<void> {
     const open = await this.alarmStateProvider.findOpenByCandidate(candidate);
     if (candidate.active === Boolean(open)) {
@@ -133,10 +153,6 @@ export class AlarmService {
       await this.alarmStateProvider.clear(open);
     } else {
       await this.alarmStateProvider.raise(candidate);
-    }
-
-    if (candidate.code === "DEVICE_STALE") {
-      await this.alarmTargetProvider.touchDevice(candidate.targetId);
     }
   }
 
