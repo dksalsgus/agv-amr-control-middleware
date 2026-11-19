@@ -5,6 +5,7 @@ import { appConfig } from "./config/app.config";
 import { databaseConfig } from "./config/database.config";
 import { ingestConfig } from "./config/ingest.config";
 import { linkConfig } from "./config/link.config";
+import { realtimeConfig } from "./config/realtime.config";
 import { staleConfig } from "./config/stale.config";
 import { ConnectionModule } from "./connection/connection.module";
 import { DeviceModule } from "./device/device.module";
@@ -19,7 +20,14 @@ import { RealtimeModule } from "./realtime/realtime.module";
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [appConfig, databaseConfig, ingestConfig, linkConfig, staleConfig],
+      load: [
+        appConfig,
+        databaseConfig,
+        ingestConfig,
+        linkConfig,
+        staleConfig,
+        realtimeConfig,
+      ],
     }),
     ScheduleModule.forRoot(),
     LoggerModule,
