@@ -12,7 +12,7 @@ export class PlcPointStateRepository {
   private readonly entries = new Map<string, PlcPointEntry>();
   private readonly lastReadByDevice = new Map<string, PlcDeviceLastRead>();
 
-  async register(point: PlcPoint): Promise<void> {
+  async register(point: PlcPoint, rev: number): Promise<void> {
     this.entries.set(point.pointId, {
       pointId: point.pointId,
       deviceId: point.deviceId,
@@ -23,7 +23,7 @@ export class PlcPointStateRepository {
       normalValue: point.normalValue,
       alarmOnAbnormal: point.alarmOnAbnormal,
       current: null,
-      rev: 0,
+      rev,
     });
   }
 
