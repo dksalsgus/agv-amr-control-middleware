@@ -57,6 +57,14 @@ export class PlcPointStateRepository {
     entry.rev = rev;
   }
 
+  /** 값은 그대로 두고 rev만 올린다. STALE 전환을 delta에 싣는 데 쓴다. */
+  async touch(pointId: string, rev: number): Promise<void> {
+    const entry = this.entries.get(pointId);
+    if (entry) {
+      entry.rev = rev;
+    }
+  }
+
   async findLastRead(deviceId: string): Promise<PlcDeviceLastRead | null> {
     return this.lastReadByDevice.get(deviceId) ?? null;
   }

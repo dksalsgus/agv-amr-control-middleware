@@ -1,4 +1,5 @@
 import { Module } from "@nestjs/common";
+import { AlarmStateRepository } from "./alarm-state.repository";
 import { LinkStateRepository } from "./link-state.repository";
 import { PlcPointStateRepository } from "./plc-point-state.repository";
 import { RemovedEntityRepository } from "./removed-entity.repository";
@@ -12,6 +13,7 @@ import { RobotStateRepository } from "./robot-state.repository";
     RevisionRepository,
     LinkStateRepository,
     RemovedEntityRepository,
+    AlarmStateRepository,
   ],
   exports: [
     RobotStateRepository,
@@ -19,6 +21,7 @@ import { RobotStateRepository } from "./robot-state.repository";
     RevisionRepository,
     LinkStateRepository,
     RemovedEntityRepository,
+    AlarmStateRepository,
   ],
 })
 export class StateModule {}
