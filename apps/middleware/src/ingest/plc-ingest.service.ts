@@ -1,4 +1,7 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
+import { ConfigType } from "@nestjs/config";
+import { judgeSeq } from "../common/utils/seq-judge.util";
+import { ingestConfig } from "../config/ingest.config";
 import { toErrorMessage } from "../common/utils/error.util";
 import { PlcPointValue } from "../state/plc-point-state";
 import { PlcAdapter } from "./adapters/plc.adapter";
@@ -16,7 +19,6 @@ import { PlcEventProvider } from "./providers/plc-event.provider";
 import { PlcPointChange } from "./providers/plc-event.types";
 import { LinkStateProvider } from "./providers/link-state.provider";
 import { PlcPointStateProvider } from "./providers/plc-point-state.provider";
-import { SeqJudgeProvider } from "./providers/seq-judge.provider";
 import { AppLogger } from "../logger/app-logger";
 
 /** PLC 수집: 16점 폴링 → seq 판정 → 값이 바뀐 점만 반영·기록. 500ms보다 짧은 펄스는 놓친다. */
@@ -25,10 +27,11 @@ export class PlcIngestService {
   private readonly connections = new Map<string, IngestConnection>();
 
   constructor(
+    @Inject(ingestConfig.KEY)
+    private readonly config: ConfigType<typeof ingestConfig>,
     private readonly connectionProvider: ConnectionProvider,
     private readonly modbusLinkProvider: ModbusLinkProvider,
     private readonly plcAdapter: PlcAdapter,
-    private readonly seqJudgeProvider: SeqJudgeProvider,
     private readonly plcPointStateProvider: PlcPointStateProvider,
     private readonly plcEventProvider: PlcEventProvider,
     private readonly historyQueueProvider: HistoryQueueProvider,
@@ -187,7 +190,7 @@ export class PlcIngestService {
     }
 
     const last = await this.plcPointStateProvider.findLastRead(device.deviceId);
-    const judgement = await this.seqJudgeProvider.judge(last, reading);
+    const judgement = judgeSeq(last, reading, this.config.restartThresholdMs);
     const receivedTs = new Date();
     await this.ingestMetricsProvider.record(
       `${connection.vendorCode} ${connection.protocol}`,
