@@ -1,4 +1,5 @@
 import { CSSProperties } from "react";
+import { Link } from "react-router-dom";
 import { formatAgo, formatTimeMs } from "../common/utils/format.util";
 import { Icon } from "../components/icon";
 import { OP_LABEL, OP_TONE } from "./monitor.constants";
@@ -170,6 +171,13 @@ export const RobotDetail = ({
           </dd>
         </div>
       </dl>
+      <Link
+        className="btn btn-sm"
+        style={{ textDecoration: "none", marginTop: "var(--sp-3)" }}
+        to={`/logs?targetType=DEVICE&targetId=${encodeURIComponent(robot.id)}`}
+      >
+        <Icon name="clock" />이 로봇의 이력 보기
+      </Link>
     </>
   );
 };

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { ApiRequestError } from "../api/api-request.error";
 import { connectionsApi } from "../connections/connections.api";
 import { ConnectionItem } from "../connections/connections.types";
@@ -20,6 +21,7 @@ import {
   connectionOptions,
   plcPointOptions,
   robotOptions,
+  toInitialFilter,
   toLogsPath,
 } from "./logs.util";
 
@@ -32,7 +34,10 @@ const toReason = (error: unknown): string => {
 
 /** 이력 화면의 조회 조건, 결과, 고른 기록을 한곳에서 다룬다. */
 export const useLogHistory = (view: RealtimeView) => {
-  const [filter, setFilter] = useState<LogFilter>(ALL_FILTER);
+  const [searchParams] = useSearchParams();
+  const [filter, setFilter] = useState<LogFilter>(() =>
+    toInitialFilter(searchParams),
+  );
   const [page, setPage] = useState(1);
   const [reloadKey, setReloadKey] = useState(0);
   const [status, setStatus] = useState<LoadStatus>("loading");
