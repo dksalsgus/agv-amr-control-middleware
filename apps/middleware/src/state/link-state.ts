@@ -2,6 +2,11 @@
 export const LINK_STATUSES = ["UNKNOWN", "UP", "DOWN"] as const;
 export type LinkStatus = (typeof LINK_STATUSES)[number];
 
+export type LinkStateEntry = {
+  connectionId: string;
+  state: LinkState;
+};
+
 export type LinkState = {
   status: LinkStatus;
   changedAt: Date | null;

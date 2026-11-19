@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { LinkState } from "./link-state";
+import { LinkState, LinkStateEntry } from "./link-state";
 
 @Injectable()
 export class LinkStateRepository {
@@ -7,6 +7,13 @@ export class LinkStateRepository {
 
   async findById(connectionId: string): Promise<LinkState | undefined> {
     return this.states.get(connectionId);
+  }
+
+  async findAll(): Promise<LinkStateEntry[]> {
+    return Array.from(this.states.entries()).map(([connectionId, state]) => ({
+      connectionId,
+      state,
+    }));
   }
 
   async save(connectionId: string, state: LinkState): Promise<void> {
