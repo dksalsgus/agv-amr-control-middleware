@@ -1,0 +1,66 @@
+/* docs/design/login.html의 로그인 화면 전용 스타일. 다른 화면과 겹치는 이름이 있어 화면 루트 아래로 묶는다. */
+@keyframes spin { to { transform: rotate(360deg); } }
+
+[data-page="login"] {
+  /* ===== 화면 뼈대 (로그인) ===== */
+  &.login-app {
+    display: grid; grid-template-rows: minmax(0, 1fr) auto; min-height: 100vh;
+    background-color: var(--bg);
+    background-image: linear-gradient(var(--map-grid) 1px, transparent 1px), linear-gradient(90deg, var(--map-grid) 1px, transparent 1px);
+    background-size: 40px 40px; background-position: center;
+  }
+  .login-main { display: grid; place-items: center; padding: var(--sp-6) var(--sp-4); }
+  .login-wrap { display: grid; gap: var(--sp-4); width: min(400px, 100%); }
+  .login-card { display: grid; gap: var(--sp-5); padding: var(--sp-6); border: 1px solid var(--line-strong); border-radius: var(--radius-lg); background: var(--surface-1); box-shadow: var(--shadow-pop); }
+  .brand { display: grid; gap: var(--sp-3); }
+  .brand svg { display: block; }
+  .brand-title { font-size: var(--fs-2xl); font-weight: var(--fw-bold); line-height: var(--lh-tight); letter-spacing: -0.01em; }
+  .brand-desc { font-size: var(--fs-sm); color: var(--text-2); }
+
+  .notice { display: flex; align-items: flex-start; gap: var(--sp-2); padding: var(--sp-3); border: 1px solid; border-radius: var(--radius-md); font-size: var(--fs-sm); }
+  .notice .od-icon { margin-top: 3px; }
+  .notice[data-tone="danger"] { background: #1E1215; border-color: #6B2328; color: #FFD9DA; }
+  .notice[data-tone="warn"] { background: #221C0C; border-color: #5E4A17; color: #FCE7B0; }
+  .notice[data-tone="ok"] { background: #0F2219; border-color: #1F5A3F; color: #C9F2DD; }
+  .notice strong { display: block; font-weight: var(--fw-bold); }
+  .notice-body { display: grid; gap: 2px; }
+  .notice .link-btn { justify-self: start; margin-top: 4px; padding: 0; border: 0; background: none; color: inherit; font-weight: var(--fw-semibold); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+  .notice:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+  .login-form { display: grid; gap: var(--sp-4); }
+  .field { display: grid; gap: 6px; }
+  .field-label { font-size: var(--fs-sm); font-weight: var(--fw-semibold); color: var(--text-1); }
+  .input-lg {
+    display: block; width: 100%; height: 44px; padding: 0 var(--sp-3);
+    border: 1px solid var(--line-strong); border-radius: var(--radius-md); background: var(--surface-0); color: var(--text-1);
+    font-size: var(--fs-lg); transition: border-color var(--dur-fast) var(--ease-out);
+  }
+  .input-lg::placeholder { color: var(--text-3); }
+  .input-lg:hover:not(:disabled) { border-color: var(--text-3); }
+  .input-lg:focus-visible { outline: 2px solid var(--focus); outline-offset: 0; border-color: var(--accent); }
+  .input-lg[aria-invalid="true"] { border-color: var(--sev-critical); background: #1E1215; }
+  .input-lg:disabled { color: var(--text-2); background: var(--surface-1); cursor: not-allowed; }
+  .pw-wrap { display: flex; }
+  .pw-wrap .input-lg { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+  .pw-toggle {
+    display: flex; align-items: center; justify-content: center; width: 52px; flex: none;
+    border: 1px solid var(--line-strong); border-left: 0; border-radius: 0 var(--radius-md) var(--radius-md) 0;
+    background: var(--surface-2); color: var(--text-2); font-size: var(--fs-xs); font-weight: var(--fw-semibold); cursor: pointer;
+  }
+  .pw-toggle:hover:not(:disabled) { background: var(--surface-3); color: var(--text-1); }
+  .pw-toggle:disabled { cursor: not-allowed; color: var(--text-3); }
+  .field-error { display: flex; align-items: flex-start; gap: 4px; font-size: var(--fs-sm); color: #FF9A9D; }
+  .field-error .od-icon { margin-top: 3px; }
+  .btn-block { width: 100%; height: 44px; font-size: var(--fs-md); }
+  .btn-block:disabled { cursor: progress; }
+  .spin { display: inline-block; width: 12px; height: 12px; border-radius: 50%; border: 2px solid currentColor; border-right-color: transparent; animation: spin 0.8s linear infinite; flex: none; }
+
+  .demo-acct { display: grid; gap: var(--sp-2); padding: var(--sp-4); border: 1px dashed var(--line-strong); border-radius: var(--radius-md); background: rgba(20, 26, 33, 0.92); }
+  .demo-acct-title { font-size: var(--fs-sm); font-weight: var(--fw-bold); }
+  .demo-acct-desc { font-size: var(--fs-xs); color: var(--text-2); }
+  .demo-acct dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px var(--sp-3); font-size: var(--fs-sm); }
+  .demo-acct dt { color: var(--text-3); }
+  .demo-acct dd { font-family: var(--font-mono); color: var(--text-1); }
+  .demo-acct .btn { justify-self: start; }
+  .login-foot { font-size: var(--fs-xs); color: var(--text-3); text-align: center; }
+}

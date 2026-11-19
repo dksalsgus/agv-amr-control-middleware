@@ -73,6 +73,12 @@ const ICON_PATHS = {
       <path d="M20 20l-4.2-4.2" />
     </>
   ),
+  clock: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 2" />
+    </>
+  ),
   filter: <path d="M4 5h16l-6 7.5V19l-4-2v-4.5z" />,
   prev: <path d="M15 6l-6 6 6 6" />,
   next: <path d="M9 6l6 6-6 6" />,
