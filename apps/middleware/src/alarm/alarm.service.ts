@@ -3,6 +3,7 @@ import { ConfigType } from "@nestjs/config";
 import { isRobotStale, isPlcStale } from "../common/utils/stale-judge.util";
 import { staleConfig } from "../config/stale.config";
 import { AlarmEntry } from "../state/alarm-state";
+import { LinkState } from "../state/link-state";
 import { PlcPointEntry } from "../state/plc-point-state";
 import { AlarmCandidate } from "./alarm.types";
 import { GetAlarmsItemDto } from "./dto/get-alarms.item.dto";
@@ -70,19 +71,23 @@ export class AlarmService {
     const candidates: AlarmCandidate[] = [];
 
     for (const robot of await this.alarmTargetProvider.findRobots()) {
-      const linkStatus = await this.alarmTargetProvider.findLinkStatus(
-        robot.connectionId,
-      );
+      const link = await this.alarmTargetProvider.findLink(robot.connectionId);
+      const linkStatus = link?.status ?? "UNKNOWN";
       const stale = isRobotStale(
         robot.state,
         linkStatus,
         now,
         this.staleSettings,
       );
+      const canAlarmStale = this.canAlarmStale(
+        link,
+        now,
+        this.staleSettings.robotSilenceMs,
+      );
       for (const candidate of await this.alarmJudgeProvider.judgeRobot(
         robot,
         stale,
-        linkStatus,
+        canAlarmStale,
       )) {
         candidates.push(candidate);
       }
@@ -101,25 +106,52 @@ export class AlarmService {
     }
 
     for (const [deviceId, points] of pointsByDevice) {
-      const linkStatus = await this.alarmTargetProvider.findLinkStatus(
+      const link = await this.alarmTargetProvider.findLink(
         points[0].connectionId,
       );
       const stale = isPlcStale(
         await this.alarmTargetProvider.findLastRead(deviceId),
-        linkStatus,
+        link?.status ?? "UNKNOWN",
         now,
         this.staleSettings,
+      );
+      const canAlarmStale = this.canAlarmStale(
+        link,
+        now,
+        this.staleSettings.plcSilenceMs,
       );
       candidates.push(
         await this.alarmJudgeProvider.judgePlcDevice(
           deviceId,
           stale,
-          linkStatus,
+          canAlarmStale,
         ),
       );
     }
 
     return candidates;
+  }
+
+  /**
+   * STALE 알람을 열어도 되는 연결인지. 연결이 끊기면 바로 열고,
+   * 판정 전(UNKNOWN)이거나 막 UP이 된 뒤 첫 데이터를 기다리는 동안(graceMs)은 열지 않는다.
+   * MQTT는 브로커에 붙자마자 UP이라, 기동 직후 장비가 아직 보내기 전에 알람이 열렸다 닫히던 것을 막는다.
+   */
+  private canAlarmStale(
+    link: LinkState | null,
+    now: Date,
+    graceMs: number,
+  ): boolean {
+    if (link?.status === "DOWN") {
+      return true;
+    }
+
+    const upSince = link?.status === "UP" ? link.changedAt : null;
+    if (!upSince) {
+      return false;
+    }
+
+    return now.getTime() - upSince.getTime() >= graceMs;
   }
 
   /** DEVICE_STALE이 열리고 풀릴 때는 장비 rev도 올려 화면의 stale 표시를 바꾼다. */
