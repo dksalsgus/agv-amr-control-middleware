@@ -16,6 +16,7 @@ import { RestConnectionConfig } from "./providers/rest-link.types";
 import { RobotStateProvider } from "./providers/robot-state.provider";
 import { SeqJudgeProvider } from "./providers/seq-judge.provider";
 import { HistoryQueueProvider } from "./providers/history-queue.provider";
+import { IngestMetricsProvider } from "./providers/ingest-metrics.provider";
 import { TelemetryProvider } from "./providers/telemetry.provider";
 import { RobotTelemetry } from "./providers/telemetry.types";
 import { LinkStateProvider } from "./providers/link-state.provider";
@@ -40,6 +41,7 @@ export class IngestService {
     private readonly seqJudgeProvider: SeqJudgeProvider,
     private readonly telemetryProvider: TelemetryProvider,
     private readonly historyQueueProvider: HistoryQueueProvider,
+    private readonly ingestMetricsProvider: IngestMetricsProvider,
     private readonly linkStateProvider: LinkStateProvider,
     private readonly logger: AppLogger,
   ) {
@@ -182,7 +184,12 @@ export class IngestService {
       connection.config as MqttConnectionConfig,
       {
         onMessage: async (raw) => {
-          await this.handleRaw(connection.id, adapter, raw);
+          await this.handleRaw(
+            connection.id,
+            this.toLabel(connection),
+            adapter,
+            raw,
+          );
         },
         onLinkChange: async (up) => {
           if (up) {
@@ -214,7 +221,12 @@ export class IngestService {
 
     await this.linkStateProvider.markUp(connection.id, label);
     for (const raw of raws) {
-      await this.handleRaw(connection.id, adapter, raw);
+      await this.handleRaw(
+        connection.id,
+        this.toLabel(connection),
+        adapter,
+        raw,
+      );
     }
   }
 
@@ -255,6 +267,7 @@ export class IngestService {
   /** 메모리 반영을 먼저 끝내고 이력 기록을 기다린다. DB가 느려도 조회는 최신 상태를 본다. */
   private async handleRaw(
     connectionId: string,
+    label: string,
     adapter: VendorAdapter<unknown>,
     raw: unknown,
   ): Promise<void> {
@@ -263,7 +276,7 @@ export class IngestService {
 
     const queue = this.findQueue(connectionId);
     const accepted = await queue.run(() =>
-      this.applyReadings(connectionId, readings, receivedTs),
+      this.applyReadings(connectionId, label, readings, receivedTs),
     );
 
     await this.historyQueueProvider.addTelemetry(accepted);
@@ -271,6 +284,7 @@ export class IngestService {
 
   private async applyReadings(
     connectionId: string,
+    label: string,
     readings: RobotReading[],
     receivedTs: Date,
   ): Promise<RobotTelemetry[]> {
@@ -279,6 +293,7 @@ export class IngestService {
     for (const reading of readings) {
       const telemetry = await this.applyReading(
         connectionId,
+        label,
         reading,
         receivedTs,
       );
@@ -305,6 +320,7 @@ export class IngestService {
   /** seq 판정을 통과하면 메모리에 반영하고 기록할 이력을 돌려준다. */
   private async applyReading(
     connectionId: string,
+    label: string,
     reading: RobotReading,
     receivedTs: Date,
   ): Promise<RobotTelemetry | null> {
@@ -317,6 +333,12 @@ export class IngestService {
     }
 
     const judgement = await this.seqJudgeProvider.judge(entry.state, reading);
+    await this.ingestMetricsProvider.record(
+      label,
+      judgement,
+      reading.sourceTs,
+      receivedTs,
+    );
     if (!judgement.accept) {
       return null;
     }

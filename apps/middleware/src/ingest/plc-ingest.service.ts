@@ -10,6 +10,7 @@ import {
   ModbusRawMessage,
 } from "./providers/modbus-link.types";
 import { HistoryQueueProvider } from "./providers/history-queue.provider";
+import { IngestMetricsProvider } from "./providers/ingest-metrics.provider";
 import { PlcEventProvider } from "./providers/plc-event.provider";
 import { PlcPointChange } from "./providers/plc-event.types";
 import { LinkStateProvider } from "./providers/link-state.provider";
@@ -30,6 +31,7 @@ export class PlcIngestService {
     private readonly plcPointStateProvider: PlcPointStateProvider,
     private readonly plcEventProvider: PlcEventProvider,
     private readonly historyQueueProvider: HistoryQueueProvider,
+    private readonly ingestMetricsProvider: IngestMetricsProvider,
     private readonly linkStateProvider: LinkStateProvider,
     private readonly logger: AppLogger,
   ) {
@@ -185,11 +187,17 @@ export class PlcIngestService {
 
     const last = await this.plcPointStateProvider.findLastRead(device.deviceId);
     const judgement = await this.seqJudgeProvider.judge(last, reading);
+    const receivedTs = new Date();
+    await this.ingestMetricsProvider.record(
+      `${connection.vendorCode} ${connection.protocol}`,
+      judgement,
+      reading.sourceTs,
+      receivedTs,
+    );
     if (!judgement.accept) {
       return;
     }
 
-    const receivedTs = new Date();
     await this.plcPointStateProvider.updateLastRead(device.deviceId, {
       seq: reading.seq,
       sourceTs: reading.sourceTs,
