@@ -18,6 +18,7 @@ import { IngestService } from "./ingest.service";
 import { PlcIngestService } from "./plc-ingest.service";
 import { ConnectionProvider } from "./providers/connection.provider";
 import { HistoryQueueProvider } from "./providers/history-queue.provider";
+import { IngestMetricsProvider } from "./providers/ingest-metrics.provider";
 import { LinkStateProvider } from "./providers/link-state.provider";
 import { ModbusLinkProvider } from "./providers/modbus-link.provider";
 import { MqttLinkProvider } from "./providers/mqtt-link.provider";
@@ -56,6 +57,7 @@ import { RestClientRepository } from "./repositories/rest-client.repository";
     HistoryProcessor,
     HistoryService,
     HistoryQueueProvider,
+    IngestMetricsProvider,
     ConnectionProvider,
     LinkStateProvider,
     ModbusLinkProvider,
