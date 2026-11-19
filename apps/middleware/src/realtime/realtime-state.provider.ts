@@ -3,6 +3,8 @@ import { LinkStateEntry, LinkStatus } from "../state/link-state";
 import { LinkStateRepository } from "../state/link-state.repository";
 import { PlcDeviceLastRead, PlcPointEntry } from "../state/plc-point-state";
 import { PlcPointStateRepository } from "../state/plc-point-state.repository";
+import { RemovedEntity } from "../state/removed-entity";
+import { RemovedEntityRepository } from "../state/removed-entity.repository";
 import { RevisionRepository } from "../state/revision.repository";
 import { RobotEntry } from "../state/robot-state";
 import { RobotStateRepository } from "../state/robot-state.repository";
@@ -14,6 +16,7 @@ export class RealtimeStateProvider {
     private readonly robotStateRepository: RobotStateRepository,
     private readonly plcPointStateRepository: PlcPointStateRepository,
     private readonly linkStateRepository: LinkStateRepository,
+    private readonly removedEntityRepository: RemovedEntityRepository,
   ) {}
 
   async findEpoch(): Promise<string> {
@@ -34,6 +37,10 @@ export class RealtimeStateProvider {
 
   async findLinks(): Promise<LinkStateEntry[]> {
     return await this.linkStateRepository.findAll();
+  }
+
+  async findRemovedAfter(rev: number): Promise<RemovedEntity[]> {
+    return await this.removedEntityRepository.findAfter(rev);
   }
 
   async findLinkStatus(connectionId: string): Promise<LinkStatus> {
