@@ -7,18 +7,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum vendors_connections_protocol {
-  MQTT
-  REST
-  MODBUS_TCP
-}
-
-enum vendors_connections_devices_type {
-  AMR
-  AGV
-  PLC
-}
-
 /// 제조사. code로 코드의 어댑터 class를 찾는다.
 model vendors {
   id         String   @id @default(uuid()) @db.Uuid
@@ -31,15 +19,15 @@ model vendors {
 
 /// 연결 설정. 행 하나가 어댑터 인스턴스 하나다.
 model vendors_connections {
-  id         String                       @id @default(uuid()) @db.Uuid
-  vendors_id String                       @db.Uuid
-  name       String                       @unique
-  protocol   vendors_connections_protocol
-  enabled    Boolean                      @default(true)
+  id         String   @id @default(uuid()) @db.Uuid
+  vendors_id String   @db.Uuid
+  name       String   @unique
+  protocol   String   @db.VarChar(20)
+  enabled    Boolean  @default(true)
   config     Json
-  version    Int                          @default(1)
-  created_at DateTime                     @default(now()) @db.Timestamptz
-  updated_at DateTime                     @default(now()) @updatedAt @db.Timestamptz
+  version    Int      @default(1)
+  created_at DateTime @default(now()) @db.Timestamptz
+  updated_at DateTime @default(now()) @updatedAt @db.Timestamptz
 
   vendors                     vendors                       @relation(fields: [vendors_id], references: [id])
   vendors_connections_devices vendors_connections_devices[]
@@ -47,13 +35,13 @@ model vendors_connections {
 
 /// 로봇과 PLC 장비. id가 공통 모델의 deviceId다.
 model vendors_connections_devices {
-  id                     String                           @id @default(uuid()) @db.Uuid
-  vendors_connections_id String                           @db.Uuid
+  id                     String   @id @default(uuid()) @db.Uuid
+  vendors_connections_id String   @db.Uuid
   external_id            String
-  type                   vendors_connections_devices_type
+  type                   String   @db.VarChar(20)
   name                   String
-  enabled                Boolean                          @default(true)
-  created_at             DateTime                         @default(now()) @db.Timestamptz
+  enabled                Boolean  @default(true)
+  created_at             DateTime @default(now()) @db.Timestamptz
 
   vendors_connections                    vendors_connections                      @relation(fields: [vendors_connections_id], references: [id])
   vendors_connections_devices_telemetry  vendors_connections_devices_telemetry[]
@@ -62,27 +50,19 @@ model vendors_connections_devices {
   @@unique([vendors_connections_id, external_id])
 }
 
-enum vendors_connections_devices_telemetry_op_state {
-  IDLE
-  MOVING
-  CHARGING
-  PAUSED
-  ERROR
-}
-
 /// 받아들인 로봇 상태 전부. 초당 90행.
 model vendors_connections_devices_telemetry {
-  id                             BigInt                                         @id @default(autoincrement())
-  vendors_connections_devices_id String                                         @db.Uuid
+  id                             BigInt   @id @default(autoincrement())
+  vendors_connections_devices_id String   @db.Uuid
   seq                            BigInt
-  source_ts                      DateTime                                       @db.Timestamptz
-  received_ts                    DateTime                                       @db.Timestamptz
-  x                              Float                                          @db.Real
-  y                              Float                                          @db.Real
-  theta                          Float                                          @db.Real
-  speed                          Float                                          @db.Real
-  battery_pct                    Int                                            @db.SmallInt
-  op_state                       vendors_connections_devices_telemetry_op_state
+  source_ts                      DateTime @db.Timestamptz
+  received_ts                    DateTime @db.Timestamptz
+  x                              Float    @db.Real
+  y                              Float    @db.Real
+  theta                          Float    @db.Real
+  speed                          Float    @db.Real
+  battery_pct                    Int      @db.SmallInt
+  op_state                       String   @db.VarChar(20)
   error_code                     String?
   loaded                         Boolean
 
@@ -91,22 +71,15 @@ model vendors_connections_devices_telemetry {
   @@index([vendors_connections_devices_id, source_ts(sort: Desc)])
 }
 
-enum vendors_connections_devices_plc_points_type {
-  DOOR
-  INTERSECTION
-  ESTOP
-  GENERIC
-}
-
 /// PLC 16점의 의미.
 model vendors_connections_devices_plc_points {
-  id                             String                                      @id @default(uuid()) @db.Uuid
-  vendors_connections_devices_id String                                      @db.Uuid
-  point_no                       Int                                         @db.SmallInt
+  id                             String  @id @default(uuid()) @db.Uuid
+  vendors_connections_devices_id String  @db.Uuid
+  point_no                       Int     @db.SmallInt
   name                           String
-  type                           vendors_connections_devices_plc_points_type
+  type                           String  @db.VarChar(20)
   normal_value                   Boolean
-  alarm_on_abnormal              Boolean                                     @default(false)
+  alarm_on_abnormal              Boolean @default(false)
 
   vendors_connections_devices                   vendors_connections_devices                     @relation(fields: [vendors_connections_devices_id], references: [id])
   vendors_connections_devices_plc_points_events vendors_connections_devices_plc_points_events[]

@@ -1,4 +1,12 @@
-export type PlcPointType = "DOOR" | "INTERSECTION" | "ESTOP" | "GENERIC";
+/** plc_points.type 컬럼(varchar)의 허용값 */
+export const PLC_POINT_TYPES = [
+  "DOOR",
+  "INTERSECTION",
+  "ESTOP",
+  "GENERIC",
+] as const;
+
+export type PlcPointType = (typeof PLC_POINT_TYPES)[number];
 
 export type PlcPoint = {
   pointId: string;

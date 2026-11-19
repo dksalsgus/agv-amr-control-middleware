@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { PlcPoint } from "../../state/plc-point-state";
+import { PlcPoint, PlcPointType } from "../../state/plc-point-state";
 import { RobotDevice } from "../../state/robot-state";
 import { VendorsConnectionsRepository } from "../repositories/vendors-connections.repository";
 
@@ -9,10 +9,15 @@ export type PlcDevice = {
   points: PlcPoint[];
 };
 
+/** vendors_connections.protocol 컬럼(varchar)의 허용값 */
+export const CONNECTION_PROTOCOLS = ["MQTT", "REST", "MODBUS_TCP"] as const;
+
+export type ConnectionProtocol = (typeof CONNECTION_PROTOCOLS)[number];
+
 export type IngestConnection = {
   id: string;
   vendorCode: string;
-  protocol: "MQTT" | "REST" | "MODBUS_TCP";
+  protocol: ConnectionProtocol;
   config: unknown;
   robots: RobotDevice[];
   plcDevices: PlcDevice[];
@@ -47,7 +52,7 @@ export class ConnectionProvider {
     return {
       id: row.id,
       vendorCode: row.vendors.code,
-      protocol: row.protocol,
+      protocol: row.protocol as ConnectionProtocol,
       config: row.config,
       robots: devices
         .filter((device) => device.type !== "PLC")
@@ -78,7 +83,7 @@ export class ConnectionProvider {
         connectionId,
         pointNo: point.point_no,
         name: point.name,
-        type: point.type,
+        type: point.type as PlcPointType,
         normalValue: point.normal_value,
         alarmOnAbnormal: point.alarm_on_abnormal,
       })),
