@@ -99,6 +99,8 @@ npx wscat -c ws://localhost:3000/ws
 
 ## 전체 구조
 
+결정마다 이유와 대안은 [설계 근거](docs/design-rationale.md)에 정리했습니다.
+
 ```mermaid
 flowchart LR
   subgraph EMU["에뮬레이터 (apps/emulator)"]
