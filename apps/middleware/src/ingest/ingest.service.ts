@@ -11,13 +11,8 @@ import {
   VendorAdapter,
 } from "./adapters/vendor-adapter";
 import { ConnectionProvider } from "./providers/connection.provider";
+import { DeviceTransportProvider } from "./providers/device-transport.provider";
 import { IngestConnection } from "./providers/connection.types";
-import { ModbusLinkProvider } from "./providers/modbus-link.provider";
-import { ModbusConnectionConfig } from "./providers/modbus-link.types";
-import { MqttLinkProvider } from "./providers/mqtt-link.provider";
-import { MqttConnectionConfig } from "./providers/mqtt-link.types";
-import { RestLinkProvider } from "./providers/rest-link.provider";
-import { RestConnectionConfig } from "./providers/rest-link.types";
 import { RobotStateProvider } from "./providers/robot-state.provider";
 import { HistoryQueueProvider } from "./providers/history-queue.provider";
 import { IngestMetricsProvider } from "./providers/ingest-metrics.provider";
@@ -44,9 +39,7 @@ export class IngestService {
     @Inject(VENDOR_ADAPTERS)
     private readonly adapters: VendorAdapter<unknown>[],
     private readonly connectionProvider: ConnectionProvider,
-    private readonly mqttLinkProvider: MqttLinkProvider,
-    private readonly restLinkProvider: RestLinkProvider,
-    private readonly modbusLinkProvider: ModbusLinkProvider,
+    private readonly deviceTransportProvider: DeviceTransportProvider,
     private readonly robotStateProvider: RobotStateProvider,
     private readonly telemetryProvider: TelemetryProvider,
     private readonly historyQueueProvider: HistoryQueueProvider,
@@ -175,12 +168,8 @@ export class IngestService {
   }
 
   private async stopLink(connection: IngestConnection): Promise<void> {
-    if (connection.protocol === "MQTT") {
-      this.lastReceivedAt.delete(connection.id);
-      await this.mqttLinkProvider.stop(connection.id);
-    } else if (connection.protocol === "MODBUS_TCP") {
-      await this.modbusLinkProvider.disconnect(connection.id);
-    }
+    this.lastReceivedAt.delete(connection.id);
+    await this.deviceTransportProvider.close(connection);
   }
 
   /** 장비별 마지막 이력 행으로 메모리 상태를 되살린다. */
@@ -209,34 +198,30 @@ export class IngestService {
 
     const label = this.toLabel(connection);
     this.lastReceivedAt.set(connection.id, Date.now());
-    await this.mqttLinkProvider.start(
-      connection.id,
-      connection.config as MqttConnectionConfig,
-      {
-        onMessage: async (raw) => {
-          this.lastReceivedAt.set(connection.id, Date.now());
-          await this.linkStateProvider.markUp(connection.id, label);
-          await this.handleRaw(
-            connection.id,
-            this.toLabel(connection),
-            adapter,
-            raw,
-          );
-        },
-        onLinkChange: async (up) => {
-          if (up) {
-            await this.linkStateProvider.markUp(connection.id, label);
-            return;
-          }
-
-          await this.linkStateProvider.markDown(
-            connection.id,
-            label,
-            "브로커 연결 종료",
-          );
-        },
+    await this.deviceTransportProvider.subscribe(connection, {
+      onMessage: async (raw) => {
+        this.lastReceivedAt.set(connection.id, Date.now());
+        await this.linkStateProvider.markUp(connection.id, label);
+        await this.handleRaw(
+          connection.id,
+          this.toLabel(connection),
+          adapter,
+          raw,
+        );
       },
-    );
+      onLinkChange: async (up) => {
+        if (up) {
+          await this.linkStateProvider.markUp(connection.id, label);
+          return;
+        }
+
+        await this.linkStateProvider.markDown(
+          connection.id,
+          label,
+          "브로커 연결 종료",
+        );
+      },
+    });
   }
 
   private async pollOnce(connection: IngestConnection): Promise<void> {
@@ -268,7 +253,7 @@ export class IngestService {
     label: string,
   ): Promise<unknown[] | null> {
     try {
-      return await this.fetchRaws(connection);
+      return await this.deviceTransportProvider.pollRobots(connection);
     } catch (error) {
       await this.linkStateProvider.markFailure(
         connection.id,
@@ -277,23 +262,6 @@ export class IngestService {
       );
       return null;
     }
-  }
-
-  private async fetchRaws(connection: IngestConnection): Promise<unknown[]> {
-    const externalIds = connection.robots.map((robot) => robot.externalId);
-
-    if (connection.protocol === "REST") {
-      const config = connection.config as RestConnectionConfig;
-      return await this.restLinkProvider.poll(config, externalIds);
-    }
-
-    const config = connection.config as ModbusConnectionConfig;
-    const blockNumbers = externalIds.map((externalId) => Number(externalId));
-    return await this.modbusLinkProvider.poll(
-      connection.id,
-      config,
-      blockNumbers,
-    );
   }
 
   /** 메모리 반영을 먼저 끝내고 이력 기록을 기다린다. DB가 느려도 조회는 최신 상태를 본다. */

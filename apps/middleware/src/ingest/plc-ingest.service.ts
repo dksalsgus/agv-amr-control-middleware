@@ -8,7 +8,7 @@ import { PlcAdapter } from "./adapters/plc.adapter";
 import { PlcReading } from "./adapters/plc.types";
 import { ConnectionProvider } from "./providers/connection.provider";
 import { IngestConnection, PlcDevice } from "./providers/connection.types";
-import { ModbusLinkProvider } from "./providers/modbus-link.provider";
+import { DeviceTransportProvider } from "./providers/device-transport.provider";
 import {
   ModbusConnectionConfig,
   ModbusRawMessage,
@@ -30,7 +30,7 @@ export class PlcIngestService {
     @Inject(ingestConfig.KEY)
     private readonly config: ConfigType<typeof ingestConfig>,
     private readonly connectionProvider: ConnectionProvider,
-    private readonly modbusLinkProvider: ModbusLinkProvider,
+    private readonly deviceTransportProvider: DeviceTransportProvider,
     private readonly plcAdapter: PlcAdapter,
     private readonly plcPointStateProvider: PlcPointStateProvider,
     private readonly plcEventProvider: PlcEventProvider,
@@ -66,7 +66,7 @@ export class PlcIngestService {
       if (!current) {
         await this.register(connection);
       } else if (current.version !== connection.version) {
-        await this.modbusLinkProvider.disconnect(current.id);
+        await this.deviceTransportProvider.close(current);
         this.connections.set(connection.id, connection);
         await this.linkStateProvider.register(connection.id);
       }
@@ -86,7 +86,7 @@ export class PlcIngestService {
 
     const config = connection.config as ModbusConnectionConfig;
     const startedAt = Date.now();
-    await this.pollOnce(connection, config);
+    await this.pollOnce(connection);
 
     const retryDelayMs = await this.linkStateProvider.findRetryDelayMs(
       connection.id,
@@ -115,7 +115,7 @@ export class PlcIngestService {
 
   private async close(connection: IngestConnection): Promise<void> {
     this.connections.delete(connection.id);
-    await this.modbusLinkProvider.disconnect(connection.id);
+    await this.deviceTransportProvider.close(connection);
     await this.linkStateProvider.unregister(connection.id);
 
     for (const device of connection.plcDevices) {
@@ -137,12 +137,9 @@ export class PlcIngestService {
     this.logger.log(`PLC 점 ${latestValues.length}개 복구`);
   }
 
-  private async pollOnce(
-    connection: IngestConnection,
-    config: ModbusConnectionConfig,
-  ): Promise<void> {
+  private async pollOnce(connection: IngestConnection): Promise<void> {
     const label = `${connection.vendorCode} ${connection.protocol}`;
-    const raw = await this.tryPollInputBlock(connection, config, label);
+    const raw = await this.tryPollPlc(connection, label);
     if (!raw) {
       return;
     }
@@ -158,16 +155,12 @@ export class PlcIngestService {
   }
 
   /** 실패하면 연결 실패로 세고 null을 돌려준다. */
-  private async tryPollInputBlock(
+  private async tryPollPlc(
     connection: IngestConnection,
-    config: ModbusConnectionConfig,
     label: string,
   ): Promise<ModbusRawMessage | null> {
     try {
-      return await this.modbusLinkProvider.pollInputBlock(
-        connection.id,
-        config,
-      );
+      return await this.deviceTransportProvider.pollPlc(connection);
     } catch (error) {
       await this.linkStateProvider.markFailure(
         connection.id,
