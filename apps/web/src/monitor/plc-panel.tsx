@@ -81,6 +81,30 @@ const PlcDetail = ({ point }: { point?: PlcPoint }) => {
   );
 };
 
+/** 신호가 하나도 없으면 "모두 정상"이 아니라 "신호 없음"이다. */
+const PlcSummaryBadge = (props: { total: number; abnormal: number }) => {
+  if (props.total === 0) {
+    return (
+      <span className="badge" data-tone="neutral">
+        신호 없음
+      </span>
+    );
+  }
+  if (props.abnormal > 0) {
+    return (
+      <span className="badge" data-tone="danger">
+        <Icon name="warn" />
+        비정상 {props.abnormal}
+      </span>
+    );
+  }
+  return (
+    <span className="badge" data-tone="ok">
+      모두 정상
+    </span>
+  );
+};
+
 /** PLC 신호 타일과 고른 신호의 상세 */
 export const PlcPanel = ({ points, selectedId, onSelect }: Props) => {
   const abnormal = points.filter((point) => point.abnormal).length;
@@ -94,16 +118,7 @@ export const PlcPanel = ({ points, selectedId, onSelect }: Props) => {
         </h2>
         <span className="panel-meta">{points.length}점</span>
         <span className="end">
-          {abnormal > 0 ? (
-            <span className="badge" data-tone="danger">
-              <Icon name="warn" />
-              비정상 {abnormal}
-            </span>
-          ) : (
-            <span className="badge" data-tone="ok">
-              모두 정상
-            </span>
-          )}
+          <PlcSummaryBadge total={points.length} abnormal={abnormal} />
         </span>
       </div>
       <div className="skel">
@@ -144,6 +159,12 @@ export const PlcPanel = ({ points, selectedId, onSelect }: Props) => {
             </button>
           ))}
         </div>
+        {points.length === 0 && (
+          <div className="empty">
+            <strong>받는 PLC 신호가 없습니다</strong>
+            PLC 연결이 꺼져 있거나 장비가 등록되지 않았습니다.
+          </div>
+        )}
         <div className="plc-detail" aria-live="polite">
           <PlcDetail point={selected} />
         </div>

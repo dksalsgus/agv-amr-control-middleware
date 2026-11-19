@@ -14,6 +14,9 @@ const LINK_ICON: Record<string, IconName> = {
   UNKNOWN: "question",
 };
 
+/** 꺼진 연결은 수집하지 않아 UP·DOWN이 없다. 정상처럼 보이지 않게 따로 표시한다. */
+const OFF_LABEL = "꺼짐";
+
 /** 연결 목록은 REST로 한 번 받고, UP·DOWN과 바뀐 시각은 실시간 값으로 덮는다. */
 export const ConnectionPanel = ({ connections, links }: Props) => {
   const rows = connections.map((connection) => {
@@ -21,7 +24,9 @@ export const ConnectionPanel = ({ connections, links }: Props) => {
     const changedAt = link ? link.changedAt : connection.linkChangedAt;
     return {
       connection,
-      status: link?.status ?? connection.linkStatus,
+      status: connection.enabled
+        ? (link?.status ?? connection.linkStatus)
+        : OFF_LABEL,
       changedAt: changedAt ? Date.parse(changedAt) : null,
     };
   });
@@ -53,8 +58,11 @@ export const ConnectionPanel = ({ connections, links }: Props) => {
                   {connection.vendorName} · {connection.protocol}
                 </span>
               </div>
-              <span className="badge link-badge od-fixed" data-status={status}>
-                <Icon name={LINK_ICON[status] ?? "question"} />
+              <span
+                className="badge link-badge od-fixed"
+                data-status={status === OFF_LABEL ? "UNKNOWN" : status}
+              >
+                <Icon name={LINK_ICON[status] ?? "x"} />
                 {status}
               </span>
             </div>

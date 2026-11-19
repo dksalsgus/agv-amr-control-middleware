@@ -52,12 +52,14 @@ export const MonitorPage = () => {
   );
   const filters = useMemo(() => ({ vendors, states }), [vendors, states]);
 
+  // 연결을 켜고 끄면 실시간 링크가 생기고 없어진다. 그때 연결 목록(사용 여부)을 다시 받는다.
+  const linkIds = Array.from(view.links.keys()).sort().join(",");
   useEffect(() => {
     connectionsApi
       .findAll()
       .then(setConnections)
       .catch((error: unknown) => console.warn("연결 목록 조회 실패", error));
-  }, []);
+  }, [linkIds]);
 
   const now = useNow(1000);
   const mode = toMonitorMode(view);
