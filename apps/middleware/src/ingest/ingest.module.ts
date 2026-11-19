@@ -17,14 +17,12 @@ import { IngestScheduler } from "./ingest.scheduler";
 import { IngestService } from "./ingest.service";
 import { PlcIngestService } from "./plc-ingest.service";
 import { ConnectionProvider } from "./providers/connection.provider";
+import { DeviceTransportProvider } from "./providers/device-transport.provider";
 import { HistoryQueueProvider } from "./providers/history-queue.provider";
 import { IngestMetricsProvider } from "./providers/ingest-metrics.provider";
 import { LinkStateProvider } from "./providers/link-state.provider";
-import { ModbusLinkProvider } from "./providers/modbus-link.provider";
-import { MqttLinkProvider } from "./providers/mqtt-link.provider";
 import { PlcEventProvider } from "./providers/plc-event.provider";
 import { PlcPointStateProvider } from "./providers/plc-point-state.provider";
-import { RestLinkProvider } from "./providers/rest-link.provider";
 import { RobotStateProvider } from "./providers/robot-state.provider";
 import { TelemetryProvider } from "./providers/telemetry.provider";
 import { ModbusClientRepository } from "./repositories/modbus-client.repository";
@@ -58,12 +56,10 @@ import { RestClientRepository } from "./repositories/rest-client.repository";
     HistoryQueueProvider,
     IngestMetricsProvider,
     ConnectionProvider,
+    DeviceTransportProvider,
     LinkStateProvider,
-    ModbusLinkProvider,
-    MqttLinkProvider,
     PlcEventProvider,
     PlcPointStateProvider,
-    RestLinkProvider,
     RobotStateProvider,
     TelemetryProvider,
     PlcAdapter,
