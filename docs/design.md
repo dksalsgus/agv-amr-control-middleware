@@ -186,7 +186,7 @@ sequenceDiagram
 | speed      | `velocity` (m/s)                                | `speedMmS` (mm/s → ÷1000)            | +8 (uint16, cm/s → ÷100)                       |
 | batteryPct | `battery.soc` (0~1 → ×100)                      | `batteryLevel` (0~100)               | +9 (uint16, %)                                 |
 | opState    | `mode` (idle, driving, charging, paused, fault) | `status` (IDLE, RUN, CHG, STOP, ERR) | +10 (0~4)                                      |
-| errorCode  | `fault.code` (없으면 null)                      | `errorCode` (빈 문자열이면 null)     | +11 (0이면 null)                               |
+| errorCode  | `fault.code` (없으면 null)                      | `errorCode` (빈 문자열이면 null)     | +11 (0이면 null, 아니면 `E` + 숫자)            |
 | loaded     | `payload.loaded`                                | `hasLoad`                            | +12 비트 0                                     |
 
 PLC는 입력 레지스터 0의 비트 0~15에 16점, 1~2에 seq(uint32), 3~5에 발생 시각(uint48 ms)을 담습니다. 값과 seq를 한 요청으로 읽어야 어긋나지 않아서 코일 16개가 아니라 워드 하나에 담았습니다. 제조사 C는 Modbus 한 요청 상한(125레지스터) 안에서 블록을 나눠 읽습니다.

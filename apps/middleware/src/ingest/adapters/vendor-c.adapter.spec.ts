@@ -73,6 +73,6 @@ describe("VendorCAdapter", () => {
     });
 
     expect(reading.opState).toBe("ERROR");
-    expect(reading.errorCode).toBe("31");
+    expect(reading.errorCode).toBe("E31");
   });
 });
