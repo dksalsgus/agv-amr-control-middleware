@@ -12,7 +12,6 @@ import {
 import { PlcEventProvider } from "./providers/plc-event.provider";
 import { PlcPointStateProvider } from "./providers/plc-point-state.provider";
 import { SeqJudgeProvider } from "./providers/seq-judge.provider";
-import { PollTracker } from "./poll-tracker";
 
 /**
  * PLC 수집: 16점을 한 번에 폴링 → seq 판정 → 값이 바뀐 점만 메모리 반영과 이벤트 기록.
@@ -21,7 +20,6 @@ import { PollTracker } from "./poll-tracker";
 @Injectable()
 export class PlcIngestService {
   private readonly logger = new Logger(PlcIngestService.name);
-  private readonly pollTracker = new PollTracker();
   private connections: IngestConnection[] = [];
 
   constructor(
@@ -48,15 +46,25 @@ export class PlcIngestService {
     await this.restoreLatestValues();
   }
 
-  pollDue(now: number) {
-    for (const connection of this.connections) {
-      const config = connection.config as ModbusConnectionConfig;
-      if (!this.pollTracker.isDue(connection.id, config.pollIntervalMs, now)) {
-        continue;
-      }
+  async findPolledConnectionIds(): Promise<string[]> {
+    return this.connections.map((connection) => connection.id);
+  }
 
-      void this.poll(connection, config, now);
+  /** 한 번 폴링하고 다음 폴링까지 기다릴 ms를 돌려준다. 연결이 없으면 null. */
+  async poll(connectionId: string): Promise<number | null> {
+    const connection = this.connections.find(
+      (item) => item.id === connectionId,
+    );
+    if (!connection) {
+      return null;
     }
+
+    const config = connection.config as ModbusConnectionConfig;
+    const startedAt = Date.now();
+    await this.pollOnce(connection, config);
+
+    const elapsedMs = Date.now() - startedAt;
+    return Math.max(0, config.pollIntervalMs - elapsedMs);
   }
 
   /** 점별 마지막 이벤트로 현재 값을 되살린다. seq 기준은 되살리지 않고 첫 수신부터 다시 잡는다. */
@@ -70,13 +78,10 @@ export class PlcIngestService {
     this.logger.log(`PLC 점 ${latestValues.length}개 복구`);
   }
 
-  private async poll(
+  private async pollOnce(
     connection: IngestConnection,
     config: ModbusConnectionConfig,
-    now: number,
   ) {
-    this.pollTracker.begin(connection.id, now);
-
     try {
       const raw = await this.modbusLinkProvider.pollInputBlock(
         connection.id,
@@ -86,8 +91,6 @@ export class PlcIngestService {
       this.applyReading(connection, reading);
     } catch (error) {
       this.logger.warn(`PLC 폴링 실패 (${connection.id}): ${String(error)}`);
-    } finally {
-      this.pollTracker.end(connection.id, now);
     }
   }
 
