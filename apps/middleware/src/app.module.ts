@@ -1,9 +1,11 @@
 import { Module } from "@nestjs/common";
 import { AlarmModule } from "./alarm/alarm.module";
+import { AuthModule } from "./auth/auth.module";
 import { ConfigModule } from "@nestjs/config";
 import { ScheduleModule } from "@nestjs/schedule";
 import { alarmConfig } from "./config/alarm.config";
 import { appConfig } from "./config/app.config";
+import { authConfig } from "./config/auth.config";
 import { databaseConfig } from "./config/database.config";
 import { ingestConfig } from "./config/ingest.config";
 import { linkConfig } from "./config/link.config";
@@ -30,6 +32,7 @@ import { RealtimeModule } from "./realtime/realtime.module";
         staleConfig,
         realtimeConfig,
         alarmConfig,
+        authConfig,
       ],
     }),
     ScheduleModule.forRoot(),
@@ -42,6 +45,7 @@ import { RealtimeModule } from "./realtime/realtime.module";
     ConnectionModule,
     RealtimeModule,
     AlarmModule,
+    AuthModule,
   ],
 })
 export class AppModule {}

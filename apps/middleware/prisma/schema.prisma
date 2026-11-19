@@ -103,15 +103,41 @@ model vendors_connections_devices_plc_points_events {
 
 /// 연결 기록과 알람을 쌓는 시스템 로그. 추가만 한다.
 model logs {
-  id          BigInt   @id @default(autoincrement())
-  type        String   @db.VarChar(20)
-  level       String   @db.VarChar(10)
-  alarm_code  String?  @db.VarChar(20)
-  target_type String   @db.VarChar(20)
-  target_id   String   @db.Uuid
-  message     String
-  created_at  DateTime @default(now()) @db.Timestamptz
+  id             BigInt   @id @default(autoincrement())
+  type           String   @db.VarChar(20)
+  level          String   @db.VarChar(10)
+  alarm_code     String?  @db.VarChar(20)
+  target_type    String   @db.VarChar(20)
+  target_id      String   @db.Uuid
+  message        String
+  /// 알람을 확인한 사용자. ALARM_ACKED일 때만
+  roles_users_id String?  @db.Uuid
+  created_at     DateTime @default(now()) @db.Timestamptz
+
+  roles_users roles_users? @relation(fields: [roles_users_id], references: [id])
 
   @@index([created_at(sort: Desc)])
   @@index([target_type, target_id, created_at(sort: Desc)])
+}
+
+/// 권한 역할. code는 VIEWER(조회), OPERATOR(알람 확인), ADMIN(연결 설정 변경)
+model roles {
+  id         String   @id @default(uuid()) @db.Uuid
+  code       String   @unique @db.VarChar(20)
+  name       String
+  created_at DateTime @default(now()) @db.Timestamptz
+
+  roles_users roles_users[]
+}
+
+/// 데모 계정. password_hash는 argon2id
+model roles_users {
+  id            String   @id @default(uuid()) @db.Uuid
+  roles_id      String   @db.Uuid
+  username      String   @unique
+  password_hash String
+  created_at    DateTime @default(now()) @db.Timestamptz
+
+  roles roles  @relation(fields: [roles_id], references: [id])
+  logs  logs[]
 }

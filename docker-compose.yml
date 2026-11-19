@@ -27,6 +27,7 @@ services:
     environment:
       DATABASE_URL: postgresql://middleware:middleware@postgres:5432/middleware
       PORT: "3000"
+      JWT_SECRET: ${JWT_SECRET:-demo-secret-change-me}
     ports:
       - "3000:3000"
     depends_on:
