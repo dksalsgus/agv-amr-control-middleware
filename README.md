@@ -35,7 +35,7 @@ docker compose exec mosquitto mosquitto_sub -t 'vendorA/amr/+/state' -v
 # 제조사 B 로봇 30대의 REST 응답 (미들웨어가 1초마다 폴링한다)
 curl http://localhost:8081/api/vehicles
 
-# 미들웨어가 모은 로봇의 최신 상태 (A 40대 + B 30대)
+# 미들웨어가 모은 로봇의 최신 상태 (A 40대 + B 30대 + C 20대)
 curl http://localhost:3000/robots
 curl http://localhost:3000/robots/{id}
 
