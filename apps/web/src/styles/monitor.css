@@ -1,4 +1,4 @@
-/* docs/design/monitor.html의 관제 화면 전용 스타일. 다른 화면과 겹치는 이름이 있어 화면 루트 아래로 묶는다. */
+/* 관제 화면 전용 스타일. 다른 화면과 겹치는 이름이 있어 화면 루트 아래로 묶는다. */
 @keyframes shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
 @keyframes indet { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
 

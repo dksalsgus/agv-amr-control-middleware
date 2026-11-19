@@ -37,7 +37,7 @@ const LIVE_PILL: Record<MonitorMode, LivePill> = {
   linkDown: { tone: "warn", text: "실시간 수신 · 연결 DOWN", pulse: true },
 };
 
-/** 관제 화면. 디자인 기준은 docs/design/monitor.html */
+/** 관제 화면 */
 export const MonitorPage = () => {
   const view = useRealtime();
   const { toasts, push } = useToasts();

@@ -1,4 +1,4 @@
-/* docs/design(Open Design)의 공통 토큰과 컴포넌트. 값은 디자인 파일에서 그대로 옮긴다. */
+/* Open Design 디자인의 공통 토큰과 컴포넌트. 값은 디자인에서 그대로 옮겼다. */
 /* OD-LAYOUT-PRIMITIVES v1 — structure only: display, flex/grid, overflow, wrapping, ratio, geometry.
    Put this @layer first; product CSS outside the layer wins ordinary layout rules.
    Native hidden and closed-dialog states take precedence over component display rules. */

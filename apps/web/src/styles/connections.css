@@ -1,4 +1,4 @@
-/* docs/design/connections.html의 연결 설정 화면 전용 스타일. 다른 화면과 겹치는 이름이 있어 화면 루트 아래로 묶는다. */
+/* 연결 설정 화면 전용 스타일. 다른 화면과 겹치는 이름이 있어 화면 루트 아래로 묶는다. */
 @keyframes spin { to { transform: rotate(360deg); } }
 @keyframes modal-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 

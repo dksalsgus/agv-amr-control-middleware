@@ -32,7 +32,7 @@ const gotoCard = (group: FaultGroup) => {
   document.getElementById(`t-${group}`)?.focus({ preventScroll: true });
 };
 
-/** 장애 주입 화면. 디자인 기준은 docs/design/faults.html */
+/** 장애 주입 화면 */
 export const FaultsPage = () => {
   const view = useRealtime();
   const { toasts, push } = useToasts();

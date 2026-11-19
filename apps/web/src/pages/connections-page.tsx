@@ -26,7 +26,7 @@ const focusField = (key: string) => {
   element?.focus();
 };
 
-/** 연결 설정 화면. 디자인 기준은 docs/design/connections.html */
+/** 연결 설정 화면 */
 export const ConnectionsPage = () => {
   const view = useRealtime();
   const { toasts, push } = useToasts();

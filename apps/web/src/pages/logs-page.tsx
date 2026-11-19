@@ -17,7 +17,7 @@ const LIVE_PILL: Record<SocketStatus, LivePill> = {
   DISCONNECTED: { tone: "danger", text: "서버 연결 끊김", pulse: false },
 };
 
-/** 이력 화면. 디자인 기준은 docs/design/logs.html */
+/** 이력 화면 */
 export const LogsPage = () => {
   const view = useRealtime();
   const history = useLogHistory(view);
