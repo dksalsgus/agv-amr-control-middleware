@@ -1,7 +1,8 @@
+import { BullModule } from "@nestjs/bullmq";
 import { Module } from "@nestjs/common";
 import { AlarmModule } from "./alarm/alarm.module";
 import { AuthModule } from "./auth/auth.module";
-import { ConfigModule } from "@nestjs/config";
+import { ConfigModule, ConfigType } from "@nestjs/config";
 import { ScheduleModule } from "@nestjs/schedule";
 import { alarmConfig } from "./config/alarm.config";
 import { appConfig } from "./config/app.config";
@@ -9,6 +10,7 @@ import { authConfig } from "./config/auth.config";
 import { databaseConfig } from "./config/database.config";
 import { ingestConfig } from "./config/ingest.config";
 import { linkConfig } from "./config/link.config";
+import { queueConfig } from "./config/queue.config";
 import { realtimeConfig } from "./config/realtime.config";
 import { staleConfig } from "./config/stale.config";
 import { ConnectionModule } from "./connection/connection.module";
@@ -33,7 +35,14 @@ import { RealtimeModule } from "./realtime/realtime.module";
         realtimeConfig,
         alarmConfig,
         authConfig,
+        queueConfig,
       ],
+    }),
+    BullModule.forRootAsync({
+      inject: [queueConfig.KEY],
+      useFactory: (config: ConfigType<typeof queueConfig>) => ({
+        connection: { host: config.redisHost, port: config.redisPort },
+      }),
     }),
     ScheduleModule.forRoot(),
     LoggerModule,

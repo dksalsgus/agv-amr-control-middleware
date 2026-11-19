@@ -10,10 +10,10 @@ import {
 export class VendorsConnectionsDevicesTelemetryRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async insert(
-    data: Prisma.vendors_connections_devices_telemetryUncheckedCreateInput,
-  ): Promise<TelemetryRow> {
-    return await this.prisma.vendors_connections_devices_telemetry.create({
+  async insertMany(
+    data: Prisma.vendors_connections_devices_telemetryCreateManyInput[],
+  ): Promise<void> {
+    await this.prisma.vendors_connections_devices_telemetry.createMany({
       data,
     });
   }

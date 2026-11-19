@@ -10,14 +10,12 @@ import {
 export class VendorsConnectionsDevicesPlcPointsEventsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async insert(
-    data: Prisma.vendors_connections_devices_plc_points_eventsUncheckedCreateInput,
-  ): Promise<PlcPointEventRow> {
-    return await this.prisma.vendors_connections_devices_plc_points_events.create(
-      {
-        data,
-      },
-    );
+  async insertMany(
+    data: Prisma.vendors_connections_devices_plc_points_eventsCreateManyInput[],
+  ): Promise<void> {
+    await this.prisma.vendors_connections_devices_plc_points_events.createMany({
+      data,
+    });
   }
 
   /** 점별 마지막 이벤트. 그 값이 곧 현재 값이라 재시작 복구에 쓴다. */

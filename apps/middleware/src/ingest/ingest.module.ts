@@ -7,6 +7,8 @@ import { VendorAAdapter } from "./adapters/vendor-a.adapter";
 import { VendorBAdapter } from "./adapters/vendor-b.adapter";
 import { VendorCAdapter } from "./adapters/vendor-c.adapter";
 import { VENDOR_ADAPTERS, VendorAdapter } from "./adapters/vendor-adapter";
+import { HistoryProcessor } from "./history.processor";
+import { HistoryService } from "./history.service";
 import { IngestScheduler } from "./ingest.scheduler";
 import { IngestService } from "./ingest.service";
 import { PlcIngestService } from "./plc-ingest.service";
@@ -30,6 +32,8 @@ import { RestClientRepository } from "./repositories/rest-client.repository";
     IngestScheduler,
     IngestService,
     PlcIngestService,
+    HistoryProcessor,
+    HistoryService,
     ConnectionProvider,
     LinkStateProvider,
     ModbusLinkProvider,

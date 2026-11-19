@@ -17,7 +17,7 @@ Docker와 Docker Compose만 있으면 됩니다.
 docker compose up --build
 ```
 
-PostgreSQL, MQTT 브로커, 에뮬레이터, 미들웨어 네 컨테이너가 뜹니다. 미들웨어는 시작할 때 테이블을 만들고(`prisma migrate deploy`) 데모 데이터(제조사, 연결, 장비)를 넣습니다. 시드는 여러 번 실행해도 결과가 같습니다.
+PostgreSQL, Redis, MQTT 브로커, 에뮬레이터, 미들웨어 다섯 컨테이너가 뜹니다. 미들웨어는 시작할 때 테이블을 만들고(`prisma migrate deploy`) 데모 데이터(제조사, 연결, 장비)를 넣습니다. 시드는 여러 번 실행해도 결과가 같습니다.
 
 | 서비스                | 주소                                     |
 | --------------------- | ---------------------------------------- |
@@ -27,6 +27,7 @@ PostgreSQL, MQTT 브로커, 에뮬레이터, 미들웨어 네 컨테이너가 �
 | 에뮬레이터 C (Modbus) | localhost:5020                           |
 | 에뮬레이터 PLC        | localhost:5021                           |
 | PostgreSQL            | localhost:5432 (middleware / middleware) |
+| Redis (이력 저장 큐)  | localhost:6379                           |
 | MQTT 브로커           | localhost:1883                           |
 
 ### 동작 확인
@@ -124,6 +125,7 @@ flowchart LR
   end
 
   DB[("PostgreSQL<br/>설정 + 이력")]
+  RQ[("Redis<br/>이력 저장 큐 (BullMQ)")]
   WEB["관제 웹<br/>(TODO)"]
 
   A -- "publish 1초" --> MQ -- "subscribe (푸시)" --> ING
@@ -131,7 +133,7 @@ flowchart LR
   C -- "레지스터 읽기 1초" --> ING
   P -- "레지스터 읽기 500ms" --> ING
   ING --> MEM
-  ING -- "이력 INSERT" --> DB
+  ING -- "이력 저장 작업" --> RQ -- "작업이 묶음 INSERT" --> DB
   DB -- "연결 설정" --> ING
   MEM --> API
   MEM --> WS
@@ -139,8 +141,9 @@ flowchart LR
   WS -- "snapshot / delta" --> WEB
 ```
 
-- 미들웨어는 프로세스 하나입니다. 수집부터 WebSocket 전달까지 내부 브로커 없이 함수 호출로 잇습니다.
+- 미들웨어는 프로세스 하나입니다. 수집부터 WebSocket 전달까지 함수 호출로 잇습니다.
 - **현재 상태는 메모리**, **DB에는 이력만 INSERT**합니다. 서버를 재시작하면 이력의 장비별 마지막 행으로 메모리를 되살립니다.
+- 이력 저장만 Redis + BullMQ 작업으로 넘깁니다. DB가 멈추면 작업이 Redis에 쌓였다가 2초 간격으로(최대 30분) 다시 시도되어 빠진 이력이 채워집니다. Redis가 멈추면 그동안의 이력만 빠지고 수집과 화면은 그대로입니다.
 
 ### 미들웨어 계층
 
@@ -174,12 +177,14 @@ sequenceDiagram
   participant AD as 제조사 어댑터
   participant SQ as seq 판정
   participant M as 메모리 상태
+  participant Q as Redis 큐
   participant DB as PostgreSQL
   R->>AD: 원본 (제조사별 필드·단위)
   AD->>SQ: 공통 모델 (m, 도, %, ms)
   alt 받아들임
     SQ->>M: 현재 상태 갱신, rev + 1
-    M-->>DB: 이력 INSERT
+    M-->>Q: 이력 저장 작업
+    Q-->>DB: 묶음 INSERT (실패하면 다시 시도)
   else 중복 · 늦게 옴
     SQ--xSQ: 버림 (이력에도 넣지 않음)
   end

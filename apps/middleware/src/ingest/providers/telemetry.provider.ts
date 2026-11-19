@@ -1,17 +1,20 @@
 import { Injectable } from "@nestjs/common";
 import { VendorsConnectionsDevicesTelemetryRepository } from "../../history/vendors-connections-devices-telemetry.repository";
+import { HistoryQueueRepository } from "../../history/history-queue.repository";
+import { TelemetryJobRow } from "../../history/history-queue.types";
 import { TelemetryRow } from "../../history/vendors-connections-devices-telemetry.types";
 import { RobotOpState, RobotState } from "../../state/robot-state";
 import { RobotTelemetry } from "./telemetry.types";
 import { AppLogger } from "../../logger/app-logger";
 
-/** 로봇 이력 기록과 재시작 복구. 기록 실패는 밖으로 던지지 않는다(DB 장애가 수집을 멈추면 안 됨). */
+/** 로봇 이력 기록과 재시작 복구. 큐에 넣기 실패는 밖으로 던지지 않는다(Redis 장애가 수집을 멈추면 안 됨). */
 @Injectable()
 export class TelemetryProvider {
   private failing = false;
 
   constructor(
     private readonly telemetryRepository: VendorsConnectionsDevicesTelemetryRepository,
+    private readonly historyQueueRepository: HistoryQueueRepository,
     private readonly logger: AppLogger,
   ) {
     this.logger.setContext(TelemetryProvider.name);
@@ -22,17 +25,37 @@ export class TelemetryProvider {
       return;
     }
 
-    const results = await Promise.allSettled(
-      telemetries.map((telemetry) => this.insert(telemetry)),
-    );
-
-    const failure = results.find((result) => result.status === "rejected");
-    if (failure) {
-      this.markFailed(failure.reason);
+    try {
+      await this.historyQueueRepository.add({
+        kind: "TELEMETRY",
+        rows: telemetries.map((telemetry) => this.toJobRow(telemetry)),
+      });
+    } catch (error) {
+      this.markFailed(error);
       return;
     }
 
     this.markRecovered();
+  }
+
+  /** 큐 작업이 부른다. 실패는 던져서 큐가 다시 시도하게 한다. */
+  async saveAll(rows: TelemetryJobRow[]): Promise<void> {
+    await this.telemetryRepository.insertMany(
+      rows.map((row) => ({
+        vendors_connections_devices_id: row.deviceId,
+        seq: row.seq,
+        source_ts: new Date(row.sourceTs),
+        received_ts: new Date(row.receivedTs),
+        x: row.x,
+        y: row.y,
+        theta: row.theta,
+        speed: row.speed,
+        battery_pct: row.batteryPct,
+        op_state: row.opState,
+        error_code: row.errorCode,
+        loaded: row.loaded,
+      })),
+    );
   }
 
   async findLatestStates(): Promise<RobotTelemetry[]> {
@@ -49,23 +72,23 @@ export class TelemetryProvider {
     return latest;
   }
 
-  private async insert(telemetry: RobotTelemetry): Promise<void> {
+  private toJobRow(telemetry: RobotTelemetry): TelemetryJobRow {
     const state = telemetry.state;
 
-    await this.telemetryRepository.insert({
-      vendors_connections_devices_id: telemetry.deviceId,
+    return {
+      deviceId: telemetry.deviceId,
       seq: state.seq,
-      source_ts: state.sourceTs,
-      received_ts: state.receivedTs,
+      sourceTs: state.sourceTs.toISOString(),
+      receivedTs: state.receivedTs.toISOString(),
       x: state.x,
       y: state.y,
       theta: state.theta,
       speed: state.speed,
-      battery_pct: state.batteryPct,
-      op_state: state.opState,
-      error_code: state.errorCode,
+      batteryPct: state.batteryPct,
+      opState: state.opState,
+      errorCode: state.errorCode,
       loaded: state.loaded,
-    });
+    };
   }
 
   private toState(row: TelemetryRow): RobotState {
@@ -87,7 +110,7 @@ export class TelemetryProvider {
   /** 실패 시작과 회복 때만 로그를 남긴다. */
   private markFailed(error: unknown): void {
     if (!this.failing) {
-      this.logger.warn(`이력 기록 실패: ${String(error)}`);
+      this.logger.warn(`이력 큐 넣기 실패: ${String(error)}`);
     }
 
     this.failing = true;
@@ -95,7 +118,7 @@ export class TelemetryProvider {
 
   private markRecovered(): void {
     if (this.failing) {
-      this.logger.log("이력 기록 회복");
+      this.logger.log("이력 큐 넣기 회복");
     }
 
     this.failing = false;
