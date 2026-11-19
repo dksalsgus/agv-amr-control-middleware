@@ -5,6 +5,8 @@ import { Robot } from "./robot";
  */
 export class RobotFleet {
   readonly robots: Robot[];
+  /** 마지막으로 상태를 갱신한 시각. 폴링 방식 제조사가 발생 시각으로 쓴다. */
+  sampledAt = new Date();
 
   constructor(prefix: string, count: number) {
     this.robots = Array.from(
@@ -18,5 +20,7 @@ export class RobotFleet {
     for (const robot of this.robots) {
       robot.step(dtSec);
     }
+
+    this.sampledAt = new Date();
   }
 }
