@@ -10,7 +10,7 @@ import { IngestService } from "./ingest.service";
 import { PlcIngestService } from "./plc-ingest.service";
 
 /**
- * 수집을 시작하고 주기 작업을 돌린다. 연결 설정은 시작할 때 DB에서 읽고, 그 뒤로는 연결 설정 API가 저장할 때만 다시 맞춘다.
+ * 수집을 시작하고 주기 작업을 돌린다. 연결을 붙이고 떼는 일은 수집 Service가 맡고, 여기서는 폴링 차례만 관리한다.
  * 연결별 폴링은 간격이 매번 달라(DOWN이면 늘어남) 짧은 주기로 돌며 다음 폴링 시각이 된 연결만 폴링한다.
  */
 @Injectable()
@@ -18,9 +18,6 @@ export class IngestScheduler implements OnApplicationBootstrap {
   /** 연결 id별 폴링 차례 */
   private readonly polls = new Map<string, PollJob>();
   private started = false;
-  private syncing = false;
-  /** 맞추는 동안 또 저장되면 끝난 뒤 한 번 더 맞춘다. */
-  private syncAgain = false;
 
   constructor(
     private readonly ingestService: IngestService,
@@ -35,42 +32,6 @@ export class IngestScheduler implements OnApplicationBootstrap {
     await this.ingestService.start();
     await this.plcIngestService.start();
     this.started = true;
-    if (this.syncAgain) {
-      await this.reloadConnections();
-    }
-  }
-
-  /**
-   * 연결 설정을 저장한 뒤 부른다. DB 설정과 맞춰 바뀐 연결만 다시 붙는다.
-   * 시작 중이거나 이미 맞추는 중이면 끝난 뒤 다시 맞추도록 표시만 한다.
-   */
-  async reloadConnections(): Promise<void> {
-    const isBusy = !this.started || this.syncing;
-    if (isBusy) {
-      this.syncAgain = true;
-      return;
-    }
-
-    this.syncing = true;
-    try {
-      await this.syncUntilSettled();
-    } finally {
-      this.syncing = false;
-    }
-  }
-
-  private async syncUntilSettled(): Promise<void> {
-    this.syncAgain = false;
-    try {
-      await this.ingestService.sync();
-      await this.plcIngestService.sync();
-    } catch (error) {
-      this.logger.warn(`설정 반영 실패: ${String(error)}`);
-    }
-
-    if (this.syncAgain) {
-      await this.syncUntilSettled();
-    }
   }
 
   @Interval(INGEST_PUSH_SILENCE_CHECK_MS)

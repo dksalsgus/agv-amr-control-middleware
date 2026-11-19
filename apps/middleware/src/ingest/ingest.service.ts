@@ -62,25 +62,30 @@ export class IngestService {
     }
   }
 
-  /** DB 설정과 맞춘다. 꺼지거나 지워진 연결은 내리고, 새 연결은 붙이고, version이 바뀐 연결은 다시 붙인다. */
-  async sync(): Promise<void> {
-    const latest = await this.loadConnections();
-    const latestIds = new Set(latest.map((connection) => connection.id));
+  /**
+   * 저장된 연결 하나를 DB 설정과 맞춘다. 꺼지거나 지워졌으면 내리고, 새 연결이면 붙이고, version이 바뀌었으면 다시 붙인다.
+   * 로봇이 없는 연결(PLC)은 다루지 않는다.
+   */
+  async reloadConnection(id: string): Promise<void> {
+    const latest =
+      await this.ingestConnectionProvider.findEnabledConnection(id);
+    const next = latest && latest.robots.length > 0 ? latest : null;
+    const current = this.connections.get(id);
 
-    for (const current of Array.from(this.connections.values())) {
-      if (!latestIds.has(current.id)) {
-        await this.close(current);
-      }
+    if (current && !next) {
+      await this.close(current);
+      return;
     }
-
-    for (const connection of latest) {
-      const current = this.connections.get(connection.id);
-      if (!current) {
-        await this.register(connection);
-        await this.startPushConnection(connection);
-      } else if (current.version !== connection.version) {
-        await this.restart(current, connection);
-      }
+    if (!next) {
+      return;
+    }
+    if (!current) {
+      await this.register(next);
+      await this.startPushConnection(next);
+      return;
+    }
+    if (current.version !== next.version) {
+      await this.restart(current, next);
     }
   }
 

@@ -52,26 +52,32 @@ export class PlcIngestService {
     await this.restoreLatestValues();
   }
 
-  /** DB 설정과 맞춘다. 폴링이라 다시 붙는 것은 다음 폴링이 새 설정을 읽는 것으로 충분하다. */
-  async sync(): Promise<void> {
-    const latest = await this.loadConnections();
-    const latestIds = new Set(latest.map((connection) => connection.id));
+  /**
+   * 저장된 연결 하나를 DB 설정과 맞춘다. 폴링이라 다시 붙는 것은 다음 폴링이 새 설정을 읽는 것으로 충분하다.
+   * PLC가 없는 연결(로봇)은 다루지 않는다.
+   */
+  async reloadConnection(id: string): Promise<void> {
+    const latest =
+      await this.ingestConnectionProvider.findEnabledConnection(id);
+    const next = latest && latest.plcDevices.length > 0 ? latest : null;
+    const current = this.connections.get(id);
 
-    for (const current of Array.from(this.connections.values())) {
-      if (!latestIds.has(current.id)) {
-        await this.close(current);
-      }
+    if (current && !next) {
+      await this.close(current);
+      return;
     }
-
-    for (const connection of latest) {
-      const current = this.connections.get(connection.id);
-      if (!current) {
-        await this.register(connection);
-      } else if (current.version !== connection.version) {
-        await this.deviceTransportProvider.close(current);
-        this.connections.set(connection.id, connection);
-        await this.linkStateProvider.register(connection.id);
-      }
+    if (!next) {
+      return;
+    }
+    if (!current) {
+      await this.register(next);
+      return;
+    }
+    if (current.version !== next.version) {
+      await this.deviceTransportProvider.close(current);
+      this.connections.set(next.id, next);
+      await this.linkStateProvider.register(next.id);
+      this.logger.log(`연결 다시 붙임: ${next.vendorCode} ${next.protocol}`);
     }
   }
 

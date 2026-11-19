@@ -10,6 +10,7 @@ import { VendorAAdapter } from "./adapters/vendor-a.adapter";
 import { VendorBAdapter } from "./adapters/vendor-b.adapter";
 import { VendorCAdapter } from "./adapters/vendor-c.adapter";
 import { VENDOR_ADAPTERS, VendorAdapter } from "./adapters/vendor-adapter";
+import { ConnectionReloadService } from "./connection-reload.service";
 import { HISTORY_QUEUE } from "./history-queue.constants";
 import { HistoryProcessor } from "./history.processor";
 import { HistoryService } from "./history.service";
@@ -49,6 +50,7 @@ import { RestClientRepository } from "./repositories/rest-client.repository";
     }),
   ],
   providers: [
+    ConnectionReloadService,
     IngestScheduler,
     IngestService,
     PlcIngestService,
@@ -81,6 +83,6 @@ import { RestClientRepository } from "./repositories/rest-client.repository";
     MqttClientRepository,
     RestClientRepository,
   ],
-  exports: [IngestScheduler],
+  exports: [ConnectionReloadService],
 })
 export class IngestModule {}

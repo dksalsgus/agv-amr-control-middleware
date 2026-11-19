@@ -31,6 +31,15 @@ export class IngestConnectionProvider {
     return connections;
   }
 
+  /** 꺼졌거나 지워진 연결이면 null */
+  async findEnabledConnection(id: string): Promise<IngestConnection | null> {
+    const row =
+      await this.vendorsConnectionsRepository.findEnabledByIdWithVendorAndDevices(
+        id,
+      );
+    return row ? this.toConnection(row) : null;
+  }
+
   private toConnection(row: ConnectionWithDevicesRow): IngestConnection {
     const robots: RobotDevice[] = [];
     const plcDevices: PlcDevice[] = [];
