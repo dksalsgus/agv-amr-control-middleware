@@ -1,4 +1,4 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { Inject, Injectable, OnApplicationBootstrap } from "@nestjs/common";
 import { ConfigType } from "@nestjs/config";
 import { judgeSeq } from "../common/utils/seq-judge.util";
 import { ingestConfig } from "../config/ingest.config";
@@ -19,12 +19,13 @@ import { PlcEventProvider } from "./providers/plc-event.provider";
 import { PlcPointChange } from "./providers/plc-event.types";
 import { LinkQualityProvider } from "./providers/link-quality.provider";
 import { LinkStateProvider } from "./providers/link-state.provider";
+import { PollScheduleProvider } from "./providers/poll-schedule.provider";
 import { PlcPointStateProvider } from "./providers/plc-point-state.provider";
 import { AppLogger } from "../logger/app-logger";
 
 /** PLC 수집: 16점 폴링 → seq 판정 → 값이 바뀐 점만 반영·기록. 500ms보다 짧은 펄스는 놓친다. */
 @Injectable()
-export class PlcIngestService {
+export class PlcIngestService implements OnApplicationBootstrap {
   private readonly connections = new Map<string, IngestConnection>();
 
   constructor(
@@ -39,44 +40,62 @@ export class PlcIngestService {
     private readonly ingestMetricsProvider: IngestMetricsProvider,
     private readonly linkStateProvider: LinkStateProvider,
     private readonly linkQualityProvider: LinkQualityProvider,
+    private readonly pollScheduleProvider: PollScheduleProvider,
     private readonly logger: AppLogger,
   ) {
     this.logger.setContext(PlcIngestService.name);
   }
 
-  async start(): Promise<void> {
-    for (const connection of await this.loadConnections()) {
+  /** 시작할 때 켜진 PLC 연결을 모두 불러와 등록하고, 이력으로 값을 되살린 뒤 폴링을 시작한다. */
+  async onApplicationBootstrap(): Promise<void> {
+    const connections = await this.loadConnections();
+    for (const connection of connections) {
       await this.register(connection);
     }
 
     await this.restoreLatestValues();
-  }
 
-  /** DB 설정과 맞춘다. 폴링이라 다시 붙는 것은 다음 폴링이 새 설정을 읽는 것으로 충분하다. */
-  async sync(): Promise<void> {
-    const latest = await this.loadConnections();
-    const latestIds = new Set(latest.map((connection) => connection.id));
-
-    for (const current of Array.from(this.connections.values())) {
-      if (!latestIds.has(current.id)) {
-        await this.close(current);
-      }
-    }
-
-    for (const connection of latest) {
-      const current = this.connections.get(connection.id);
-      if (!current) {
-        await this.register(connection);
-      } else if (current.version !== connection.version) {
-        await this.deviceTransportProvider.close(current);
-        this.connections.set(connection.id, connection);
-        await this.linkStateProvider.register(connection.id);
-      }
+    for (const connection of connections) {
+      this.startPolling(connection.id);
     }
   }
 
-  async findPolledConnectionIds(): Promise<string[]> {
-    return Array.from(this.connections.keys());
+  /**
+   * 추가하거나 고친 연결 하나를 DB에서 다시 읽어 붙인다. 꺼졌으면 뗀다.
+   * 폴링이라 접속을 닫아 두면 다음 폴링이 새 설정으로 다시 연다.
+   * PLC가 없는 연결(로봇)은 다루지 않는다.
+   */
+  async reloadConnection(id: string): Promise<void> {
+    const latest =
+      await this.ingestConnectionProvider.findEnabledConnection(id);
+    const next = latest && latest.plcDevices.length > 0 ? latest : null;
+    const current = this.connections.get(id);
+
+    if (current && !next) {
+      await this.close(current);
+      return;
+    }
+    if (!next) {
+      return;
+    }
+    if (!current) {
+      await this.register(next);
+      this.startPolling(next.id);
+      return;
+    }
+
+    await this.deviceTransportProvider.close(current);
+    this.connections.set(next.id, next);
+    await this.linkStateProvider.register(next.id);
+    this.logger.log(`연결 다시 붙임: ${next.vendorCode} ${next.protocol}`);
+  }
+
+  /** 지운 연결을 뗀다. 맡은 연결이 아니면 아무것도 하지 않는다. */
+  async removeConnection(id: string): Promise<void> {
+    const current = this.connections.get(id);
+    if (current) {
+      await this.close(current);
+    }
   }
 
   /** 한 번 폴링하고 다음 폴링까지 기다릴 ms를 돌려준다. 연결이 없으면 null. */
@@ -116,8 +135,13 @@ export class PlcIngestService {
     }
   }
 
+  private startPolling(connectionId: string): void {
+    this.pollScheduleProvider.add(connectionId, (id) => this.poll(id));
+  }
+
   private async close(connection: IngestConnection): Promise<void> {
     this.connections.delete(connection.id);
+    this.pollScheduleProvider.remove(connection.id);
     await this.deviceTransportProvider.close(connection);
     await this.linkStateProvider.unregister(connection.id);
 

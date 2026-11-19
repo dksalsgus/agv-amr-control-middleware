@@ -1,4 +1,4 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { Inject, Injectable, OnApplicationBootstrap } from "@nestjs/common";
 import { toErrorMessage } from "../common/utils/error.util";
 import { ConfigType } from "@nestjs/config";
 import { ingestConfig } from "../config/ingest.config";
@@ -19,13 +19,14 @@ import { TelemetryProvider } from "./providers/telemetry.provider";
 import { RobotTelemetry } from "./providers/telemetry.types";
 import { LinkQualityProvider } from "./providers/link-quality.provider";
 import { LinkStateProvider } from "./providers/link-state.provider";
+import { PollScheduleProvider } from "./providers/poll-schedule.provider";
 import { SerialQueue } from "./serial-queue";
 import { PolledConfig } from "./ingest.types";
 import { AppLogger } from "../logger/app-logger";
 
 /** 로봇 수집: 수신 → 공통 모델 변환 → seq 판정 → 메모리 반영 → 이력 기록 */
 @Injectable()
-export class IngestService {
+export class IngestService implements OnApplicationBootstrap {
   private readonly connections = new Map<string, IngestConnection>();
   private readonly queues = new Map<string, SerialQueue>();
 
@@ -42,13 +43,14 @@ export class IngestService {
     private readonly ingestMetricsProvider: IngestMetricsProvider,
     private readonly linkStateProvider: LinkStateProvider,
     private readonly linkQualityProvider: LinkQualityProvider,
+    private readonly pollScheduleProvider: PollScheduleProvider,
     private readonly logger: AppLogger,
   ) {
     this.logger.setContext(IngestService.name);
   }
 
-  /** 장비를 등록하고 이력으로 상태를 되살린 뒤 수신을 시작한다. */
-  async start(): Promise<void> {
+  /** 시작할 때 켜진 연결을 모두 불러와 장비를 등록하고, 이력으로 상태를 되살린 뒤 수신을 시작한다. */
+  async onApplicationBootstrap(): Promise<void> {
     const connections = await this.loadConnections();
 
     for (const connection of connections) {
@@ -58,29 +60,45 @@ export class IngestService {
     await this.restoreLatestStates();
 
     for (const connection of connections) {
-      await this.startPushConnection(connection);
+      await this.startReceiving(connection);
     }
   }
 
-  /** DB 설정과 맞춘다. 꺼지거나 지워진 연결은 내리고, 새 연결은 붙이고, version이 바뀐 연결은 다시 붙인다. */
-  async sync(): Promise<void> {
-    const latest = await this.loadConnections();
-    const latestIds = new Set(latest.map((connection) => connection.id));
+  /**
+   * 추가하거나 고친 연결 하나를 DB에서 다시 읽어 붙인다. 꺼졌으면 뗀다.
+   * 로봇이 없는 연결(PLC)은 다루지 않는다.
+   */
+  async reloadConnection(id: string): Promise<void> {
+    const latest =
+      await this.ingestConnectionProvider.findEnabledConnection(id);
+    const next = latest && latest.robots.length > 0 ? latest : null;
+    const current = this.connections.get(id);
 
-    for (const current of Array.from(this.connections.values())) {
-      if (!latestIds.has(current.id)) {
-        await this.close(current);
-      }
+    if (current && !next) {
+      await this.close(current);
+      return;
     }
+    if (!next) {
+      return;
+    }
+    if (!current) {
+      await this.register(next);
+      await this.startReceiving(next);
+      return;
+    }
+    await this.restart(current, next);
+  }
 
-    for (const connection of latest) {
-      const current = this.connections.get(connection.id);
-      if (!current) {
-        await this.register(connection);
-        await this.startPushConnection(connection);
-      } else if (current.version !== connection.version) {
-        await this.restart(current, connection);
-      }
+  /** 다음 폴링 시각이 된 연결(로봇, PLC)만 폴링한다. 차례는 각 수집 Service가 연결을 붙일 때 넣는다. */
+  runDuePolls(now: number): void {
+    this.pollScheduleProvider.runDue(now);
+  }
+
+  /** 지운 연결을 뗀다. 맡은 연결이 아니면 아무것도 하지 않는다. */
+  async removeConnection(id: string): Promise<void> {
+    const current = this.connections.get(id);
+    if (current) {
+      await this.close(current);
     }
   }
 
@@ -99,13 +117,6 @@ export class IngestService {
         );
       }
     }
-  }
-
-  /** 폴링 연결(REST, Modbus)의 id 목록 */
-  async findPolledConnectionIds(): Promise<string[]> {
-    return Array.from(this.connections.values())
-      .filter((connection) => connection.protocol !== "MQTT")
-      .map((connection) => connection.id);
   }
 
   /** 한 번 폴링하고 다음 폴링까지 기다릴 ms를 돌려준다. 연결이 없거나 MQTT로 바뀌었으면 null. */
@@ -145,6 +156,7 @@ export class IngestService {
   private async close(connection: IngestConnection): Promise<void> {
     this.connections.delete(connection.id);
     this.queues.delete(connection.id);
+    this.pollScheduleProvider.remove(connection.id);
     await this.stopLink(connection);
     await this.robotStateProvider.unregisterDevices(connection.robots);
     await this.linkStateProvider.unregister(connection.id);
@@ -159,8 +171,21 @@ export class IngestService {
     await this.stopLink(current);
     this.connections.set(next.id, next);
     await this.linkStateProvider.register(next.id);
-    await this.startPushConnection(next);
+    await this.startReceiving(next);
     this.logger.log(`연결 다시 붙임: ${this.toLabel(next)}`);
+  }
+
+  /** MQTT는 구독하고, 폴링 연결은 폴링 차례에 넣는다. 프로토콜이 바뀌면 다른 쪽은 뺀다. */
+  private async startReceiving(connection: IngestConnection): Promise<void> {
+    if (connection.protocol === "MQTT") {
+      this.pollScheduleProvider.remove(connection.id);
+      await this.startPushConnection(connection);
+      return;
+    }
+
+    this.pollScheduleProvider.add(connection.id, (connectionId) =>
+      this.poll(connectionId),
+    );
   }
 
   private async stopLink(connection: IngestConnection): Promise<void> {

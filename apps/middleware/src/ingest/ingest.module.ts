@@ -10,6 +10,7 @@ import { VendorAAdapter } from "./adapters/vendor-a.adapter";
 import { VendorBAdapter } from "./adapters/vendor-b.adapter";
 import { VendorCAdapter } from "./adapters/vendor-c.adapter";
 import { VENDOR_ADAPTERS, VendorAdapter } from "./adapters/vendor-adapter";
+import { ConnectionReloadService } from "./connection-reload.service";
 import { HISTORY_QUEUE } from "./history-queue.constants";
 import { HistoryProcessor } from "./history.processor";
 import { HistoryService } from "./history.service";
@@ -17,6 +18,7 @@ import { IngestScheduler } from "./ingest.scheduler";
 import { IngestService } from "./ingest.service";
 import { PlcIngestService } from "./plc-ingest.service";
 import { IngestConnectionProvider } from "./providers/ingest-connection.provider";
+import { PollScheduleProvider } from "./providers/poll-schedule.provider";
 import { DeviceTransportProvider } from "./providers/device-transport.provider";
 import { HistoryQueueProvider } from "./providers/history-queue.provider";
 import { IngestMetricsProvider } from "./providers/ingest-metrics.provider";
@@ -49,6 +51,7 @@ import { RestClientRepository } from "./repositories/rest-client.repository";
     }),
   ],
   providers: [
+    ConnectionReloadService,
     IngestScheduler,
     IngestService,
     PlcIngestService,
@@ -61,6 +64,7 @@ import { RestClientRepository } from "./repositories/rest-client.repository";
     DeviceTransportProvider,
     LinkStateProvider,
     PlcEventProvider,
+    PollScheduleProvider,
     PlcPointStateProvider,
     RobotStateProvider,
     TelemetryProvider,
@@ -81,6 +85,6 @@ import { RestClientRepository } from "./repositories/rest-client.repository";
     MqttClientRepository,
     RestClientRepository,
   ],
-  exports: [IngestScheduler],
+  exports: [ConnectionReloadService],
 })
 export class IngestModule {}

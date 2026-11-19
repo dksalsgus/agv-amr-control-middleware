@@ -81,7 +81,7 @@ flowchart LR
 
 ## 4. 푸시는 핸들러 등록, 폴링은 스케줄러
 
-- **결정**: MQTT는 시작할 때 Service가 Provider를 거쳐 Repository에 수신 핸들러를 등록합니다. REST와 Modbus는 Controller 위치의 스케줄러가 주기마다 Service를 부릅니다. 폴링은 고정 `setInterval`이 아니라 **한 번 끝난 뒤 다음 간격을 다시 거는** 방식(`SchedulerRegistry.addTimeout`)입니다.
+- **결정**: MQTT는 시작할 때 Service가 Provider를 거쳐 Repository에 수신 핸들러를 등록합니다. REST와 Modbus는 Service가 연결을 붙일 때 폴링 차례에 넣고, Controller 위치의 스케줄러가 짧은 주기(`@Interval`)마다 Service를 불러 다음 폴링 시각이 된 연결만 폴링합니다. 다음 시각은 **한 번 끝난 뒤 다시 정하므로** 폴링이 겹치지 않고, DOWN이면 간격이 늘어납니다. 스케줄러는 이 폴링 틱과 MQTT 무수신 확인만 맡고, 연결을 붙이고 떼는 일은 Service가 맡습니다.
 - **이유**: 폴링이 느려져도 같은 연결에 요청이 겹치지 않습니다. 연결이 끊기면 다음 간격을 1초에서 10초까지 늘려, 죽은 장비를 1초마다 두드리지 않습니다. 주기 값은 연결 설정(`pollIntervalMs`)에서 오므로 cron 표현식보다 timeout이 맞습니다.
 - **대안**: 고정 `setInterval`, `@Cron` 데코레이터, MQTT까지 폴링으로 통일.
 - **감수한 점**: 폴링 방식(B, C, PLC)은 데이터가 생긴 뒤 다음 폴링까지 0~1초를 기다리므로 종단 지연이 평균 0.5초 정도 더 나옵니다. 프로토콜의 성질이므로 측정 수치를 프로토콜별로 나눠 보입니다.
@@ -93,17 +93,17 @@ sequenceDiagram
   participant UI as 화면 / curl
   participant API as Connections API
   participant DB as PostgreSQL
-  participant SC as 수집 스케줄러
+  participant SC as 수집 서비스
   UI->>API: PATCH /connections/{id} {version, config}
   API->>API: 프로토콜별 DTO 검증 (틀리면 400)
   API->>DB: version이 같을 때만 저장, version + 1 (다르면 409)
-  API-)SC: reloadConnections() 호출
-  SC->>DB: 켜진 연결 목록 조회
-  SC->>SC: version이 바뀐 연결만 내렸다가 새 설정으로 다시 붙임
+  API->>SC: reloadConnection(id) 호출
+  SC->>DB: 그 연결 설정 조회
+  SC->>SC: 그 연결만 내렸다가 새 설정으로 다시 붙임
 ```
 
-- **결정**: 연결 설정은 서버가 시작할 때 DB에서 한 번 읽습니다. 그 뒤로는 연결 설정 API가 저장(POST, PATCH, DELETE)에 성공하면 수집 쪽 `IngestScheduler.reloadConnections()`를 바로 부르고, 수집 쪽은 DB와 자기 상태를 비교해 바뀐 연결만 교체합니다. 다른 연결은 끊기지 않습니다. 비교하는 동안 또 저장되면 끝난 뒤 한 번 더 비교합니다.
-- **이유**: 저장하자마자 반영됩니다. connection 모듈이 ingest 모듈을 부르는 한 방향 의존이라 구조가 단순하고 따라가기 쉽습니다. 서버가 재시작해도 DB가 기준이라 같은 상태로 돌아옵니다. `version`은 두 사람이 동시에 고치는 충돌 감지와 "다시 붙일지" 판단에 함께 씁니다.
+- **결정**: 연결 설정은 서버가 시작할 때 DB에서 한 번 읽습니다. 그 뒤로는 연결 설정 API가 저장(POST, PATCH, DELETE)에 성공하면 수집 쪽 `ConnectionReloadService.reloadConnection(id)`를 바로 부르고 끝날 때까지 기다립니다. 수집 쪽은 그 연결 하나만 DB에서 다시 읽어 꺼졌으면 내리고, 새 연결이면 붙이고, 이미 붙어 있으면 새 설정으로 다시 붙입니다. 지운 연결은 그 연결만 뗍니다. 시작할 때 모두 불러오는 것 말고 DB 전체와 메모리를 비교하는 코드는 없습니다. 다른 연결은 끊기지 않습니다. 같은 연결을 동시에 저장하면 연결별로 차례대로 반영합니다. 반영에 실패하면 API 응답이 실패로 돌아갑니다.
+- **이유**: 저장하자마자 반영됩니다. connection 모듈이 ingest 모듈을 부르는 한 방향 의존이라 구조가 단순하고 따라가기 쉽습니다. 서버가 재시작해도 DB가 기준이라 같은 상태로 돌아옵니다. `version`은 두 사람이 동시에 고치는 충돌 감지에 씁니다.
 - **대안**: 몇 초마다 DB를 다시 읽는 주기 동기화, 내부 이벤트(EventEmitter2)로 느슨하게 연결, PostgreSQL LISTEN/NOTIFY.
 - **감수한 점**: connection 모듈이 ingest 모듈을 직접 압니다. API를 거치지 않고 DB를 직접 고치면 서버를 다시 시작해야 반영됩니다. 미들웨어를 여러 대로 늘리면 Redis pub/sub 같은 프로세스 밖 전달로 바꿔야 합니다.
 
