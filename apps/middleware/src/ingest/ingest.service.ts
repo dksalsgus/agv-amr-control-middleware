@@ -24,7 +24,6 @@ import {
 import { RobotStateProvider } from "./providers/robot-state.provider";
 import { SeqJudgeProvider } from "./providers/seq-judge.provider";
 import { TelemetryProvider } from "./providers/telemetry.provider";
-import { PollTracker } from "./poll-tracker";
 
 /**
  * 로봇 수집: 원본 수신 → 어댑터로 공통 모델 변환 → seq 판정 → 메모리 상태 반영 → 이력 기록.
@@ -34,7 +33,6 @@ import { PollTracker } from "./poll-tracker";
 export class IngestService {
   private readonly logger = new Logger(IngestService.name);
   private connections: IngestConnection[] = [];
-  private readonly pollTracker = new PollTracker();
 
   constructor(
     @Inject(VENDOR_ADAPTERS)
@@ -65,20 +63,28 @@ export class IngestService {
     }
   }
 
-  /** 주기가 된 폴링 연결(REST, Modbus)을 한 번씩 폴링한다. 이전 요청이 아직 끝나지 않았으면 건너뛴다. */
-  pollDue(now: number) {
-    for (const connection of this.connections) {
-      if (connection.protocol === "MQTT") {
-        continue;
-      }
+  /** 폴링 방식(REST, Modbus) 연결 id 목록 */
+  async findPolledConnectionIds(): Promise<string[]> {
+    return this.connections
+      .filter((connection) => connection.protocol !== "MQTT")
+      .map((connection) => connection.id);
+  }
 
-      const config = connection.config as { pollIntervalMs: number };
-      if (!this.pollTracker.isDue(connection.id, config.pollIntervalMs, now)) {
-        continue;
-      }
-
-      void this.poll(connection, now);
+  /** 한 번 폴링하고 다음 폴링까지 기다릴 ms를 돌려준다. 연결이 없으면 null. */
+  async poll(connectionId: string): Promise<number | null> {
+    const connection = this.connections.find(
+      (item) => item.id === connectionId,
+    );
+    if (!connection) {
+      return null;
     }
+
+    const startedAt = Date.now();
+    await this.pollOnce(connection);
+
+    const config = connection.config as { pollIntervalMs: number };
+    const elapsedMs = Date.now() - startedAt;
+    return Math.max(0, config.pollIntervalMs - elapsedMs);
   }
 
   /** 재시작 때 이력의 장비별 마지막 행으로 메모리 상태를 되살린다(설계 문서 5장). */
@@ -108,13 +114,11 @@ export class IngestService {
     }
   }
 
-  private async poll(connection: IngestConnection, now: number) {
+  private async pollOnce(connection: IngestConnection) {
     const adapter = this.findAdapter(connection.vendorCode);
     if (!adapter) {
       return;
     }
-
-    this.pollTracker.begin(connection.id, now);
 
     try {
       const raws = await this.fetchRaws(connection);
@@ -124,8 +128,6 @@ export class IngestService {
       }
     } catch (error) {
       this.logger.warn(`폴링 실패 (${connection.id}): ${String(error)}`);
-    } finally {
-      this.pollTracker.end(connection.id, now);
     }
   }
 

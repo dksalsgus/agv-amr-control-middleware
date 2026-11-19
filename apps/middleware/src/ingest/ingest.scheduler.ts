@@ -3,43 +3,64 @@ import {
   OnApplicationBootstrap,
   OnApplicationShutdown,
 } from "@nestjs/common";
+import { delay } from "../common/utils/delay.util";
 import { IngestService } from "./ingest.service";
 import { PlcIngestService } from "./plc-ingest.service";
 
-/** 폴링 주기를 확인하는 간격. 연결별 주기(500ms, 1000ms)보다 충분히 짧게 둔다. */
-const TICK_MS = 50;
+type PollOnce = (connectionId: string) => Promise<number | null>;
 
 /**
- * Controller 위치의 스케줄러. 앱이 뜨면 수집을 시작시키고, 짧은 간격으로 Service에 폴링할 차례인지 묻는다.
- * 연결별 타이머를 두지 않으므로 연결 설정이 바뀌어도 다시 예약할 필요가 없다.
+ * Controller 위치의 스케줄러. 수집을 시작하고 폴링 연결마다 반복을 돌린다.
+ * 연결마다 따로 돌아 한 연결이 느려도 다른 연결은 막히지 않는다.
  */
 @Injectable()
 export class IngestScheduler
   implements OnApplicationBootstrap, OnApplicationShutdown
 {
-  private timer: NodeJS.Timeout | null = null;
+  private running = false;
+  private loops: Promise<void>[] = [];
 
   constructor(
     private readonly ingestService: IngestService,
     private readonly plcIngestService: PlcIngestService,
   ) {}
 
-  async onApplicationBootstrap() {
+  async onApplicationBootstrap(): Promise<void> {
     await this.ingestService.start();
     await this.plcIngestService.start();
 
-    this.timer = setInterval(() => this.tick(), TICK_MS);
+    this.running = true;
+
+    const robotIds = await this.ingestService.findPolledConnectionIds();
+    const plcIds = await this.plcIngestService.findPolledConnectionIds();
+
+    this.loops = [
+      ...robotIds.map((id) =>
+        this.runLoop(id, (connectionId) =>
+          this.ingestService.poll(connectionId),
+        ),
+      ),
+      ...plcIds.map((id) =>
+        this.runLoop(id, (connectionId) =>
+          this.plcIngestService.poll(connectionId),
+        ),
+      ),
+    ];
   }
 
-  onApplicationShutdown() {
-    if (this.timer) {
-      clearInterval(this.timer);
+  async onApplicationShutdown(): Promise<void> {
+    this.running = false;
+    await Promise.all(this.loops);
+  }
+
+  private async runLoop(connectionId: string, pollOnce: PollOnce) {
+    while (this.running) {
+      const nextDelayMs = await pollOnce(connectionId);
+      if (nextDelayMs === null) {
+        return;
+      }
+
+      await delay(nextDelayMs);
     }
-  }
-
-  private tick() {
-    const now = Date.now();
-    this.ingestService.pollDue(now);
-    this.plcIngestService.pollDue(now);
   }
 }
