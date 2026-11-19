@@ -2,10 +2,10 @@ import { createServer, IncomingMessage, Server, ServerResponse } from "http";
 import { RobotFleet } from "../simulation/robot-fleet";
 import { VendorBPayloadBuilder } from "./vendor-b-payload";
 
-const VEHICLE_PATH = /^\/api\/vehicles\/([^/]+)$/;
-
 /** 제조사 B REST 서버: GET /api/vehicles(전체), /api/vehicles/{id}(한 대) */
 export class VendorBServer {
+  private static readonly VEHICLE_PATH = /^\/api\/vehicles\/([^/]+)$/;
+
   private readonly payloadBuilder = new VendorBPayloadBuilder();
   private server: Server | null = null;
 
@@ -36,7 +36,7 @@ export class VendorBServer {
       return;
     }
 
-    const match = VEHICLE_PATH.exec(url);
+    const match = VendorBServer.VEHICLE_PATH.exec(url);
     if (match) {
       this.sendOne(response, match[1]);
       return;
