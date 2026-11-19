@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { toInt16, toUint32, toUint48 } from "../../common/utils/register.util";
 import { RobotOpState } from "../../state/robot-state";
-import { ModbusRawMessage } from "../providers/modbus-link.types";
+import { ModbusRawMessage } from "../providers/device-transport.types";
 import { RobotReading, VendorAdapter } from "./vendor-adapter";
 
 /**

@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { toUint32, toUint48 } from "../../common/utils/register.util";
-import { ModbusRawMessage } from "../providers/modbus-link.types";
+import { ModbusRawMessage } from "../providers/device-transport.types";
 import { PlcReading } from "./plc.types";
 
 /** PLC: 입력 레지스터 0 점 16개(비트), 1~2 seq, 3~5 시각(ms) */

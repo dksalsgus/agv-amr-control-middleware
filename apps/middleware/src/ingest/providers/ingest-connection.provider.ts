@@ -12,7 +12,7 @@ import {
 
 /** 수집할 연결 목록을 읽어 로봇과 PLC 장비로 나눈다. */
 @Injectable()
-export class ConnectionProvider {
+export class IngestConnectionProvider {
   constructor(
     private readonly vendorsConnectionsRepository: VendorsConnectionsRepository,
   ) {}

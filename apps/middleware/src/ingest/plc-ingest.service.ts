@@ -6,13 +6,13 @@ import { toErrorMessage } from "../common/utils/error.util";
 import { PlcPointValue } from "../state/plc-point-state";
 import { PlcAdapter } from "./adapters/plc.adapter";
 import { PlcReading } from "./adapters/plc.types";
-import { ConnectionProvider } from "./providers/connection.provider";
+import { IngestConnectionProvider } from "./providers/ingest-connection.provider";
 import { IngestConnection, PlcDevice } from "./providers/connection.types";
 import { DeviceTransportProvider } from "./providers/device-transport.provider";
 import {
   ModbusConnectionConfig,
   ModbusRawMessage,
-} from "./providers/modbus-link.types";
+} from "./providers/device-transport.types";
 import { HistoryQueueProvider } from "./providers/history-queue.provider";
 import { IngestMetricsProvider } from "./providers/ingest-metrics.provider";
 import { PlcEventProvider } from "./providers/plc-event.provider";
@@ -29,7 +29,7 @@ export class PlcIngestService {
   constructor(
     @Inject(ingestConfig.KEY)
     private readonly config: ConfigType<typeof ingestConfig>,
-    private readonly connectionProvider: ConnectionProvider,
+    private readonly ingestConnectionProvider: IngestConnectionProvider,
     private readonly deviceTransportProvider: DeviceTransportProvider,
     private readonly plcAdapter: PlcAdapter,
     private readonly plcPointStateProvider: PlcPointStateProvider,
@@ -100,7 +100,8 @@ export class PlcIngestService {
   }
 
   private async loadConnections(): Promise<IngestConnection[]> {
-    const connections = await this.connectionProvider.findEnabledConnections();
+    const connections =
+      await this.ingestConnectionProvider.findEnabledConnections();
     return connections.filter((connection) => connection.plcDevices.length > 0);
   }
 

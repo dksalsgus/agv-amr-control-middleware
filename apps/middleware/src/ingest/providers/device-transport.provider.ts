@@ -8,9 +8,12 @@ import { MqttHandlers } from "../repositories/mqtt-client.types";
 import { RestClientRepository } from "../repositories/rest-client.repository";
 import { RestRawMessage } from "../repositories/rest-client.types";
 import { IngestConnection } from "./connection.types";
-import { ModbusConnectionConfig, ModbusRawMessage } from "./modbus-link.types";
-import { MqttConnectionConfig } from "./mqtt-link.types";
-import { RestConnectionConfig } from "./rest-link.types";
+import {
+  ModbusConnectionConfig,
+  ModbusRawMessage,
+  MqttConnectionConfig,
+  RestConnectionConfig,
+} from "./device-transport.types";
 
 /** 장비 접속. 프로토콜별 설정을 읽어 MQTT 구독, REST·Modbus 폴링, 접속 종료를 한다. */
 @Injectable()
