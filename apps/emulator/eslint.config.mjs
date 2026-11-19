@@ -8,8 +8,15 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   eslintPluginPrettierRecommended,
   {
+    languageOptions: {
+      parserOptions: {
+        projectService: true,
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
     rules: {
       "func-style": ["error", "expression"],
+      "@typescript-eslint/no-floating-promises": "error",
       "no-restricted-syntax": [
         "error",
         {

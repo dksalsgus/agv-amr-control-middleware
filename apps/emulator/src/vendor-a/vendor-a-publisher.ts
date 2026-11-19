@@ -28,16 +28,26 @@ export class VendorAPublisher {
     );
   }
 
-  publishAll() {
-    if (!this.client?.connected) {
+  /** 모든 로봇을 발행하고 브로커 응답(PUBACK)까지 기다린다. */
+  async publishAll() {
+    const client = this.client;
+    if (!client?.connected) {
       return;
     }
 
     const now = new Date();
-    for (const robot of this.fleet.robots) {
-      const topic = this.payloadBuilder.topic(robot);
-      const payload = this.payloadBuilder.build(robot, now);
-      this.client.publish(topic, JSON.stringify(payload), { qos: 1 });
+    const publishing = this.fleet.robots.map((robot) =>
+      client.publishAsync(
+        this.payloadBuilder.topic(robot),
+        JSON.stringify(this.payloadBuilder.build(robot, now)),
+        { qos: 1 },
+      ),
+    );
+
+    const results = await Promise.allSettled(publishing);
+    const failure = results.find((result) => result.status === "rejected");
+    if (failure) {
+      console.error(`[vendor-a] 발행 실패: ${String(failure.reason)}`);
     }
   }
 }
