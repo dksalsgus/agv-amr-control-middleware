@@ -3,7 +3,7 @@ import {
   TelemetryRow,
   VendorsConnectionsDevicesTelemetryRepository,
 } from "../../history/vendors-connections-devices-telemetry.repository";
-import { RobotState } from "../../state/robot-state";
+import { RobotOpState, RobotState } from "../../state/robot-state";
 
 export type LatestRobotState = {
   deviceId: string;
@@ -62,7 +62,7 @@ export class TelemetryProvider {
       theta: row.theta,
       speed: row.speed,
       batteryPct: row.battery_pct,
-      opState: row.op_state,
+      opState: row.op_state as RobotOpState,
       errorCode: row.error_code,
       loaded: row.loaded,
     };

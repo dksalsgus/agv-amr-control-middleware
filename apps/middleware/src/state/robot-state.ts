@@ -1,4 +1,13 @@
-export type RobotOpState = "IDLE" | "MOVING" | "CHARGING" | "PAUSED" | "ERROR";
+/** op_state 컬럼(varchar)의 허용값 */
+export const ROBOT_OP_STATES = [
+  "IDLE",
+  "MOVING",
+  "CHARGING",
+  "PAUSED",
+  "ERROR",
+] as const;
+
+export type RobotOpState = (typeof ROBOT_OP_STATES)[number];
 
 /** 공통 로봇 상태. 단위는 m, 도, m/s, %. */
 export type RobotState = {

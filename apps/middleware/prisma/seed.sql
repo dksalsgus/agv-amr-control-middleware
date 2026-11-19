@@ -74,7 +74,7 @@ ON CONFLICT (vendors_connections_id, external_id) DO NOTHING;
 
 INSERT INTO vendors_connections_devices_plc_points
   (id, vendors_connections_devices_id, point_no, name, type, normal_value, alarm_on_abnormal)
-SELECT gen_random_uuid(), d.id, p.point_no, p.name, p.type::vendors_connections_devices_plc_points_type, false, p.alarm
+SELECT gen_random_uuid(), d.id, p.point_no, p.name, p.type, false, p.alarm
 FROM vendors_connections_devices d
 JOIN vendors_connections c ON c.id = d.vendors_connections_id
 CROSS JOIN (VALUES
