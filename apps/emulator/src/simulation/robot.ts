@@ -10,10 +10,7 @@ const BATTERY_CHARGE_PCT_PER_S = 1;
 const LOW_BATTERY_PCT = 20;
 const FULL_BATTERY_PCT = 100;
 
-/**
- * 로봇 한 대의 움직임을 모사한다. 단위는 m, rad, m/s, %.
- * 맵 안의 임의 지점을 목표로 달리고, 배터리가 낮으면 제자리에서 충전한다.
- */
+/** 로봇 한 대. 임의 목표로 달리고 배터리가 낮으면 충전한다. 단위 m, rad, m/s, % */
 export class Robot {
   seq = 0;
   x: number;

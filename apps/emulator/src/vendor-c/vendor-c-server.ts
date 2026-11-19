@@ -3,10 +3,7 @@ import { VENDOR_C_BASE_ADDRESS, VENDOR_C_BLOCK_SIZE } from "../config";
 import { RobotFleet } from "../simulation/robot-fleet";
 import { VendorCRegisterEncoder } from "./vendor-c-registers";
 
-/**
- * 제조사 C의 Modbus TCP 서버. 집중형 컨트롤러 한 대에 차량 20대가 블록으로 나뉘어 있다(가정 A5).
- * 미들웨어는 홀딩 레지스터(FC3)를 폴링한다.
- */
+/** 제조사 C Modbus TCP 서버. 컨트롤러 한 대의 홀딩 레지스터(FC3)에 차량별 블록을 둔다. */
 export class VendorCServer {
   private readonly encoder = new VendorCRegisterEncoder();
   private registers: number[];

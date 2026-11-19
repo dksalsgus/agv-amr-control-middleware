@@ -14,9 +14,9 @@ const OP_STATE_CODE: Record<RobotMode, number> = {
 };
 
 /**
- * 제조사 C 차량 한 대를 레지스터 16개로 바꾼다 (설계 문서 4장 C열).
- * +0~1 seq(uint32), +2~4 발생 시각(uint48 ms), +5~6 x·y(int16 cm), +7 방향(0.1도),
- * +8 속도(cm/s), +9 배터리(%), +10 상태(0~4), +11 오류 코드(0이면 없음), +12 비트0 적재
+ * 제조사 C 차량 → 레지스터 16개
+ * +0~1 seq, +2~4 시각(ms), +5~6 x·y(cm), +7 방향(0.1도), +8 속도(cm/s),
+ * +9 배터리, +10 상태, +11 오류 코드, +12 비트0 적재
  */
 export class VendorCRegisterEncoder {
   encode(robot: Robot, sampledAt: Date): number[] {

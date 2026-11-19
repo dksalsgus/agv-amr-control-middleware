@@ -2,9 +2,7 @@ import mqtt, { MqttClient } from "mqtt";
 import { RobotFleet } from "../simulation/robot-fleet";
 import { VendorAPayloadBuilder } from "./vendor-a-payload";
 
-/**
- * 제조사 A 로봇들의 상태를 MQTT로 발행한다. QoS 1, retain 없음.
- */
+/** 제조사 A 상태를 MQTT로 발행한다(QoS 1, retain 없음). */
 export class VendorAPublisher {
   private readonly payloadBuilder = new VendorAPayloadBuilder();
   private client: MqttClient | null = null;

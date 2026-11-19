@@ -2,9 +2,7 @@ import { ServerTCP } from "modbus-serial";
 import { PlcRegisterEncoder } from "./plc-registers";
 import { PlcSimulator } from "./plc-simulator";
 
-/**
- * PLC의 Modbus TCP 서버. 미들웨어는 입력 레지스터(FC4) 0~5를 500ms마다 폴링한다.
- */
+/** PLC Modbus TCP 서버. 입력 레지스터(FC4) 0~5를 제공한다. */
 export class PlcServer {
   private readonly encoder = new PlcRegisterEncoder();
   private registers: number[] = [];
