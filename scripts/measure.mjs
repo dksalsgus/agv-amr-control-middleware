@@ -1,5 +1,8 @@
 // 측정 스크립트: docker compose up 상태에서 `node scripts/measure.mjs` (Node 22, 의존성 없음)
 // 결과는 Markdown 표로 표준 출력에 나온다. 설계 문서 6장 "측정 방법"을 따른다.
+// 5절에서 에뮬레이터 컨테이너를 멈췄다 다시 켜므로 저장소 루트의 docker compose가 떠 있어야 한다.
+
+import { execFileSync } from "node:child_process";
 
 const API = process.env.API_URL ?? "http://localhost:3000";
 const WS_URL = process.env.WS_URL ?? "ws://localhost:3000/ws";
@@ -7,6 +10,13 @@ const FAULT_API = process.env.FAULT_URL ?? "http://localhost:8090";
 const NORMAL_SEC = Number(process.env.NORMAL_SEC ?? 30);
 const FAULT_SEC = Number(process.env.FAULT_SEC ?? 15);
 const PLC_LABEL = "PLC MODBUS_TCP";
+const REPO_ROOT = new URL("..", import.meta.url);
+const GROUP_VENDORS = [
+  ["A", "VENDOR_A"],
+  ["B", "VENDOR_B"],
+  ["C", "VENDOR_C"],
+  ["PLC", "PLC"],
+];
 
 const NORMAL_FAULT = {
   disconnected: false,
@@ -84,9 +94,10 @@ class Api {
 
 /** 화면처럼 WebSocket으로 받으면서 종단 지연과 seq 역행을 잰다. */
 class Screen {
-  constructor(token, labels) {
+  constructor(token, labels, plcConnectionId) {
     this.token = token;
     this.labels = labels;
+    this.plcConnectionId = plcConnectionId;
     this.epoch = null;
     this.rev = null;
     this.socket = null;
@@ -183,8 +194,12 @@ class Screen {
     }
   }
 
+  /** PLC 값은 자주 바뀌지 않으므로, 새 데이터 도착은 stale이 풀린 점이 delta로 온 것으로 본다. */
   collectPlcPoints(points, receivedAt, isDelta) {
     for (const point of points) {
+      if (isDelta && !point.stale) {
+        this.markFresh(this.plcConnectionId, receivedAt);
+      }
       const last = this.lastPlcChangedAt.get(point.id);
       this.lastPlcChangedAt.set(point.id, point.changedAt);
       if (!isDelta || !point.changedAt || last === point.changedAt) {
@@ -246,7 +261,8 @@ class MeasureRunner {
         `${item.vendorCode} ${item.protocol}`,
       ]),
     );
-    const screen = new Screen(this.api.token, labels);
+    const plcConnection = connections.find((item) => item.vendorCode === "PLC");
+    const screen = new Screen(this.api.token, labels, plcConnection.id);
     await screen.connect(false);
 
     this.print(`# 측정 결과 (${new Date().toISOString()})`);
@@ -254,6 +270,7 @@ class MeasureRunner {
     await this.measureFaultFiltering(screen);
     await this.measureLinkRecovery(screen, connections);
     await this.measureScreenRecovery(screen);
+    await this.measureEmulatorRestart(screen, connections);
     screen.close();
     await this.api.clearFaults();
     console.log(this.lines.join("\n"));
@@ -272,13 +289,13 @@ class MeasureRunner {
     );
     this.print("");
     this.print(
-      "| 연결 | 받음 | 유실률 | 중복 | 뒤바뀜 | 수집 지연 p50 / p95 | 종단 지연 p50 / p95 |",
+      "| 연결 | 받음 | 건너뛴 seq 비율 | 중복 | 뒤바뀜 | 수집 지연 p50 / p95 | 종단 지연 p50 / p95 |",
     );
     this.print("| --- | --- | --- | --- | --- | --- | --- |");
     for (const item of metrics.ingest) {
       const e2e = screen.latencies.get(item.key) ?? [];
       this.print(
-        `| ${item.key} | ${item.received} | ${item.lossPct}% | ${item.duplicates} | ${item.outOfOrder} | ${item.latencyP50Ms} / ${item.latencyP95Ms} ms | ${percentile(e2e, 50)} / ${percentile(e2e, 95)} ms |`,
+        `| ${item.key} | ${item.received} | ${item.lossPct}% | ${item.duplicates} | ${item.outOfOrder} | ${item.latencyP50Ms} / ${item.latencyP95Ms} ms | ${e2e.length === 0 ? "값 변화 없음" : `${percentile(e2e, 50)} / ${percentile(e2e, 95)} ms`} |`,
       );
     }
 
@@ -320,16 +337,21 @@ class MeasureRunner {
     this.print(`| 받은 메시지 | ${vendorA.received} |`);
     this.print(`| 받아들임 | ${vendorA.accepted} |`);
     this.print(`| 중복으로 버림 | ${vendorA.duplicates} |`);
-    this.print(`| 늦게 와서 버림 | ${vendorA.outOfOrder} |`);
     this.print(
-      `| 건너뛴 seq (유실률) | ${vendorA.missed} (${vendorA.lossPct}%) |`,
+      `| 늦게 와서 버림 (늦게 온 메시지의 중복 포함) | ${vendorA.outOfOrder} |`,
+    );
+    this.print(
+      `| 화면에 반영 못 한 seq | ${vendorA.missed} (${vendorA.lossPct}%) |`,
+    );
+    this.print(
+      `| 그중 끝내 오지 않은 seq (하한) | ${Math.max(0, vendorA.missed - vendorA.outOfOrder)} |`,
     );
     this.print(
       `| 화면에서 seq가 뒤로 간 횟수 | ${screen.seqRegressions - regressionsBefore} |`,
     );
     this.print("");
     this.print(
-      "늦게 온 메시지는 이미 다음 seq를 받은 뒤라 버려지고, 그 seq는 건너뛴 것으로 셉니다. 그래서 유실률은 주입한 유실에 뒤바뀜이 더해진 값입니다.",
+      "늦게 온 메시지는 이미 다음 seq를 받은 뒤라 버려지고, 그 seq는 반영 못 한 것으로 셉니다. 그래서 반영 못 한 seq에는 끝내 오지 않은 것과 늦게 와서 버린 것이 섞여 있습니다. 미들웨어는 늦게 온 메시지의 중복도 늦음으로 세므로, 끝내 오지 않은 seq는 두 값의 차를 하한으로만 적습니다.",
     );
   }
 
@@ -343,10 +365,7 @@ class MeasureRunner {
     this.print("| 그룹 | DOWN 감지 | UP까지 | 첫 새 데이터까지 |");
     this.print("| --- | --- | --- | --- |");
 
-    for (const [group, vendorCode] of [
-      ["B", "VENDOR_B"],
-      ["C", "VENDOR_C"],
-    ]) {
+    for (const [group, vendorCode] of GROUP_VENDORS) {
       const connection = connections.find(
         (item) => item.vendorCode === vendorCode,
       );
@@ -372,6 +391,10 @@ class MeasureRunner {
   async measureScreenRecovery(screen) {
     this.print("\n## 4. 화면 재접속 복구");
     this.print("");
+    this.print(
+      "스크립트와 미들웨어가 같은 컴퓨터에 있어 네트워크 지연이 거의 없는 값입니다.",
+    );
+    this.print("");
     this.print("| 방식 | 소켓을 연 뒤 첫 응답까지 |");
     this.print("| --- | --- |");
 
@@ -386,6 +409,64 @@ class MeasureRunner {
     await sleep(1000);
     const snapshotMs = await screen.connect(false);
     this.print(`| 처음 접속 (snapshot 전체) | ${Math.round(snapshotMs)} ms |`);
+  }
+
+  /** 장애 주입이 아니라 에뮬레이터 프로세스 자체를 멈췄다 다시 켠다. UP까지에는 부팅 시간이 들어간다. */
+  async measureEmulatorRestart(screen, connections) {
+    this.print("\n## 5. 에뮬레이터 컨테이너 재시작 복구");
+    this.print("");
+    this.print(
+      "`docker compose stop emulator`로 멈춘 뒤 DOWN 감지까지, `docker compose start emulator` 뒤 UP과 첫 새 데이터까지의 시간입니다. 에뮬레이터 부팅 시간이 들어 있습니다.",
+    );
+    this.print("");
+    this.print("| 그룹 | DOWN 감지 | UP까지 | 첫 새 데이터까지 |");
+    this.print("| --- | --- | --- | --- |");
+
+    const targets = GROUP_VENDORS.map(([group, vendorCode]) => ({
+      group,
+      connection: connections.find((item) => item.vendorCode === vendorCode),
+    }));
+
+    const stoppedAt = performance.now();
+    this.compose("stop");
+    const downMs = await Promise.all(
+      targets.map(({ connection }) =>
+        screen
+          .waitLink(connection.id, "DOWN", 30_000)
+          .then(() => performance.now() - stoppedAt),
+      ),
+    );
+    await sleep(2000);
+
+    const startedAt = performance.now();
+    const since = Date.now();
+    const freshList = targets.map(({ connection }) =>
+      screen.waitFresh(connection.id, since),
+    );
+    this.compose("start");
+    const upMs = await Promise.all(
+      targets.map(({ connection }) =>
+        screen
+          .waitLink(connection.id, "UP", 30_000)
+          .then(() => performance.now() - startedAt),
+      ),
+    );
+    const freshMs = await Promise.all(
+      freshList.map((fresh) => fresh.then((at) => at - startedAt)),
+    );
+
+    targets.forEach(({ group, connection }, index) => {
+      this.print(
+        `| ${group} (${connection.protocol}) | ${Math.round(downMs[index])} ms | ${Math.round(upMs[index])} ms | ${Math.round(freshMs[index])} ms |`,
+      );
+    });
+  }
+
+  compose(command) {
+    execFileSync("docker", ["compose", command, "emulator"], {
+      cwd: REPO_ROOT,
+      stdio: "ignore",
+    });
   }
 
   print(line) {
