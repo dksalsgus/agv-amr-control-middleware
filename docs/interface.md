@@ -48,26 +48,27 @@
 
 ## 2. REST API
 
-| 메서드 | 경로                      | 하는 일                              |
-| ------ | ------------------------- | ------------------------------------ |
-| GET    | `/health`                 | 살아 있는지 확인 (토큰 없음)         |
-| POST   | `/auth/login`             | 로그인, 토큰 발급 (토큰 없음)        |
-| GET    | `/robots`                 | 로봇 90대의 현재 상태                |
-| GET    | `/robots/{id}`            | 로봇 하나의 현재 상태                |
-| GET    | `/robots/{id}/telemetry`  | 로봇 이력 (목록)                     |
-| GET    | `/plc-points`             | PLC 16점의 현재 값                   |
-| GET    | `/plc-points/{id}/events` | PLC 점의 값 변화 이력 (목록)         |
-| GET    | `/vendors`                | 제조사 목록 (연결 만들 때 고르는 값) |
-| GET    | `/connections`            | 연결 목록과 연결 상태                |
-| GET    | `/connections/{id}`       | 연결 하나의 설정                     |
-| POST   | `/connections`            | 연결 만들기                          |
-| PATCH  | `/connections/{id}`       | 연결 설정 바꾸기 (재배포 없음)       |
-| DELETE | `/connections/{id}`       | 연결 지우기                          |
-| GET    | `/alarms`                 | 지금 열린 알람                       |
-| POST   | `/alarms/{id}/ack`        | 알람 확인                            |
-| GET    | `/logs`                   | 시스템 로그 (목록)                   |
-| GET    | `/metrics`                | 측정값 (지연, 유실, CPU·메모리)      |
-| POST   | `/metrics/reset`          | 측정값 초기화                        |
+| 메서드 | 경로                      | 하는 일                                |
+| ------ | ------------------------- | -------------------------------------- |
+| GET    | `/health`                 | 살아 있는지 확인 (토큰 없음)           |
+| POST   | `/auth/login`             | 로그인, 토큰 발급 (토큰 없음)          |
+| GET    | `/robots`                 | 로봇 90대의 현재 상태                  |
+| GET    | `/robots/{id}`            | 로봇 하나의 현재 상태                  |
+| GET    | `/robots/{id}/telemetry`  | 로봇 이력 (목록)                       |
+| GET    | `/plc-points`             | PLC 16점의 현재 값                     |
+| GET    | `/plc-points/{id}/events` | PLC 점의 값 변화 이력 (목록)           |
+| GET    | `/vendors`                | 제조사 목록 (연결 만들 때 고르는 값)   |
+| GET    | `/connections`            | 연결 목록과 연결 상태                  |
+| GET    | `/connections/{id}`       | 연결 하나의 설정                       |
+| POST   | `/connections`            | 연결 만들기                            |
+| PATCH  | `/connections/{id}`       | 연결 설정 바꾸기 (재배포 없음)         |
+| DELETE | `/connections/{id}`       | 연결 지우기                            |
+| GET    | `/alarms`                 | 지금 열린 알람                         |
+| POST   | `/alarms/{id}/ack`        | 알람 확인                              |
+| GET    | `/logs`                   | 시스템 로그 (목록)                     |
+| GET    | `/metrics`                | 측정값 (지연, 유실, CPU·메모리)        |
+| POST   | `/metrics/reset`          | 측정값 초기화                          |
+| GET    | `/metrics/connections`    | 연결별 최근 30초 받음·중복·늦음·유실률 |
 
 ### 로그인
 
@@ -234,6 +235,12 @@ PATCH /connections/{id}
 - `ingest` 항목(연결별): `key`(예: `VENDOR_A MQTT`), `received`, `accepted`, `duplicates`, `outOfOrder`, `missed`, `lossPct`, `latencyP50Ms`, `latencyP95Ms`, `latencySamples`
 - `process`: `samples`, `cpuAvgPct`, `cpuMaxPct`, `rssLatestMb`, `rssMaxMb`, `heapUsedLatestMb`
 - `POST /metrics/reset` → `{ since }`
+
+`GET /metrics/connections` → `{ windowSec, connections: Item[] }`. 관제 화면 연결 상태 칸이 2초마다 부릅니다.
+
+- Item: `{ connectionId, received, duplicates, outOfOrder, lossPct }`. 최근 `windowSec`(30)초 동안 받은 수, 이미 받은 seq라 버린 수, 늦게 와서 버린 수입니다.
+- `lossPct`는 LINK_LOSS 알람과 같은 기준이고, 표본이 20건보다 적으면 null입니다. 폴링 연결(REST, Modbus)은 한 번의 폴링 실패를 유실 한 건으로 셉니다.
+- 폴링 연결은 에뮬레이터가 이전 스냅샷을 돌려주는 방식이라 순서 뒤바뀜도 "중복"으로 세집니다.
 
 ## 3. WebSocket `ws://localhost:3000/ws`
 

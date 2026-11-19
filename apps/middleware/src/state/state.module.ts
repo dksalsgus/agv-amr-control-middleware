@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { AlarmStateRepository } from "./alarm-state.repository";
 import { IngestMetricsRepository } from "./ingest-metrics.repository";
 import { LinkQualityRepository } from "./link-quality.repository";
+import { SeqWindowRepository } from "./seq-window.repository";
 import { LinkStateRepository } from "./link-state.repository";
 import { ProcessMetricsRepository } from "./process-metrics.repository";
 import { PlcPointStateRepository } from "./plc-point-state.repository";
@@ -16,6 +17,7 @@ import { RobotStateRepository } from "./robot-state.repository";
     RevisionRepository,
     LinkStateRepository,
     LinkQualityRepository,
+    SeqWindowRepository,
     RemovedEntityRepository,
     AlarmStateRepository,
     IngestMetricsRepository,
@@ -27,6 +29,7 @@ import { RobotStateRepository } from "./robot-state.repository";
     RevisionRepository,
     LinkStateRepository,
     LinkQualityRepository,
+    SeqWindowRepository,
     RemovedEntityRepository,
     AlarmStateRepository,
     IngestMetricsRepository,

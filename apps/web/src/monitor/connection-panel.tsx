@@ -2,10 +2,13 @@ import { formatTime } from "../common/utils/format.util";
 import { Icon, IconName } from "../components/icon";
 import { ConnectionItem } from "../connections/connections.types";
 import { Link } from "../realtime/realtime.types";
+import { ConnectionStats } from "./monitor.types";
+import { ConnectionStatsView } from "./use-connection-stats";
 
 type Props = {
   connections: ConnectionItem[];
   links: ReadonlyMap<string, Link>;
+  stats: ConnectionStatsView;
 };
 
 const LINK_ICON: Record<string, IconName> = {
@@ -17,8 +20,36 @@ const LINK_ICON: Record<string, IconName> = {
 /** 꺼진 연결은 수집하지 않아 UP·DOWN이 없다. 정상처럼 보이지 않게 따로 표시한다. */
 const OFF_LABEL = "꺼짐";
 
+/** 최근 구간 동안 받은 수와 seq 판정으로 버린 수, 유실률 */
+const SeqStats = ({
+  stats,
+  windowSec,
+}: {
+  stats?: ConnectionStats;
+  windowSec: number;
+}) => (
+  <dl className="conn-meta" title={`최근 ${windowSec}초`}>
+    <div>
+      <dt>받음</dt>
+      <dd>{stats ? stats.received : "-"}</dd>
+    </div>
+    <div>
+      <dt>중복 버림</dt>
+      <dd>{stats ? stats.duplicates : "-"}</dd>
+    </div>
+    <div>
+      <dt>늦어서 버림</dt>
+      <dd>{stats ? stats.outOfOrder : "-"}</dd>
+    </div>
+    <div>
+      <dt>유실</dt>
+      <dd>{stats?.lossPct == null ? "-" : `${stats.lossPct}%`}</dd>
+    </div>
+  </dl>
+);
+
 /** 연결 목록은 REST로 한 번 받고, UP·DOWN과 바뀐 시각은 실시간 값으로 덮는다. */
-export const ConnectionPanel = ({ connections, links }: Props) => {
+export const ConnectionPanel = ({ connections, links, stats }: Props) => {
   const rows = connections.map((connection) => {
     const link = links.get(connection.id);
     const changedAt = link ? link.changedAt : connection.linkChangedAt;
@@ -80,6 +111,12 @@ export const ConnectionPanel = ({ connections, links }: Props) => {
                 <dd>{connection.enabled ? "enabled" : "disabled"}</dd>
               </div>
             </dl>
+            {connection.enabled && (
+              <SeqStats
+                stats={stats.byId.get(connection.id)}
+                windowSec={stats.windowSec}
+              />
+            )}
           </li>
         ))}
       </ul>

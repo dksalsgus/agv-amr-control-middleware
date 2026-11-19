@@ -87,3 +87,6 @@ export const CHARGERS = Array.from({ length: 8 }, (_, k) => ({
 
 /** 맵을 다시 그리는 주기. 서버 delta 주기와 같다. */
 export const MAP_TICK_MS = 100;
+
+/** 연결별 받음·중복·늦음 건수를 다시 받아 오는 주기 */
+export const CONNECTION_STATS_POLL_MS = 2000;

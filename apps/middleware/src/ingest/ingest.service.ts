@@ -359,6 +359,7 @@ export class IngestService implements OnApplicationBootstrap {
     );
     await this.ingestMetricsProvider.record(
       label,
+      connectionId,
       judgement,
       reading.sourceTs,
       receivedTs,

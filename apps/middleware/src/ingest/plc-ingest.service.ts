@@ -215,6 +215,7 @@ export class PlcIngestService implements OnApplicationBootstrap {
     const receivedTs = new Date();
     await this.ingestMetricsProvider.record(
       `${connection.vendorCode} ${connection.protocol}`,
+      connection.id,
       judgement,
       reading.sourceTs,
       receivedTs,

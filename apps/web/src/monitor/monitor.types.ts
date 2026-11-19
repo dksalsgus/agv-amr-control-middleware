@@ -33,3 +33,13 @@ export type MapFilters = {
   vendors: ReadonlySet<VendorKey>;
   states: ReadonlySet<string>;
 };
+
+/** GET /metrics/connections의 연결 한 줄. 최근 windowSec초 동안의 건수 */
+export type ConnectionStats = {
+  connectionId: string;
+  received: number;
+  duplicates: number;
+  outOfOrder: number;
+  /** 표본이 적으면 null */
+  lossPct: number | null;
+};
