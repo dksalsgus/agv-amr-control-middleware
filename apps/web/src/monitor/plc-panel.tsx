@@ -8,7 +8,10 @@ import { toPlcMapTags } from "./monitor.util";
 type Props = {
   points: PlcPoint[];
   selectedId: string | null;
+  /** 값을 쓰는 중인 점 id */
+  writingId: string | null;
   onSelect: (id: string) => void;
+  onWrite: (point: PlcPoint, value: boolean) => void;
 };
 
 const onOff = (value: boolean | null): string => {
@@ -33,9 +36,13 @@ const PlcFlag = ({ point }: { point: PlcPoint }) => {
 const PlcDetail = ({
   point,
   mapTag,
+  writing,
+  onWrite,
 }: {
   point?: PlcPoint;
   mapTag?: string;
+  writing: boolean;
+  onWrite: (point: PlcPoint, value: boolean) => void;
 }) => {
   if (!point) {
     return <p className="muted">신호를 고르면 상세 값을 보여 줍니다.</p>;
@@ -90,13 +97,26 @@ const PlcDetail = ({
           </dd>
         </div>
       </dl>
-      <Link
-        className="btn btn-sm"
-        style={{ textDecoration: "none", marginTop: "var(--sp-3)" }}
-        to={`/logs?targetType=PLC_POINT&targetId=${encodeURIComponent(point.id)}`}
+      <div
+        className="od-row"
+        style={{ marginTop: "var(--sp-3)", gap: "var(--sp-2)" }}
       >
-        <Icon name="clock" />이 신호의 이력 보기
-      </Link>
+        <button
+          type="button"
+          className="btn btn-sm"
+          disabled={writing || point.value === null}
+          onClick={() => onWrite(point, !point.value)}
+        >
+          {writing ? "쓰는 중…" : `${point.value ? "OFF로" : "ON으로"} 쓰기`}
+        </button>
+        <Link
+          className="btn btn-sm"
+          style={{ textDecoration: "none" }}
+          to={`/logs?targetType=PLC_POINT&targetId=${encodeURIComponent(point.id)}`}
+        >
+          <Icon name="clock" />이 신호의 이력 보기
+        </Link>
+      </div>
     </>
   );
 };
@@ -126,7 +146,13 @@ const PlcSummaryBadge = (props: { total: number; abnormal: number }) => {
 };
 
 /** PLC 신호 타일과 고른 신호의 상세 */
-export const PlcPanel = ({ points, selectedId, onSelect }: Props) => {
+export const PlcPanel = ({
+  points,
+  selectedId,
+  writingId,
+  onSelect,
+  onWrite,
+}: Props) => {
   const abnormal = points.filter((point) => point.abnormal).length;
   const selected = points.find((point) => point.id === selectedId);
   const detailRef = useRef<HTMLDivElement>(null);
@@ -206,6 +232,8 @@ export const PlcPanel = ({ points, selectedId, onSelect }: Props) => {
             mapTag={
               selected ? toPlcMapTags(points).get(selected.id) : undefined
             }
+            writing={selected !== undefined && selected.id === writingId}
+            onWrite={onWrite}
           />
         </div>
       </div>

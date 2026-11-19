@@ -21,6 +21,10 @@ export class ApiClient {
     return await this.request<T>("PATCH", path, body);
   }
 
+  async put<T>(path: string, body: unknown): Promise<T> {
+    return await this.request<T>("PUT", path, body);
+  }
+
   async delete<T>(path: string): Promise<T> {
     return await this.request<T>("DELETE", path, undefined);
   }
