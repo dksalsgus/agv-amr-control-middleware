@@ -110,7 +110,7 @@ model logs {
   target_type    String   @db.VarChar(20)
   target_id      String   @db.Uuid
   message        String
-  /// 알람을 확인한 사용자. ALARM_ACKED일 때만
+  /// 알람을 확인하거나 연결 설정을 바꾼 사용자. ALARM_ACKED, CONFIG_CHANGED일 때만
   roles_users_id String?  @db.Uuid
   created_at     DateTime @default(now()) @db.Timestamptz
 

@@ -12,6 +12,7 @@ export const LOG_TYPES: LogType[] = [
   "ALARM_RAISED",
   "ALARM_CLEARED",
   "ALARM_ACKED",
+  "CONFIG_CHANGED",
 ];
 
 export const LOG_LABEL: Record<LogType, string> = {
@@ -20,6 +21,7 @@ export const LOG_LABEL: Record<LogType, string> = {
   ALARM_RAISED: "알람 발생",
   ALARM_CLEARED: "알람 해제",
   ALARM_ACKED: "알람 확인",
+  CONFIG_CHANGED: "설정 변경",
 };
 
 export const TARGET_TYPES: LogTargetType[] = [

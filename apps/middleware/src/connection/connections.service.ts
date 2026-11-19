@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import { AuthUser } from "../auth/auth.types";
 import { IngestScheduler } from "../ingest/ingest.scheduler";
 import { VENDOR_PROTOCOLS } from "../ingest/providers/connection.constants";
 import { ConnectionsProvider } from "./connections.provider";
@@ -65,6 +66,7 @@ export class ConnectionsService {
   async patchConnection(
     id: string,
     request: PatchConnectionRequestDto,
+    user: AuthUser,
   ): Promise<PatchConnectionResponseDto> {
     const entry = await this.connectionsProvider.findById(id);
     if (!entry) {
@@ -94,12 +96,20 @@ export class ConnectionsService {
       );
     }
 
+    const changes = this.toChangeTexts(entry.row, request, isProtocolChanged);
+    const detail = changes.length > 0 ? `(${changes.join(", ")})` : "";
+    await this.connectionsProvider.writeChangeLog(
+      id,
+      `${entry.row.name} 설정 변경${detail} · ${user.username}`,
+      user.sub,
+    );
     this.reloadIngest();
     return { id, version: request.version + 1 };
   }
 
   async postConnection(
     request: PostConnectionRequestDto,
+    user: AuthUser,
   ): Promise<PostConnectionResponseDto> {
     const vendor = await this.connectionsProvider.findVendor(request.vendorId);
     this.checkVendorProtocol(vendor, request.protocol);
@@ -118,12 +128,17 @@ export class ConnectionsService {
       enabled: request.enabled ?? true,
       config,
     });
+    await this.connectionsProvider.writeChangeLog(
+      created.id,
+      `${request.name} 연결 추가(${request.protocol}) · ${user.username}`,
+      user.sub,
+    );
     this.reloadIngest();
     return created;
   }
 
   /** 장비가 딸린 연결은 이력이 걸려 있어 지우지 않고 끄도록 안내한다. */
-  async deleteConnection(id: string): Promise<void> {
+  async deleteConnection(id: string, user: AuthUser): Promise<void> {
     const entry = await this.connectionsProvider.findById(id);
     if (!entry) {
       throw new NotFoundException(`연결이 없습니다: ${id}`);
@@ -136,7 +151,35 @@ export class ConnectionsService {
     }
 
     await this.connectionsProvider.delete(id);
+    await this.connectionsProvider.writeChangeLog(
+      id,
+      `${entry.row.name} 연결 삭제 · ${user.username}`,
+      user.sub,
+    );
     this.reloadIngest();
+  }
+
+  /** 이력에 남길 바뀐 항목. 예: ["REST→MQTT", "접속 정보"] */
+  private toChangeTexts(
+    saved: { name: string; protocol: string; enabled: boolean },
+    request: PatchConnectionRequestDto,
+    isProtocolChanged: boolean,
+  ): string[] {
+    const isNameChanged =
+      request.name !== undefined && request.name !== saved.name;
+    const isEnabledChanged =
+      request.enabled !== undefined && request.enabled !== saved.enabled;
+    const isConfigSent = [request.mqtt, request.rest, request.modbus].some(
+      (part) => part !== undefined,
+    );
+    const enabledText = request.enabled ? "켬" : "끔";
+
+    return [
+      isProtocolChanged ? `${saved.protocol}→${request.protocol}` : null,
+      isNameChanged ? `이름 ${saved.name}→${request.name}` : null,
+      isEnabledChanged ? enabledText : null,
+      isConfigSent && !isProtocolChanged ? "접속 정보" : null,
+    ].filter((text): text is string => text !== null);
   }
 
   /** 저장한 설정을 수집에 바로 반영한다. 다시 붙는 동안 응답을 붙잡지 않도록 기다리지 않는다. */
