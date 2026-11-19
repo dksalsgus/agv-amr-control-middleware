@@ -1,9 +1,8 @@
 import { Injectable } from "@nestjs/common";
+import { toInt16, toUint32, toUint48 } from "../../common/utils/register.util";
 import { RobotOpState } from "../../state/robot-state";
 import { ModbusRawMessage } from "../providers/modbus-link.provider";
 import { RobotReading, VendorAdapter } from "./vendor-adapter";
-
-const UINT16 = 0x10000;
 
 const OP_STATE_BY_CODE: RobotOpState[] = [
   "IDLE",
@@ -12,8 +11,6 @@ const OP_STATE_BY_CODE: RobotOpState[] = [
   "PAUSED",
   "ERROR",
 ];
-
-const toInt16 = (value: number) => (value >= 0x8000 ? value - UINT16 : value);
 
 /**
  * 제조사 C: Modbus 레지스터 블록(차량당 16개).
@@ -34,8 +31,8 @@ export class VendorCAdapter implements VendorAdapter<ModbusRawMessage> {
   }
 
   private toReading(blockNo: number, block: number[]): RobotReading {
-    const seq = block[0] * UINT16 + block[1];
-    const sourceMs = block[2] * UINT16 * UINT16 + block[3] * UINT16 + block[4];
+    const seq = toUint32(block[0], block[1]);
+    const sourceMs = toUint48(block[2], block[3], block[4]);
     const errorCode = block[11];
 
     return {

@@ -1,3 +1,4 @@
+import { radianToDegree } from "../common/utils/angle.util";
 import { Robot, RobotMode } from "../simulation/robot";
 
 /** 제조사 B의 REST JSON 형식 (설계 문서 4장 로봇 매핑표 B열) */
@@ -18,11 +19,6 @@ const STATUS_MAP: Record<RobotMode, VendorBVehicle["status"]> = {
   IDLE: "IDLE",
   DRIVING: "RUN",
   CHARGING: "CHG",
-};
-
-const radianToDegree = (radian: number) => {
-  const degree = (radian * 180) / Math.PI;
-  return ((degree % 360) + 360) % 360;
 };
 
 export class VendorBPayloadBuilder {

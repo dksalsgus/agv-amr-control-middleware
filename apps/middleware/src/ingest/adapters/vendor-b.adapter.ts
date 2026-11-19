@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { normalizeDegree } from "../../common/utils/angle.util";
 import { RobotOpState } from "../../state/robot-state";
 import { RestRawMessage } from "../repositories/rest-client.repository";
 import { RobotReading, VendorAdapter } from "./vendor-adapter";
@@ -25,8 +26,6 @@ const OP_STATE_BY_STATUS: Record<VendorBStatus, RobotOpState> = {
   STOP: "PAUSED",
   ERR: "ERROR",
 };
-
-const normalizeDegree = (degree: number) => ((degree % 360) + 360) % 360;
 
 /**
  * 제조사 B: REST JSON. 좌표 mm, 방향 도, 속도 mm/s, 배터리 0~100, 오류 없음은 빈 문자열.

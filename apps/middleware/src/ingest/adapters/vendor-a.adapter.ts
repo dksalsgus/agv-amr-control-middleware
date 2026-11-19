@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { radianToDegree } from "../../common/utils/angle.util";
 import { RobotOpState } from "../../state/robot-state";
 import { MqttRawMessage } from "../repositories/mqtt-client.repository";
 import { RobotReading, VendorAdapter } from "./vendor-adapter";
@@ -22,11 +23,6 @@ const OP_STATE_BY_MODE: Record<VendorAMode, RobotOpState> = {
   charging: "CHARGING",
   paused: "PAUSED",
   fault: "ERROR",
-};
-
-const radianToDegree = (radian: number) => {
-  const degree = (radian * 180) / Math.PI;
-  return ((degree % 360) + 360) % 360;
 };
 
 /**

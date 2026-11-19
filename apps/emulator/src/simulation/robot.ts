@@ -1,3 +1,4 @@
+import { randomBetween } from "../common/utils/random.util";
 import { MAP_HEIGHT_M, MAP_WIDTH_M } from "../config";
 
 export type RobotMode = "IDLE" | "DRIVING" | "CHARGING";
@@ -8,9 +9,6 @@ const BATTERY_DRAIN_PCT_PER_S = 0.05;
 const BATTERY_CHARGE_PCT_PER_S = 1;
 const LOW_BATTERY_PCT = 20;
 const FULL_BATTERY_PCT = 100;
-
-const randomBetween = (min: number, max: number) =>
-  min + Math.random() * (max - min);
 
 /**
  * 로봇 한 대의 움직임을 모사한다. 단위는 m, rad, m/s, %.
