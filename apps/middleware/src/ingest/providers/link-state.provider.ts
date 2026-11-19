@@ -35,7 +35,8 @@ export class LinkStateProvider {
     const state = await this.findState(connectionId);
     if (state.status === "UP") {
       await this.linkStateRepository.save(connectionId, {
-        ...state,
+        status: state.status,
+        changedAt: state.changedAt,
         failureCount: 0,
       });
       return;
@@ -56,7 +57,8 @@ export class LinkStateProvider {
 
     if (state.status === "DOWN" || failureCount < DOWN_AFTER_FAILURES) {
       await this.linkStateRepository.save(connectionId, {
-        ...state,
+        status: state.status,
+        changedAt: state.changedAt,
         failureCount,
       });
       return;

@@ -46,7 +46,11 @@ import { RestClientRepository } from "./repositories/rest-client.repository";
     VendorCAdapter,
     {
       provide: VENDOR_ADAPTERS,
-      useFactory: (...adapters: VendorAdapter<unknown>[]) => adapters,
+      useFactory: (
+        vendorA: VendorAAdapter,
+        vendorB: VendorBAdapter,
+        vendorC: VendorCAdapter,
+      ): VendorAdapter<unknown>[] => [vendorA, vendorB, vendorC],
       inject: [VendorAAdapter, VendorBAdapter, VendorCAdapter],
     },
     ModbusClientRepository,

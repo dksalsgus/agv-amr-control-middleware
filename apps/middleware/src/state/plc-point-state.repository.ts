@@ -13,7 +13,18 @@ export class PlcPointStateRepository {
   private readonly lastReadByDevice = new Map<string, PlcDeviceLastRead>();
 
   async register(point: PlcPoint): Promise<void> {
-    this.entries.set(point.pointId, { ...point, current: null, rev: 0 });
+    this.entries.set(point.pointId, {
+      pointId: point.pointId,
+      deviceId: point.deviceId,
+      connectionId: point.connectionId,
+      pointNo: point.pointNo,
+      name: point.name,
+      type: point.type,
+      normalValue: point.normalValue,
+      alarmOnAbnormal: point.alarmOnAbnormal,
+      current: null,
+      rev: 0,
+    });
   }
 
   async remove(pointId: string): Promise<void> {
@@ -29,7 +40,7 @@ export class PlcPointStateRepository {
   }
 
   async findAll(): Promise<PlcPointEntry[]> {
-    return [...this.entries.values()];
+    return Array.from(this.entries.values());
   }
 
   async updateValue(
