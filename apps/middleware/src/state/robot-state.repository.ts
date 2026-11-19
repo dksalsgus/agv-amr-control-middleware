@@ -72,6 +72,14 @@ export class RobotStateRepository {
     entry.rev = rev;
   }
 
+  /** 값은 그대로 두고 rev만 올린다. STALE 전환을 delta에 싣는 데 쓴다. */
+  async touch(deviceId: string, rev: number): Promise<void> {
+    const entry = this.entries.get(deviceId);
+    if (entry) {
+      entry.rev = rev;
+    }
+  }
+
   private toExternalKey(connectionId: string, externalId: string): string {
     return `${connectionId}:${externalId}`;
   }
