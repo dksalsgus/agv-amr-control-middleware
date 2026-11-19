@@ -9,7 +9,7 @@ export const VENDOR_PROTOCOLS: Record<
   readonly (typeof CONNECTION_PROTOCOLS)[number][]
 > = {
   VENDOR_A: ["MQTT"],
-  VENDOR_B: ["REST"],
+  VENDOR_B: ["REST", "MQTT"],
   VENDOR_C: ["MODBUS_TCP"],
   PLC: ["MODBUS_TCP"],
 };

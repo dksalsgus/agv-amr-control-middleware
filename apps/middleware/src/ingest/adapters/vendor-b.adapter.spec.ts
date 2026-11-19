@@ -18,6 +18,16 @@ const vehicle = toVehicle("B-003", "RUN", "");
 describe("VendorBAdapter", () => {
   const adapter = new VendorBAdapter();
 
+  it("MQTT로 받은 한 대 본문도 REST와 같게 바꾼다", async () => {
+    const [fromMqtt] = await adapter.toCommon({
+      topic: "vendorB/agv/B-003/state",
+      payload: Buffer.from(JSON.stringify(vehicle)),
+    });
+    const [fromRest] = await adapter.toCommon({ body: vehicle });
+
+    expect(fromMqtt).toEqual(fromRest);
+  });
+
   it("mm는 m로, mm/s는 m/s로, 도는 0~360으로 바꾼다", async () => {
     const [reading] = await adapter.toCommon({ body: vehicle });
 

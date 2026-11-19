@@ -13,6 +13,11 @@ export class VendorBPayloadBuilder {
     CHARGING: "CHG",
   };
 
+  /** MQTT로 보낼 때의 토픽. 본문은 REST 한 대 응답과 같다. */
+  topic(robot: Robot): string {
+    return `vendorB/agv/${robot.serial}/state`;
+  }
+
   build(robot: Robot, sampledAt: Date): VendorBVehicle {
     return {
       vehicleId: robot.serial,
