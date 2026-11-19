@@ -161,7 +161,7 @@ flowchart LR
 
   DB[("PostgreSQL<br/>설정 + 이력")]
   RQ[("Redis<br/>이력 저장 큐 (BullMQ)")]
-  WEB["관제 웹<br/>(TODO)"]
+  WEB["관제 웹<br/>:8080"]
 
   A -- "publish 1초" --> MQ -- "subscribe (푸시)" --> ING
   B -- "GET 1초 (폴링)" --> ING
