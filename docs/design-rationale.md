@@ -97,15 +97,15 @@ sequenceDiagram
   UI->>API: PATCH /connections/{id} {version, config}
   API->>API: 프로토콜별 DTO 검증 (틀리면 400)
   API->>DB: version이 같을 때만 저장, version + 1 (다르면 409)
-  API-)SC: connection.changed 이벤트
+  API-)SC: reloadConnections() 호출
   SC->>DB: 켜진 연결 목록 조회
   SC->>SC: version이 바뀐 연결만 내렸다가 새 설정으로 다시 붙임
 ```
 
-- **결정**: 연결 설정은 서버가 시작할 때 DB에서 한 번 읽습니다. 그 뒤로는 연결 설정 API가 저장(POST, PATCH, DELETE)에 성공하면 내부 이벤트(`connection.changed`, EventEmitter2)를 내고, 수집 쪽이 이를 받아 바로 DB와 자기 상태를 비교해 바뀐 연결만 교체합니다. 다른 연결은 끊기지 않습니다. 비교하는 동안 또 저장되면 끝난 뒤 한 번 더 비교합니다.
-- **이유**: 저장하자마자 반영됩니다. API(connection 모듈)는 이벤트만 내고 수집(ingest 모듈)을 직접 부르지 않아 모듈과 계층 경계가 깔끔합니다. 서버가 재시작해도 DB가 기준이라 같은 상태로 돌아옵니다. `version`은 두 사람이 동시에 고치는 충돌 감지와 "다시 붙일지" 판단에 함께 씁니다.
-- **대안**: 몇 초마다 DB를 다시 읽는 주기 동기화, API가 수집 Service를 직접 호출, PostgreSQL LISTEN/NOTIFY.
-- **감수한 점**: 이벤트는 프로세스 안에서만 전달되므로, API를 거치지 않고 DB를 직접 고치면 서버를 다시 시작해야 반영됩니다. 미들웨어를 여러 대로 늘리면 Redis pub/sub 같은 프로세스 밖 전달로 바꿔야 합니다.
+- **결정**: 연결 설정은 서버가 시작할 때 DB에서 한 번 읽습니다. 그 뒤로는 연결 설정 API가 저장(POST, PATCH, DELETE)에 성공하면 수집 쪽 `IngestScheduler.reloadConnections()`를 바로 부르고, 수집 쪽은 DB와 자기 상태를 비교해 바뀐 연결만 교체합니다. 다른 연결은 끊기지 않습니다. 비교하는 동안 또 저장되면 끝난 뒤 한 번 더 비교합니다.
+- **이유**: 저장하자마자 반영됩니다. connection 모듈이 ingest 모듈을 부르는 한 방향 의존이라 구조가 단순하고 따라가기 쉽습니다. 서버가 재시작해도 DB가 기준이라 같은 상태로 돌아옵니다. `version`은 두 사람이 동시에 고치는 충돌 감지와 "다시 붙일지" 판단에 함께 씁니다.
+- **대안**: 몇 초마다 DB를 다시 읽는 주기 동기화, 내부 이벤트(EventEmitter2)로 느슨하게 연결, PostgreSQL LISTEN/NOTIFY.
+- **감수한 점**: connection 모듈이 ingest 모듈을 직접 압니다. API를 거치지 않고 DB를 직접 고치면 서버를 다시 시작해야 반영됩니다. 미들웨어를 여러 대로 늘리면 Redis pub/sub 같은 프로세스 밖 전달로 바꿔야 합니다.
 
 ## 6. 장비별 seq 판정, 늦게 온 것은 버림
 
