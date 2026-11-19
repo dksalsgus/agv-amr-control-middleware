@@ -41,7 +41,9 @@ export class VendorCServer {
     this.fleet.robots.forEach((robot, blockNo) => {
       const start = VENDOR_C_BASE_ADDRESS + VENDOR_C_BLOCK_SIZE * blockNo;
       const block = this.encoder.encode(robot, this.fleet.sampledAt);
-      next.splice(start, block.length, ...block);
+      block.forEach((word, offset) => {
+        next[start + offset] = word;
+      });
     });
 
     this.registers = next;

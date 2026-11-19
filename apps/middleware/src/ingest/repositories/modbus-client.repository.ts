@@ -48,7 +48,7 @@ export class ModbusClientRepository implements OnModuleDestroy {
   }
 
   async onModuleDestroy() {
-    for (const connectionId of [...this.clients.keys()]) {
+    for (const connectionId of Array.from(this.clients.keys())) {
       await this.disconnect(connectionId);
     }
   }

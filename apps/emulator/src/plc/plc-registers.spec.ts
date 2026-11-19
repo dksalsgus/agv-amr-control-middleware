@@ -22,7 +22,7 @@ describe("PlcRegisterEncoder", () => {
 
 describe("PlcSimulator", () => {
   it("step마다 seq가 오르고, 확률보다 작은 난수가 나온 점만 뒤집힌다", () => {
-    const randoms = [0.5, 0.001, ...new Array<number>(14).fill(0.5)];
+    const randoms = [0.5, 0.001].concat(new Array<number>(14).fill(0.5));
     const plc = new PlcSimulator(() => randoms.shift() ?? 0.5);
 
     plc.step();

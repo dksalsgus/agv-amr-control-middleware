@@ -24,7 +24,7 @@ export class PlcPointsService {
 
   async getPlcPoints(): Promise<GetPlcPointsResponseDto> {
     const entries = await this.plcPointsProvider.findAll();
-    const sorted = [...entries].sort((a, b) => a.pointNo - b.pointNo);
+    const sorted = entries.slice().sort((a, b) => a.pointNo - b.pointNo);
     const now = new Date();
 
     const plcPoints: GetPlcPointsItemDto[] = [];

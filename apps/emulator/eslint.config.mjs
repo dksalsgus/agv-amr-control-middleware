@@ -23,6 +23,10 @@ export default tseslint.config(
           selector: "VariableDeclaration[kind='let']",
           message: "let 대신 const를 쓴다.",
         },
+        {
+          selector: "SpreadElement, RestElement",
+          message: "스프레드·나머지 문법 대신 필드를 명시한다.",
+        },
       ],
     },
   },

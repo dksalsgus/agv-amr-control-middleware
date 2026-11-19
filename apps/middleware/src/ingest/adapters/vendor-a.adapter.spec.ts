@@ -5,16 +5,22 @@ const toRaw = (topic: string, payload: object) => ({
   payload: Buffer.from(JSON.stringify(payload)),
 });
 
-const basePayload = {
+const toPayload = (
+  theta: number,
+  mode: string,
+  fault: { code: string } | null,
+) => ({
   seq: 12,
   ts: "2026-11-19T00:00:01.000Z",
-  pose: { x: 3.5, y: 4.25, theta: Math.PI / 2 },
+  pose: { x: 3.5, y: 4.25, theta },
   velocity: 0.8,
   battery: { soc: 0.756 },
-  mode: "driving",
-  fault: null,
+  mode,
+  fault,
   payload: { loaded: true },
-};
+});
+
+const basePayload = toPayload(Math.PI / 2, "driving", null);
 
 describe("VendorAAdapter", () => {
   const adapter = new VendorAAdapter();
@@ -40,10 +46,10 @@ describe("VendorAAdapter", () => {
   });
 
   it("음수 rad는 0~360도로 바꾼다", async () => {
-    const raw = toRaw("vendorA/amr/A-001/state", {
-      ...basePayload,
-      pose: { x: 0, y: 0, theta: -Math.PI / 2 },
-    });
+    const raw = toRaw(
+      "vendorA/amr/A-001/state",
+      toPayload(-Math.PI / 2, "driving", null),
+    );
 
     const [reading] = await adapter.toCommon(raw);
 
@@ -51,11 +57,10 @@ describe("VendorAAdapter", () => {
   });
 
   it("fault가 있으면 ERROR와 오류 코드를 준다", async () => {
-    const raw = toRaw("vendorA/amr/A-001/state", {
-      ...basePayload,
-      mode: "fault",
-      fault: { code: "E-101" },
-    });
+    const raw = toRaw(
+      "vendorA/amr/A-001/state",
+      toPayload(Math.PI / 2, "fault", { code: "E-101" }),
+    );
 
     const [reading] = await adapter.toCommon(raw);
 
