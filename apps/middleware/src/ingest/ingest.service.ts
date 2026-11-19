@@ -1,4 +1,6 @@
 import { Inject, Injectable } from "@nestjs/common";
+import { ConfigType } from "@nestjs/config";
+import { linkConfig } from "../config/link.config";
 import { RobotState } from "../state/robot-state";
 import {
   RobotReading,
@@ -29,8 +31,12 @@ import { AppLogger } from "../logger/app-logger";
 export class IngestService {
   private readonly connections = new Map<string, IngestConnection>();
   private readonly queues = new Map<string, SerialQueue>();
+  /** MQTT 연결별 마지막 수신 시각(ms) */
+  private readonly lastReceivedAt = new Map<string, number>();
 
   constructor(
+    @Inject(linkConfig.KEY)
+    private readonly config: ConfigType<typeof linkConfig>,
     @Inject(VENDOR_ADAPTERS)
     private readonly adapters: VendorAdapter<unknown>[],
     private readonly connectionProvider: ConnectionProvider,
@@ -85,6 +91,24 @@ export class IngestService {
     }
   }
 
+  /**
+   * MQTT는 발행이 멈춰도 브로커 연결은 살아 있어 끊김 이벤트가 오지 않는다.
+   * 기준 시간 넘게 메시지가 없으면 DOWN으로 바꾸고, 다시 받으면 onMessage에서 UP으로 돌린다.
+   */
+  async checkPushSilence(): Promise<void> {
+    const now = Date.now();
+    for (const [connectionId, receivedAt] of this.lastReceivedAt) {
+      const connection = this.connections.get(connectionId);
+      if (connection && now - receivedAt > this.config.pushSilenceMs) {
+        await this.linkStateProvider.markDown(
+          connectionId,
+          this.toLabel(connection),
+          `${this.config.pushSilenceMs / 1000}초 동안 수신 없음`,
+        );
+      }
+    }
+  }
+
   /** 폴링 연결(REST, Modbus)의 id 목록 */
   async findPolledConnectionIds(): Promise<string[]> {
     return Array.from(this.connections.values())
@@ -128,6 +152,7 @@ export class IngestService {
   private async close(connection: IngestConnection): Promise<void> {
     this.connections.delete(connection.id);
     this.queues.delete(connection.id);
+    this.lastReceivedAt.delete(connection.id);
     await this.stopLink(connection);
     await this.robotStateProvider.unregisterDevices(connection.robots);
     await this.linkStateProvider.unregister(connection.id);
@@ -179,11 +204,14 @@ export class IngestService {
     }
 
     const label = this.toLabel(connection);
+    this.lastReceivedAt.set(connection.id, Date.now());
     await this.mqttLinkProvider.start(
       connection.id,
       connection.config as MqttConnectionConfig,
       {
         onMessage: async (raw) => {
+          this.lastReceivedAt.set(connection.id, Date.now());
+          await this.linkStateProvider.markUp(connection.id, label);
           await this.handleRaw(
             connection.id,
             this.toLabel(connection),
