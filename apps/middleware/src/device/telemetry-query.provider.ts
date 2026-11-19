@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import {
   TelemetryPageQuery,
+  TelemetryRow,
   VendorsConnectionsDevicesTelemetryRepository,
 } from "../history/vendors-connections-devices-telemetry.repository";
 
@@ -10,7 +11,9 @@ export class TelemetryQueryProvider {
     private readonly telemetryRepository: VendorsConnectionsDevicesTelemetryRepository,
   ) {}
 
-  findPage(query: TelemetryPageQuery) {
-    return this.telemetryRepository.findPage(query);
+  async findPage(
+    query: TelemetryPageQuery,
+  ): Promise<{ rows: TelemetryRow[]; total: number }> {
+    return await this.telemetryRepository.findPage(query);
   }
 }

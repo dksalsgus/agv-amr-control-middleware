@@ -15,16 +15,19 @@ import { RobotsProvider } from "./robots.provider";
 export class RobotsService {
   constructor(private readonly robotsProvider: RobotsProvider) {}
 
-  getRobots(): GetRobotsResponseDto {
-    const robots = this.robotsProvider
-      .findAll()
-      .map((entry) => this.toItem(entry));
+  async getRobots(): Promise<GetRobotsResponseDto> {
+    const entries = await this.robotsProvider.findAll();
+
+    const robots: GetRobotsItemDto[] = [];
+    for (const entry of entries) {
+      robots.push(await this.toItem(entry));
+    }
 
     return { robots };
   }
 
-  getRobot(id: string): GetRobotResponseDto {
-    const entry = this.robotsProvider.findById(id);
+  async getRobot(id: string): Promise<GetRobotResponseDto> {
+    const entry = await this.robotsProvider.findById(id);
     if (!entry) {
       throw new NotFoundException(`로봇이 없습니다: ${id}`);
     }
@@ -36,11 +39,11 @@ export class RobotsService {
       name: entry.name,
       type: entry.type,
       rev: entry.rev,
-      state: entry.state ? this.toState(entry.state) : null,
+      state: entry.state ? await this.toState(entry.state) : null,
     };
   }
 
-  private toItem(entry: RobotEntry): GetRobotsItemDto {
+  private async toItem(entry: RobotEntry): Promise<GetRobotsItemDto> {
     return {
       id: entry.deviceId,
       connectionId: entry.connectionId,
@@ -48,11 +51,13 @@ export class RobotsService {
       name: entry.name,
       type: entry.type,
       rev: entry.rev,
-      state: entry.state ? this.toState(entry.state) : null,
+      state: entry.state ? await this.toState(entry.state) : null,
     };
   }
 
-  private toState(state: RobotState): GetRobotsStateDto & GetRobotStateDto {
+  private async toState(
+    state: RobotState,
+  ): Promise<GetRobotsStateDto & GetRobotStateDto> {
     return {
       seq: state.seq,
       sourceTs: state.sourceTs.toISOString(),

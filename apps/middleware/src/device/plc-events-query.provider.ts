@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import {
   PlcPointEventPageQuery,
+  PlcPointEventRow,
   VendorsConnectionsDevicesPlcPointsEventsRepository,
 } from "../history/vendors-connections-devices-plc-points-events.repository";
 
@@ -10,7 +11,9 @@ export class PlcEventsQueryProvider {
     private readonly eventsRepository: VendorsConnectionsDevicesPlcPointsEventsRepository,
   ) {}
 
-  findPage(query: PlcPointEventPageQuery) {
-    return this.eventsRepository.findPage(query);
+  async findPage(
+    query: PlcPointEventPageQuery,
+  ): Promise<{ rows: PlcPointEventRow[]; total: number }> {
+    return await this.eventsRepository.findPage(query);
   }
 }

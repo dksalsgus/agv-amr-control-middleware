@@ -19,14 +19,16 @@ export class RobotsController {
   ) {}
 
   @Get()
-  getRobots(): ApiResult<GetRobotsResponseDto> {
-    const response = this.robotsService.getRobots();
+  async getRobots(): Promise<ApiResult<GetRobotsResponseDto>> {
+    const response = await this.robotsService.getRobots();
     return ApiResult.ofSuccess(response);
   }
 
   @Get(":id")
-  getRobot(@Param() param: GetRobotParamDto): ApiResult<GetRobotResponseDto> {
-    const response = this.robotsService.getRobot(param.id);
+  async getRobot(
+    @Param() param: GetRobotParamDto,
+  ): Promise<ApiResult<GetRobotResponseDto>> {
+    const response = await this.robotsService.getRobot(param.id);
     return ApiResult.ofSuccess(response);
   }
 

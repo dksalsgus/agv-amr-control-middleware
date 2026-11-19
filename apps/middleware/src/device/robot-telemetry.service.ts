@@ -19,7 +19,8 @@ export class RobotTelemetryService {
     id: string,
     query: GetRobotTelemetryQueryDto,
   ): Promise<GetRobotTelemetryResponseDto> {
-    if (!this.robotsProvider.findById(id)) {
+    const robot = await this.robotsProvider.findById(id);
+    if (!robot) {
       throw new NotFoundException(`로봇이 없습니다: ${id}`);
     }
 
@@ -31,15 +32,15 @@ export class RobotTelemetryService {
       take: query.size,
     });
 
-    return {
-      items: rows.map((row) => this.toItem(row)),
-      page: query.page,
-      size: query.size,
-      total,
-    };
+    const items: GetRobotTelemetryItemDto[] = [];
+    for (const row of rows) {
+      items.push(await this.toItem(row));
+    }
+
+    return { items, page: query.page, size: query.size, total };
   }
 
-  private toItem(row: TelemetryRow): GetRobotTelemetryItemDto {
+  private async toItem(row: TelemetryRow): Promise<GetRobotTelemetryItemDto> {
     return {
       id: row.id.toString(),
       seq: Number(row.seq),

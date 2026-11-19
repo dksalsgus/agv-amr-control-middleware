@@ -13,8 +13,8 @@ export class PlcPointsController {
   constructor(private readonly plcPointsService: PlcPointsService) {}
 
   @Get()
-  getPlcPoints(): ApiResult<GetPlcPointsResponseDto> {
-    const response = this.plcPointsService.getPlcPoints();
+  async getPlcPoints(): Promise<ApiResult<GetPlcPointsResponseDto>> {
+    const response = await this.plcPointsService.getPlcPoints();
     return ApiResult.ofSuccess(response);
   }
 

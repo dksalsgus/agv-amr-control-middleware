@@ -6,11 +6,11 @@ import { RobotStateRepository } from "../state/robot-state.repository";
 export class RobotsProvider {
   constructor(private readonly robotStateRepository: RobotStateRepository) {}
 
-  findAll(): RobotEntry[] {
-    return this.robotStateRepository.findAll();
+  async findAll(): Promise<RobotEntry[]> {
+    return await this.robotStateRepository.findAll();
   }
 
-  findById(deviceId: string): RobotEntry | undefined {
-    return this.robotStateRepository.findById(deviceId);
+  async findById(deviceId: string): Promise<RobotEntry | undefined> {
+    return await this.robotStateRepository.findById(deviceId);
   }
 }
