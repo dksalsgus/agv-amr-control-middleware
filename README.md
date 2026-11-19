@@ -97,7 +97,7 @@ curl -H "$AUTH" -X POST http://localhost:3000/connections -H 'content-type: appl
 curl -H "$AUTH" -X DELETE http://localhost:3000/connections/{id}
 ```
 
-미들웨어는 2초마다 DB의 연결 설정을 확인해서, `version`이 바뀐 연결만 내렸다가 새 설정으로 다시 붙입니다.
+연결 설정을 저장하면 미들웨어가 바로 DB의 연결 설정과 비교해서, `version`이 바뀐 연결만 내렸다가 새 설정으로 다시 붙입니다.
 
 ### 장애 확인
 

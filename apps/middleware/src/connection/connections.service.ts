@@ -4,6 +4,11 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
+import {
+  CONNECTION_CHANGED_EVENT,
+  ConnectionChangedEvent,
+} from "../common/events/connection.events";
 import { VENDOR_PROTOCOLS } from "../ingest/providers/connection.constants";
 import { ConnectionsProvider } from "./connections.provider";
 import { ConnectionWithLink } from "./connections.types";
@@ -18,7 +23,10 @@ import { ConfigParts } from "./connections.types";
 
 @Injectable()
 export class ConnectionsService {
-  constructor(private readonly connectionsProvider: ConnectionsProvider) {}
+  constructor(
+    private readonly connectionsProvider: ConnectionsProvider,
+    private readonly eventEmitter: EventEmitter2,
+  ) {}
 
   async getConnections(): Promise<GetConnectionsResponseDto> {
     const entries = await this.connectionsProvider.findAll();
@@ -90,6 +98,7 @@ export class ConnectionsService {
       );
     }
 
+    this.emitChanged(id);
     return { id, version: request.version + 1 };
   }
 
@@ -106,13 +115,15 @@ export class ConnectionsService {
       );
     }
 
-    return await this.connectionsProvider.create({
+    const created = await this.connectionsProvider.create({
       vendorId: request.vendorId,
       name: request.name,
       protocol: request.protocol,
       enabled: request.enabled ?? true,
       config,
     });
+    this.emitChanged(created.id);
+    return created;
   }
 
   /** 장비가 딸린 연결은 이력이 걸려 있어 지우지 않고 끄도록 안내한다. */
@@ -129,6 +140,13 @@ export class ConnectionsService {
     }
 
     await this.connectionsProvider.delete(id);
+    this.emitChanged(id);
+  }
+
+  /** 저장한 설정을 수집에 바로 반영하게 알린다. */
+  private emitChanged(connectionId: string): void {
+    const event: ConnectionChangedEvent = { connectionId };
+    this.eventEmitter.emit(CONNECTION_CHANGED_EVENT, event);
   }
 
   /** 장비가 보내지 않거나 어댑터가 읽지 못하는 프로토콜이면 400 */
