@@ -3,9 +3,7 @@ import { RevisionRepository } from "../../state/revision.repository";
 import { RobotDevice, RobotEntry, RobotState } from "../../state/robot-state";
 import { RobotStateRepository } from "../../state/robot-state.repository";
 
-/**
- * 메모리 상태 갱신. 상태가 바뀔 때마다 전역 rev를 하나 올려 붙인다.
- */
+/** 로봇 메모리 상태 갱신. 바뀔 때마다 전역 rev를 올린다. */
 @Injectable()
 export class RobotStateProvider {
   constructor(
@@ -13,21 +11,24 @@ export class RobotStateProvider {
     private readonly revisionRepository: RevisionRepository,
   ) {}
 
-  registerDevices(devices: RobotDevice[]) {
+  async registerDevices(devices: RobotDevice[]): Promise<void> {
     for (const device of devices) {
-      this.robotStateRepository.register(device);
+      await this.robotStateRepository.register(device);
     }
   }
 
-  findByExternalId(
+  async findByExternalId(
     connectionId: string,
     externalId: string,
-  ): RobotEntry | undefined {
-    return this.robotStateRepository.findByExternalId(connectionId, externalId);
+  ): Promise<RobotEntry | undefined> {
+    return await this.robotStateRepository.findByExternalId(
+      connectionId,
+      externalId,
+    );
   }
 
-  apply(deviceId: string, state: RobotState) {
-    const rev = this.revisionRepository.next();
-    this.robotStateRepository.updateState(deviceId, state, rev);
+  async apply(deviceId: string, state: RobotState): Promise<void> {
+    const rev = await this.revisionRepository.next();
+    await this.robotStateRepository.updateState(deviceId, state, rev);
   }
 }

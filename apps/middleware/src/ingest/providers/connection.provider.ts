@@ -3,16 +3,16 @@ import { PlcPoint, PlcPointType } from "../../state/plc-point-state";
 import { RobotDevice } from "../../state/robot-state";
 import { VendorsConnectionsRepository } from "../repositories/vendors-connections.repository";
 
+/** vendors_connections.protocol 컬럼(varchar)의 허용값 */
+export const CONNECTION_PROTOCOLS = ["MQTT", "REST", "MODBUS_TCP"] as const;
+
+export type ConnectionProtocol = (typeof CONNECTION_PROTOCOLS)[number];
+
 export type PlcDevice = {
   deviceId: string;
   externalId: string;
   points: PlcPoint[];
 };
-
-/** vendors_connections.protocol 컬럼(varchar)의 허용값 */
-export const CONNECTION_PROTOCOLS = ["MQTT", "REST", "MODBUS_TCP"] as const;
-
-export type ConnectionProtocol = (typeof CONNECTION_PROTOCOLS)[number];
 
 export type IngestConnection = {
   id: string;
@@ -23,16 +23,14 @@ export type IngestConnection = {
   plcDevices: PlcDevice[];
 };
 
-type ConnectionRow = Awaited<
+type ConnectionWithDevicesRow = Awaited<
   ReturnType<VendorsConnectionsRepository["findEnabledWithVendorAndDevices"]>
 >[number];
 
-type DeviceRow = ConnectionRow["vendors_connections_devices"][number];
+type DeviceRow =
+  ConnectionWithDevicesRow["vendors_connections_devices"][number];
 
-/**
- * 수집을 시작할 연결 목록을 DB에서 읽어 수집에 필요한 모양으로 바꾼다.
- * 장비는 로봇(AMR, AGV)과 PLC로 나눈다.
- */
+/** 수집할 연결 목록을 읽어 로봇과 PLC 장비로 나눈다. */
 @Injectable()
 export class ConnectionProvider {
   constructor(
@@ -43,27 +41,42 @@ export class ConnectionProvider {
     const rows =
       await this.vendorsConnectionsRepository.findEnabledWithVendorAndDevices();
 
-    return rows.map((row) => this.toConnection(row));
+    const connections: IngestConnection[] = [];
+    for (const row of rows) {
+      connections.push(await this.toConnection(row));
+    }
+
+    return connections;
   }
 
-  private toConnection(row: ConnectionRow): IngestConnection {
-    const devices = row.vendors_connections_devices;
+  private async toConnection(
+    row: ConnectionWithDevicesRow,
+  ): Promise<IngestConnection> {
+    const robots: RobotDevice[] = [];
+    const plcDevices: PlcDevice[] = [];
+
+    for (const device of row.vendors_connections_devices) {
+      if (device.type === "PLC") {
+        plcDevices.push(await this.toPlcDevice(row.id, device));
+      } else {
+        robots.push(await this.toRobot(row.id, device));
+      }
+    }
 
     return {
       id: row.id,
       vendorCode: row.vendors.code,
       protocol: row.protocol as ConnectionProtocol,
       config: row.config,
-      robots: devices
-        .filter((device) => device.type !== "PLC")
-        .map((device) => this.toRobot(row.id, device)),
-      plcDevices: devices
-        .filter((device) => device.type === "PLC")
-        .map((device) => this.toPlcDevice(row.id, device)),
+      robots,
+      plcDevices,
     };
   }
 
-  private toRobot(connectionId: string, device: DeviceRow): RobotDevice {
+  private async toRobot(
+    connectionId: string,
+    device: DeviceRow,
+  ): Promise<RobotDevice> {
     return {
       deviceId: device.id,
       connectionId,
@@ -73,7 +86,10 @@ export class ConnectionProvider {
     };
   }
 
-  private toPlcDevice(connectionId: string, device: DeviceRow): PlcDevice {
+  private async toPlcDevice(
+    connectionId: string,
+    device: DeviceRow,
+  ): Promise<PlcDevice> {
     return {
       deviceId: device.id,
       externalId: device.external_id,

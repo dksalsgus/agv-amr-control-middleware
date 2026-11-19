@@ -4,7 +4,7 @@ import {
   RestRawMessage,
 } from "../repositories/rest-client.repository";
 
-/** vendors_connections.config의 REST 모양(설계 문서 5장) */
+/** vendors_connections.config의 REST 모양 */
 export type RestConnectionConfig = {
   baseUrl: string;
   pollIntervalMs: number;
@@ -12,9 +12,7 @@ export type RestConnectionConfig = {
   timeoutMs: number;
 };
 
-/**
- * REST 장비를 한 번 폴링한다. bulk는 전체 목록 한 번, each는 차량마다 한 번 호출한다.
- */
+/** REST 장비를 한 번 폴링한다. bulk는 전체 목록 1회, each는 차량마다 1회. */
 @Injectable()
 export class RestLinkProvider {
   constructor(private readonly restClientRepository: RestClientRepository) {}
@@ -32,6 +30,6 @@ export class RestLinkProvider {
       const url = `${config.baseUrl}/api/vehicles/${externalId}`;
       return this.restClientRepository.get(url, config.timeoutMs);
     });
-    return Promise.all(requests);
+    return await Promise.all(requests);
   }
 }

@@ -8,9 +8,7 @@ import { PlcPointStateRepository } from "../../state/plc-point-state.repository"
 import { RevisionRepository } from "../../state/revision.repository";
 import { SeqPoint } from "./seq-judge.provider";
 
-/**
- * PLC 점의 메모리 상태 갱신. 값이 바뀐 점마다 전역 rev를 하나 올려 붙인다.
- */
+/** PLC 점 메모리 상태 갱신. 값이 바뀐 점마다 전역 rev를 올린다. */
 @Injectable()
 export class PlcPointStateProvider {
   constructor(
@@ -18,26 +16,26 @@ export class PlcPointStateProvider {
     private readonly revisionRepository: RevisionRepository,
   ) {}
 
-  registerPoints(points: PlcPoint[]) {
+  async registerPoints(points: PlcPoint[]): Promise<void> {
     for (const point of points) {
-      this.plcPointStateRepository.register(point);
+      await this.plcPointStateRepository.register(point);
     }
   }
 
-  findById(pointId: string): PlcPointEntry | undefined {
-    return this.plcPointStateRepository.findById(pointId);
+  async findById(pointId: string): Promise<PlcPointEntry | undefined> {
+    return await this.plcPointStateRepository.findById(pointId);
   }
 
-  findLastSeq(deviceId: string): SeqPoint | null {
-    return this.plcPointStateRepository.findLastSeq(deviceId);
+  async findLastSeq(deviceId: string): Promise<SeqPoint | null> {
+    return await this.plcPointStateRepository.findLastSeq(deviceId);
   }
 
-  updateLastSeq(deviceId: string, last: SeqPoint) {
-    this.plcPointStateRepository.updateLastSeq(deviceId, last);
+  async updateLastSeq(deviceId: string, last: SeqPoint): Promise<void> {
+    await this.plcPointStateRepository.updateLastSeq(deviceId, last);
   }
 
-  apply(pointId: string, current: PlcPointValue) {
-    const rev = this.revisionRepository.next();
-    this.plcPointStateRepository.updateValue(pointId, current, rev);
+  async apply(pointId: string, current: PlcPointValue): Promise<void> {
+    const rev = await this.revisionRepository.next();
+    await this.plcPointStateRepository.updateValue(pointId, current, rev);
   }
 }
