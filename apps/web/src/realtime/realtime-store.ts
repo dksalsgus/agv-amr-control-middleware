@@ -21,6 +21,8 @@ export class RealtimeStore {
     links: new Map(),
     alarms: new Map(),
     lastRecoveryMs: null,
+    disconnectedAt: null,
+    latencies: new Map(),
   };
 
   getView(): RealtimeView {
@@ -40,11 +42,15 @@ export class RealtimeStore {
       plcPoints: this.toMap(snapshot.plcPoints, (point) => point.id),
       links: this.toMap(snapshot.links, (link) => link.connectionId),
       alarms: this.toMap(snapshot.alarms, (alarm) => alarm.id),
+      latencies: new Map(),
     });
   }
 
-  /** fromRev가 내 rev와 같을 때만 반영한다. 작으면 이미 본 것, 크면 중간을 놓친 것이다. */
-  applyDelta(delta: DeltaMessage): DeltaResult {
+  /**
+   * fromRev가 내 rev와 같을 때만 반영한다. 작으면 이미 본 것, 크면 중간을 놓친 것이다.
+   * seq가 바뀐 로봇은 받은 시각(receivedAt)으로 종단 지연을 잰다.
+   */
+  applyDelta(delta: DeltaMessage, receivedAt: number): DeltaResult {
     if (delta.fromRev < this.view.rev) {
       return "ALREADY_SEEN";
     }
@@ -52,6 +58,7 @@ export class RealtimeStore {
       return "GAP";
     }
 
+    const latencies = this.measureLatencies(delta.robots, receivedAt);
     const robots = this.merge(this.view.robots, delta.robots, (r) => r.id);
     const plcPoints = this.merge(
       this.view.plcPoints,
@@ -68,6 +75,7 @@ export class RealtimeStore {
     for (const removed of delta.removed) {
       if (removed.kind === "ROBOT") {
         robots.delete(removed.id);
+        latencies.delete(removed.id);
       } else if (removed.kind === "PLC_POINT") {
         plcPoints.delete(removed.id);
       } else if (removed.kind === "LINK") {
@@ -84,6 +92,7 @@ export class RealtimeStore {
       plcPoints,
       links,
       alarms,
+      latencies,
     });
     return "APPLIED";
   }
@@ -95,8 +104,12 @@ export class RealtimeStore {
     this.view = this.copyView({ status });
   }
 
+  setDisconnectedAt(disconnectedAt: number | null): void {
+    this.view = this.copyView({ disconnectedAt });
+  }
+
   setRecovery(lastRecoveryMs: number): void {
-    this.view = this.copyView({ lastRecoveryMs });
+    this.view = this.copyView({ lastRecoveryMs, disconnectedAt: null });
   }
 
   private toView(entities: {
@@ -106,6 +119,7 @@ export class RealtimeStore {
     plcPoints: Map<string, PlcPoint>;
     links: Map<string, Link>;
     alarms: Map<string, Alarm>;
+    latencies: Map<string, number>;
   }): RealtimeView {
     return {
       status: this.view.status,
@@ -116,12 +130,15 @@ export class RealtimeStore {
       links: entities.links,
       alarms: entities.alarms,
       lastRecoveryMs: this.view.lastRecoveryMs,
+      disconnectedAt: this.view.disconnectedAt,
+      latencies: entities.latencies,
     };
   }
 
   private copyView(changes: {
     status?: SocketStatus;
     lastRecoveryMs?: number;
+    disconnectedAt?: number | null;
   }): RealtimeView {
     return {
       status: changes.status ?? this.view.status,
@@ -132,7 +149,29 @@ export class RealtimeStore {
       links: this.view.links,
       alarms: this.view.alarms,
       lastRecoveryMs: changes.lastRecoveryMs ?? this.view.lastRecoveryMs,
+      disconnectedAt:
+        changes.disconnectedAt === undefined
+          ? this.view.disconnectedAt
+          : changes.disconnectedAt,
+      latencies: this.view.latencies,
     };
+  }
+
+  /** 상태만 다시 실린 로봇(stale 표시 변경 등)은 새 데이터가 아니라서 재지 않는다. */
+  private measureLatencies(
+    changed: Robot[],
+    receivedAt: number,
+  ): Map<string, number> {
+    const latencies = new Map(this.view.latencies);
+    for (const robot of changed) {
+      const before = this.view.robots.get(robot.id);
+      const isNewData =
+        robot.state !== null && robot.state.seq !== before?.state?.seq;
+      if (isNewData && robot.state) {
+        latencies.set(robot.id, receivedAt - Date.parse(robot.state.sourceTs));
+      }
+    }
+    return latencies;
   }
 
   private toMap<T>(items: T[], toKey: (item: T) => string): Map<string, T> {

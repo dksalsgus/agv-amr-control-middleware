@@ -1,12 +1,35 @@
 import { describe, expect, it } from "vitest";
 import { RealtimeStore } from "./realtime-store";
-import { DeltaMessage, Link, SnapshotMessage } from "./realtime.types";
+import { DeltaMessage, Link, Robot, SnapshotMessage } from "./realtime.types";
 
 const link = (connectionId: string, status: string, rev: number): Link => ({
   connectionId,
   status,
   changedAt: null,
   rev,
+});
+
+const robot = (id: string, seq: number, sourceTs: string): Robot => ({
+  id,
+  connectionId: "c1",
+  externalId: id,
+  name: id,
+  type: "AMR",
+  rev: 0,
+  stale: false,
+  state: {
+    seq,
+    sourceTs,
+    receivedTs: sourceTs,
+    x: 0,
+    y: 0,
+    theta: 0,
+    speed: 0,
+    batteryPct: 50,
+    opState: "IDLE",
+    errorCode: null,
+    loaded: false,
+  },
 });
 
 const snapshot = (rev: number, links: Link[]): SnapshotMessage => ({
@@ -48,7 +71,10 @@ describe("RealtimeStore", () => {
     store.applySnapshot(snapshot(10, [link("a", "UP", 10)]));
     const before = store.getView();
 
-    const result = store.applyDelta(delta(10, 12, [link("a", "DOWN", 12)], []));
+    const result = store.applyDelta(
+      delta(10, 12, [link("a", "DOWN", 12)], []),
+      0,
+    );
 
     expect(result).toBe("APPLIED");
     expect(store.getView()).not.toBe(before);
@@ -61,7 +87,10 @@ describe("RealtimeStore", () => {
     const store = new RealtimeStore();
     store.applySnapshot(snapshot(10, [link("a", "UP", 10)]));
 
-    const result = store.applyDelta(delta(8, 10, [link("a", "DOWN", 9)], []));
+    const result = store.applyDelta(
+      delta(8, 10, [link("a", "DOWN", 9)], []),
+      0,
+    );
 
     expect(result).toBe("ALREADY_SEEN");
     expect(store.getView().links.get("a")?.status).toBe("UP");
@@ -71,7 +100,10 @@ describe("RealtimeStore", () => {
     const store = new RealtimeStore();
     store.applySnapshot(snapshot(10, []));
 
-    const result = store.applyDelta(delta(11, 13, [link("a", "UP", 13)], []));
+    const result = store.applyDelta(
+      delta(11, 13, [link("a", "UP", 13)], []),
+      0,
+    );
 
     expect(result).toBe("GAP");
     expect(store.getView().rev).toBe(10);
@@ -82,9 +114,34 @@ describe("RealtimeStore", () => {
     const store = new RealtimeStore();
     store.applySnapshot(snapshot(10, [link("a", "UP", 10)]));
 
-    store.applyDelta(delta(10, 11, [], [{ kind: "LINK", id: "a" }]));
+    store.applyDelta(delta(10, 11, [], [{ kind: "LINK", id: "a" }]), 0);
 
     expect(store.getView().links.has("a")).toBe(false);
+  });
+
+  it("seq가 바뀐 로봇만 종단 지연을 잰다", () => {
+    const store = new RealtimeStore();
+    store.applySnapshot(snapshot(10, []));
+    const robotDelta = (fromRev: number, rev: number, seq: number) => ({
+      fromRev,
+      rev,
+      robots: [robot("r1", seq, "2026-11-19T00:00:00.000Z")],
+      plcPoints: [],
+      links: [],
+      alarms: [],
+      removed: [],
+    });
+
+    store.applyDelta(
+      robotDelta(10, 11, 5),
+      Date.parse("2026-11-19T00:00:00.120Z"),
+    );
+    store.applyDelta(
+      robotDelta(11, 12, 5),
+      Date.parse("2026-11-19T00:00:09.000Z"),
+    );
+
+    expect(store.getView().latencies.get("r1")).toBe(120);
   });
 
   it("연결 상태가 같으면 view를 바꾸지 않는다", () => {
