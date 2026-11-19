@@ -21,6 +21,8 @@ export class IngestScheduler
   implements OnApplicationBootstrap, OnApplicationShutdown
 {
   private static readonly SYNC_JOB = "ingest-sync";
+  private static readonly SILENCE_JOB = "ingest-push-silence";
+  private static readonly SILENCE_CHECK_MS = 1000;
 
   /** 폴링 중인 연결. 같은 연결에 폴링이 둘 걸리지 않게 한다. */
   private readonly activePolls = new Set<string>();
@@ -48,6 +50,20 @@ export class IngestScheduler
       this.config.syncIntervalMs,
     );
     this.schedulerRegistry.addInterval(IngestScheduler.SYNC_JOB, interval);
+
+    const silence = setInterval(
+      () => void this.checkPushSilence(),
+      IngestScheduler.SILENCE_CHECK_MS,
+    );
+    this.schedulerRegistry.addInterval(IngestScheduler.SILENCE_JOB, silence);
+  }
+
+  private async checkPushSilence(): Promise<void> {
+    try {
+      await this.ingestService.checkPushSilence();
+    } catch (error) {
+      this.logger.warn(`MQTT 수신 확인 실패: ${String(error)}`);
+    }
   }
 
   /** 타이머는 schedule 모듈이 지운다. 진행 중이던 폴링이 다시 걸지 않게만 막는다. */
