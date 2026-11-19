@@ -1,30 +1,36 @@
 import {
+  Inject,
   Injectable,
   OnApplicationBootstrap,
   OnApplicationShutdown,
-  Inject,
 } from "@nestjs/common";
-import { delay } from "../common/utils/delay.util";
+import { ConfigType } from "@nestjs/config";
+import { SchedulerRegistry } from "@nestjs/schedule";
+import { ingestConfig } from "../config/ingest.config";
+import { AppLogger } from "../logger/app-logger";
+import { PollOnce } from "./ingest-scheduler.types";
 import { IngestService } from "./ingest.service";
 import { PlcIngestService } from "./plc-ingest.service";
-import { PollOnce } from "./ingest-scheduler.types";
-import { AppLogger } from "../logger/app-logger";
-import { ingestConfig } from "../config/ingest.config";
-import { ConfigType } from "@nestjs/config";
 
-/** 수집을 시작하고 폴링 연결마다 루프를 돌린다. 느린 연결이 다른 연결을 막지 않는다. */
+/**
+ * 수집을 시작하고 주기 작업을 SchedulerRegistry에 건다.
+ * 설정 동기화는 고정 주기(interval), 연결별 폴링은 다음 간격이 매번 달라(DOWN이면 늘어남) timeout을 다시 건다.
+ */
 @Injectable()
 export class IngestScheduler
   implements OnApplicationBootstrap, OnApplicationShutdown
 {
-  private running = false;
-  private readonly loops: Promise<void>[] = [];
-  /** 폴링 루프가 돌고 있는 연결. 같은 연결에 루프가 둘 생기지 않게 한다. */
-  private readonly activeLoops = new Set<string>();
+  private static readonly SYNC_JOB = "ingest-sync";
+
+  /** 폴링 중인 연결. 같은 연결에 폴링이 둘 걸리지 않게 한다. */
+  private readonly activePolls = new Set<string>();
+  private syncing = false;
+  private stopped = false;
 
   constructor(
     @Inject(ingestConfig.KEY)
     private readonly config: ConfigType<typeof ingestConfig>,
+    private readonly schedulerRegistry: SchedulerRegistry,
     private readonly ingestService: IngestService,
     private readonly plcIngestService: PlcIngestService,
     private readonly logger: AppLogger,
@@ -35,71 +41,93 @@ export class IngestScheduler
   async onApplicationBootstrap(): Promise<void> {
     await this.ingestService.start();
     await this.plcIngestService.start();
+    await this.startPolls();
 
-    this.running = true;
-    await this.startPollLoops();
-    this.loops.push(this.runSyncLoop());
+    const interval = setInterval(
+      () => void this.sync(),
+      this.config.syncIntervalMs,
+    );
+    this.schedulerRegistry.addInterval(IngestScheduler.SYNC_JOB, interval);
   }
 
+  /** 타이머는 schedule 모듈이 지운다. 진행 중이던 폴링이 다시 걸지 않게만 막는다. */
   async onApplicationShutdown(): Promise<void> {
-    this.running = false;
-    await Promise.all(this.loops);
+    this.stopped = true;
   }
 
-  /** 재배포 없이 바뀐 설정을 반영한다. 새로 생긴 폴링 연결은 루프를 띄운다. */
-  private async runSyncLoop(): Promise<void> {
-    while (this.running) {
-      await delay(this.config.syncIntervalMs);
-      await this.sync();
-      await this.startPollLoops();
-    }
-  }
-
+  /** 재배포 없이 바뀐 설정을 반영한다. 이전 동기화가 안 끝났으면 건너뛴다. */
   private async sync(): Promise<void> {
+    if (this.syncing) {
+      return;
+    }
+
+    this.syncing = true;
     try {
       await this.ingestService.sync();
       await this.plcIngestService.sync();
+      await this.startPolls();
     } catch (error) {
       this.logger.warn(`설정 동기화 실패: ${String(error)}`);
+    } finally {
+      this.syncing = false;
     }
   }
 
-  private async startPollLoops(): Promise<void> {
+  /** 새로 생긴 폴링 연결에 폴링을 건다. */
+  private async startPolls(): Promise<void> {
     const robotIds = await this.ingestService.findPolledConnectionIds();
     for (const id of robotIds) {
-      this.startLoop(id, (connectionId) =>
+      this.startPoll(id, (connectionId) =>
         this.ingestService.poll(connectionId),
       );
     }
 
     const plcIds = await this.plcIngestService.findPolledConnectionIds();
     for (const id of plcIds) {
-      this.startLoop(id, (connectionId) =>
+      this.startPoll(id, (connectionId) =>
         this.plcIngestService.poll(connectionId),
       );
     }
   }
 
-  private startLoop(connectionId: string, pollOnce: PollOnce): void {
-    if (this.activeLoops.has(connectionId)) {
+  private startPoll(connectionId: string, pollOnce: PollOnce): void {
+    if (this.activePolls.has(connectionId)) {
       return;
     }
 
-    this.activeLoops.add(connectionId);
-    this.loops.push(this.runLoop(connectionId, pollOnce));
+    this.activePolls.add(connectionId);
+    this.schedulePoll(connectionId, pollOnce, 0);
   }
 
-  /** 연결이 내려가면(poll이 null) 끝난다. */
-  private async runLoop(connectionId: string, pollOnce: PollOnce) {
-    while (this.running) {
-      const nextDelayMs = await pollOnce(connectionId);
-      if (nextDelayMs === null) {
-        break;
-      }
+  private schedulePoll(
+    connectionId: string,
+    pollOnce: PollOnce,
+    delayMs: number,
+  ): void {
+    const timeout = setTimeout(
+      () => void this.runPoll(connectionId, pollOnce),
+      delayMs,
+    );
+    this.schedulerRegistry.addTimeout(this.toPollJob(connectionId), timeout);
+  }
 
-      await delay(nextDelayMs);
+  /** 한 번 폴링하고 돌려받은 간격 뒤로 다시 건다. 연결이 내려가면(null) 멈춘다. */
+  private async runPoll(
+    connectionId: string,
+    pollOnce: PollOnce,
+  ): Promise<void> {
+    this.schedulerRegistry.deleteTimeout(this.toPollJob(connectionId));
+
+    const nextDelayMs = await pollOnce(connectionId);
+    if (nextDelayMs === null || this.stopped) {
+      this.activePolls.delete(connectionId);
+      return;
     }
 
-    this.activeLoops.delete(connectionId);
+    this.schedulePoll(connectionId, pollOnce, nextDelayMs);
+  }
+
+  private toPollJob(connectionId: string): string {
+    return `ingest-poll:${connectionId}`;
   }
 }
