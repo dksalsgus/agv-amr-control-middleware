@@ -26,6 +26,7 @@ PostgreSQL, Redis, MQTT 브로커, 에뮬레이터, 미들웨어 다섯 컨테�
 | 에뮬레이터 B (REST)   | http://localhost:8081                    |
 | 에뮬레이터 C (Modbus) | localhost:5020                           |
 | 에뮬레이터 PLC        | localhost:5021                           |
+| 에뮬레이터 장애 주입  | http://localhost:8090/faults             |
 | PostgreSQL            | localhost:5432 (middleware / middleware) |
 | Redis (이력 저장 큐)  | localhost:6379                           |
 | MQTT 브로커           | localhost:1883                           |
@@ -94,6 +95,29 @@ docker compose stop emulator    # B·C·PLC 연결이 DOWN, 장비가 stale=true
 docker compose start emulator   # 1초에서 10초까지 늘어나는 간격으로 재접속해 스스로 UP
 docker compose restart middleware  # 이력의 마지막 행으로 로봇 90대와 PLC 16점 상태를 되살림
 ```
+
+에뮬레이터에 그룹(A, B, C, PLC)별로 장애를 걸 수 있습니다. 미들웨어는 이 설정을 모르고, 받은 데이터만으로 판단합니다.
+
+```bash
+curl http://localhost:8090/faults
+# B 끊김: 응답 없이 소켓을 닫는다 → 3회 실패 후 LINK_DOWN, B 30대 stale
+curl -X PUT http://localhost:8090/faults/B -H 'content-type: application/json' \
+  -d '{"disconnected":true,"delayMs":0,"duplicatePct":0,"reorderPct":0,"lossPct":0}'
+# C 지연 5초: 5초 전 데이터를 준다 → 연결은 UP, C 20대 stale
+curl -X PUT http://localhost:8090/faults/C -H 'content-type: application/json' \
+  -d '{"disconnected":false,"delayMs":5000,"duplicatePct":0,"reorderPct":0,"lossPct":0}'
+# A 중복 30%·순서 뒤바뀜 30%: 미들웨어가 seq로 걸러 화면의 seq는 뒤로 가지 않는다
+curl -X PUT http://localhost:8090/faults/A -H 'content-type: application/json' \
+  -d '{"disconnected":false,"delayMs":0,"duplicatePct":30,"reorderPct":30,"lossPct":0}'
+```
+
+| 장애       | A (MQTT 푸시)                     | B·C·PLC (폴링)                             |
+| ---------- | --------------------------------- | ------------------------------------------ |
+| 끊김       | 발행을 멈춘다                     | REST는 소켓을 닫고, Modbus는 답하지 않는다 |
+| 지연 (ms)  | 발생 시각은 그대로 두고 늦게 보냄 | 그만큼 전의 스냅샷을 준다                  |
+| 중복 (%)   | 같은 메시지를 두 번 보냄          | 직전에 준 값을 다시 준다                   |
+| 뒤바뀜 (%) | 다음 메시지보다 늦게 보냄         | 하나 앞(더 오래된) 스냅샷을 준다           |
+| 유실 (%)   | 그 로봇의 메시지를 건너뜀         | REST는 503, Modbus는 예외 응답             |
 
 ### 실시간 (WebSocket)
 
@@ -322,15 +346,15 @@ erDiagram
 
 ## 과제 요구 사항과 구현
 
-| 과제 요구                                                  | 상태  | 구현                                                                                                                                           |
-| ---------------------------------------------------------- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| 필수 1. 에뮬레이터 (90대와 PLC, 끊김·지연·중복·순서 주입)  | 일부  | `apps/emulator`: A 40대 MQTT, B 30대 REST, C 20대 Modbus, PLC 16점. 장애 주입은 TODO                                                           |
-| 필수 2. 어댑터 3종과 공통 모델, 새 제조사 추가 범위 증명   | 완료  | `ingest/adapters/vendor-{a,b,c}.adapter.ts`, `plc.adapter.ts`. 범위는 위 "새 제조사" 표                                                        |
-| 필수 3. 연결 설정 (드롭다운·토글, 재배포 없이 변경)        | API만 | `POST/PATCH/DELETE /connections`, version 충돌 409, config 검증 400. 설정 화면은 TODO                                                          |
-| 필수 4. 실시간 전달 (WebSocket, 재접속 복구, 중복·순서)    | 완료  | `/ws` snapshot·delta·resync·ping, epoch와 rev. 수집 구간은 seq 판정                                                                            |
-| 필수 5. 관제 UI (맵, 상태, 연결, PLC, 장애 알림)           | 일부  | 알람 4종(ROBOT_ERROR, DEVICE_STALE, PLC_ABNORMAL, LOW_BATTERY) 판정과 `GET /alarms`, `POST /alarms/{id}/ack`, WebSocket 알람 전달. 화면은 TODO |
-| 필수 6. 측정 (지연 p50·p95, 유실률, 복구 시간, CPU·메모리) | TODO  | 조각 13                                                                                                                                        |
-| 제출물. `docker compose up` 한 번으로 실행                 | 완료  | `docker-compose.yml`                                                                                                                           |
+| 과제 요구                                                  | 상태  | 구현                                                                                                                                             |
+| ---------------------------------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 필수 1. 에뮬레이터 (90대와 PLC, 끊김·지연·중복·순서 주입)  | API만 | `apps/emulator`: A 40대 MQTT, B 30대 REST, C 20대 Modbus, PLC 16점. `GET/PUT :8090/faults`로 그룹별 끊김·지연·중복·뒤바뀜·유실 주입. 화면은 TODO |
+| 필수 2. 어댑터 3종과 공통 모델, 새 제조사 추가 범위 증명   | 완료  | `ingest/adapters/vendor-{a,b,c}.adapter.ts`, `plc.adapter.ts`. 범위는 위 "새 제조사" 표                                                          |
+| 필수 3. 연결 설정 (드롭다운·토글, 재배포 없이 변경)        | API만 | `POST/PATCH/DELETE /connections`, version 충돌 409, config 검증 400. 설정 화면은 TODO                                                            |
+| 필수 4. 실시간 전달 (WebSocket, 재접속 복구, 중복·순서)    | 완료  | `/ws` snapshot·delta·resync·ping, epoch와 rev. 수집 구간은 seq 판정                                                                              |
+| 필수 5. 관제 UI (맵, 상태, 연결, PLC, 장애 알림)           | 일부  | 알람 4종(ROBOT_ERROR, DEVICE_STALE, PLC_ABNORMAL, LOW_BATTERY) 판정과 `GET /alarms`, `POST /alarms/{id}/ack`, WebSocket 알람 전달. 화면은 TODO   |
+| 필수 6. 측정 (지연 p50·p95, 유실률, 복구 시간, CPU·메모리) | TODO  | 조각 13                                                                                                                                          |
+| 제출물. `docker compose up` 한 번으로 실행                 | 완료  | `docker-compose.yml`                                                                                                                             |
 
 ## 저장소 구조
 

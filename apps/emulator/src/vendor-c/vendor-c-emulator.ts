@@ -4,12 +4,17 @@ import {
   VENDOR_C_ROBOT_COUNT,
   VENDOR_C_STEP_INTERVAL_MS,
 } from "../config";
+import { FaultSettings } from "../faults/fault-settings";
 import { RobotFleet } from "../simulation/robot-fleet";
 import { VendorCServer } from "./vendor-c-server";
 
 export class VendorCEmulator {
   private readonly fleet = new RobotFleet("C", VENDOR_C_ROBOT_COUNT);
-  private readonly server = new VendorCServer(VENDOR_C_PORT, this.fleet);
+  private readonly server: VendorCServer;
+
+  constructor(faults: FaultSettings) {
+    this.server = new VendorCServer(VENDOR_C_PORT, this.fleet, faults);
+  }
 
   async start() {
     this.server.refresh();
