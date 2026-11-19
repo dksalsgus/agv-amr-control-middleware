@@ -138,7 +138,7 @@ npx wscat -c ws://localhost:3000/ws
 
 ## 전체 구조
 
-결정마다 이유와 대안은 [설계 근거](docs/design-rationale.md)에 정리했습니다. 상황별(중복, 유실, 연결 끊김, DB 장애, 재접속 등) 실제 동작은 [케이스별 동작 정리](docs/logic-by-case.md)에 코드 위치와 함께 있습니다.
+결정마다 이유와 대안은 [설계 근거](docs/design-rationale.md)에 정리했습니다.
 
 ```mermaid
 flowchart LR
