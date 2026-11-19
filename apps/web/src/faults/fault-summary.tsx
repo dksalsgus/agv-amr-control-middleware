@@ -6,10 +6,17 @@ import { faultsOf } from "./fault-draft.util";
 type Props = {
   status: LoadStatus;
   groups: Record<FaultGroup, GroupState> | null;
+  /** 켜 둔 장비 값 주입(PLC 점, 로봇 오류) 수 */
+  deviceOnCount: number;
   onGoto: (group: FaultGroup) => void;
 };
 
-export const FaultSummary = ({ status, groups, onGoto }: Props) => {
+export const FaultSummary = ({
+  status,
+  groups,
+  deviceOnCount,
+  onGoto,
+}: Props) => {
   if (status === "error") {
     return (
       <div className="summary-card">
@@ -47,6 +54,8 @@ export const FaultSummary = ({ status, groups, onGoto }: Props) => {
           {faulty.length > 0
             ? `장애가 걸려 있습니다: ${faulty.map((def) => def.name).join(", ")}`
             : "모든 그룹이 정상입니다."}
+          {deviceOnCount > 0 &&
+            ` 장비 값 주입 ${deviceOnCount}건이 켜져 있습니다.`}
         </span>
       </div>
       <div className="group-pills">

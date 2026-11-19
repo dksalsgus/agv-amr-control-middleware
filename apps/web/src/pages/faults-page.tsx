@@ -47,8 +47,15 @@ export const FaultsPage = () => {
     groups !== null &&
     GROUPS.some((def) => faultsOf(groups[def.id].applied).length > 0);
   const anyBusy =
-    groups !== null &&
-    GROUPS.some((def) => groups[def.id].phase === "applying");
+    deviceFaults.busy ||
+    (groups !== null &&
+      GROUPS.some((def) => groups[def.id].phase === "applying"));
+  const canReset = (anyFault || deviceFaults.onCount > 0) && !anyBusy;
+
+  const resetAll = () => {
+    faults.resetAll();
+    void deviceFaults.resetAll();
+  };
 
   const fetchedText = () => {
     if (status === "loading") {
@@ -83,8 +90,8 @@ export const FaultsPage = () => {
           <button
             type="button"
             className="btn btn-danger"
-            disabled={!anyFault || anyBusy}
-            onClick={faults.resetAll}
+            disabled={!canReset}
+            onClick={resetAll}
           >
             전체 초기화
           </button>
@@ -103,7 +110,12 @@ export const FaultsPage = () => {
                 지금 걸린 장애
               </h2>
             </div>
-            <FaultSummary status={status} groups={groups} onGoto={gotoCard} />
+            <FaultSummary
+              status={status}
+              groups={groups}
+              deviceOnCount={deviceFaults.onCount}
+              onGoto={gotoCard}
+            />
           </section>
           <section aria-labelledby="presetTitle">
             <div className="section-head">
