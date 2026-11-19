@@ -1,4 +1,4 @@
-import { KeyboardEvent, useState } from "react";
+import { KeyboardEvent, SyntheticEvent, useState } from "react";
 import {
   FILTER_STATES,
   OP_LABEL,
@@ -52,17 +52,60 @@ const StateSwatch = ({ state }: { state: string }) => {
 /** 맵 위의 제조사·상태 필터와 로봇 찾기 */
 export const MapToolbar = (props: Props) => {
   const [query, setQuery] = useState("");
+  /** 사용자가 입력한 글자. 입력창에 들어오면 비워서 전체 목록을 보인다. */
+  const [keyword, setKeyword] = useState("");
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(-1);
 
-  const find = () => {
-    if (query.trim()) {
-      props.onFind(query);
+  const options = props.robots
+    .filter((robot) =>
+      robot.name.toUpperCase().includes(keyword.trim().toUpperCase()),
+    )
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const pick = (name: string) => {
+    setQuery(name);
+    setOpen(false);
+    setActive(-1);
+    props.onFind(name);
+  };
+
+  /** 목록이 닫혀 있을 때 입력창을 누르면 글자를 골라 두고 전체 목록을 연다. */
+  const openAll = (event: SyntheticEvent<HTMLInputElement>) => {
+    if (open) {
+      return;
     }
+    event.currentTarget.select();
+    setKeyword("");
+    setActive(-1);
+    setOpen(true);
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === "Enter") {
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();
-      find();
+      const step = event.key === "ArrowDown" ? 1 : -1;
+      setOpen(true);
+      setActive((current) =>
+        Math.min(options.length - 1, Math.max(0, current + step)),
+      );
+      return;
+    }
+    if (event.key === "Escape") {
+      setOpen(false);
+      return;
+    }
+    if (event.key !== "Enter") {
+      return;
+    }
+    event.preventDefault();
+    const chosen = options[active];
+    if (open && chosen) {
+      pick(chosen.name);
+      return;
+    }
+    if (query.trim()) {
+      pick(query);
     }
   };
 
@@ -123,22 +166,54 @@ export const MapToolbar = (props: Props) => {
       </button>
       <div className="map-search">
         <label htmlFor="robotSearch">로봇 찾기</label>
-        <input
-          className="input mono"
-          id="robotSearch"
-          list="robotNames"
-          placeholder="예: AMR A-001"
-          autoComplete="off"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          onBlur={find}
-          onKeyDown={onKeyDown}
-        />
-        <datalist id="robotNames">
-          {props.robots.map((robot) => (
-            <option key={robot.id} value={robot.name} />
-          ))}
-        </datalist>
+        <div className="map-search-box">
+          <input
+            className="input mono"
+            id="robotSearch"
+            role="combobox"
+            aria-expanded={open}
+            aria-controls="robotOptions"
+            aria-autocomplete="list"
+            aria-activedescendant={
+              open && options[active] ? `robot-opt-${active}` : undefined
+            }
+            placeholder="예: AMR A-001"
+            autoComplete="off"
+            value={query}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              setKeyword(event.target.value);
+              setActive(-1);
+              setOpen(true);
+            }}
+            onFocus={openAll}
+            onClick={openAll}
+            onBlur={() => setOpen(false)}
+            onKeyDown={onKeyDown}
+          />
+          {open && (
+            <ul className="map-search-list" id="robotOptions" role="listbox">
+              {options.length === 0 && (
+                <li className="map-search-empty">일치하는 로봇 없음</li>
+              )}
+              {options.map((robot, index) => (
+                <li
+                  key={robot.id}
+                  id={`robot-opt-${index}`}
+                  role="option"
+                  aria-selected={index === active}
+                  className="mono"
+                  onMouseDown={(event) => {
+                    event.preventDefault();
+                    pick(robot.name);
+                  }}
+                >
+                  {robot.name}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
     </div>
   );
