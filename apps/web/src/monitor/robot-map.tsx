@@ -16,6 +16,7 @@ type Props = {
   waiting: boolean;
   frozenAt: number | null;
   onSelect: (id: string | null) => void;
+  onSelectPlc: (id: string) => void;
 };
 
 /** 다음·이전 보이는 로봇. 선택이 없으면 오른쪽은 처음, 왼쪽은 끝으로 간다. */
@@ -37,6 +38,7 @@ export const RobotMap = (props: Props) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rendererRef = useRef<MapRenderer | null>(null);
   const [hoverId, setHoverId] = useState<string | null>(null);
+  const [hoverPlc, setHoverPlc] = useState(false);
   const scene: MapScene = {
     robots: props.robots,
     plcPoints: props.plcPoints,
@@ -88,6 +90,38 @@ export const RobotMap = (props: Props) => {
     );
   };
 
+  const plcHitAt = (event: MouseEvent<HTMLCanvasElement>): PlcPoint | null => {
+    const renderer = rendererRef.current;
+    if (!renderer || props.waiting) {
+      return null;
+    }
+    const rect = event.currentTarget.getBoundingClientRect();
+    return renderer.hitTestPlc(
+      event.clientX - rect.left,
+      event.clientY - rect.top,
+      props.plcPoints,
+    );
+  };
+
+  const onMouseMove = (event: MouseEvent<HTMLCanvasElement>) => {
+    const robot = hitAt(event);
+    setHoverId(robot?.id ?? null);
+    setHoverPlc(robot === null && plcHitAt(event) !== null);
+  };
+
+  /** 로봇이 먼저다. 로봇이 없는 곳이면 PLC 점을 고른다. */
+  const onClick = (event: MouseEvent<HTMLCanvasElement>) => {
+    const robot = hitAt(event);
+    if (robot) {
+      props.onSelect(robot.id);
+      return;
+    }
+    const plc = plcHitAt(event);
+    if (plc) {
+      props.onSelectPlc(plc.id);
+    }
+  };
+
   const onKeyDown = (event: KeyboardEvent<HTMLCanvasElement>) => {
     if (props.waiting) {
       return;
@@ -112,18 +146,16 @@ export const RobotMap = (props: Props) => {
     <div className="map-stage" ref={stageRef}>
       <canvas
         ref={canvasRef}
-        className={hoverId ? "is-hover" : undefined}
+        className={hoverId || hoverPlc ? "is-hover" : undefined}
         tabIndex={0}
         role="img"
-        aria-label="공장 맵 50m × 30m. 로봇을 클릭하거나 좌우 화살표 키로 선택합니다."
-        onMouseMove={(event) => setHoverId(hitAt(event)?.id ?? null)}
-        onMouseLeave={() => setHoverId(null)}
-        onClick={(event) => {
-          const hit = hitAt(event);
-          if (hit) {
-            props.onSelect(hit.id);
-          }
+        aria-label="공장 맵 50m × 30m. 로봇이나 PLC 표시를 클릭하거나 좌우 화살표 키로 로봇을 선택합니다."
+        onMouseMove={onMouseMove}
+        onMouseLeave={() => {
+          setHoverId(null);
+          setHoverPlc(false);
         }}
+        onClick={onClick}
         onKeyDown={onKeyDown}
       />
       {props.frozenAt !== null && (

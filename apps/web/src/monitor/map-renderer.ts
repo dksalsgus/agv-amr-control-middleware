@@ -153,6 +153,29 @@ export class MapRenderer {
     );
   }
 
+  /** 마우스 위치(px)에서 가장 가까운 맵 위 PLC 점. 로봇이 없는 곳을 눌렀을 때 쓴다. */
+  hitTestPlc(mx: number, my: number, points: PlcPoint[]): PlcPoint | null {
+    const limit = 14;
+    const tags = toPlcMapTags(points);
+    return (
+      points
+        .filter((point) => PLC_POSITIONS[point.pointNo] && tags.has(point.id))
+        .map((point) => {
+          const position = PLC_POSITIONS[point.pointNo];
+          const distance = Math.hypot(
+            this.sx(position.x) - mx,
+            this.sy(position.y) - my,
+          );
+          return { point, distance };
+        })
+        .filter((hit) => hit.distance < limit)
+        .reduce<{ point: PlcPoint; distance: number } | null>(
+          (best, hit) => (best && best.distance <= hit.distance ? best : hit),
+          null,
+        )?.point ?? null
+    );
+  }
+
   private readColors(): Colors {
     const style = getComputedStyle(document.documentElement);
     return Object.fromEntries(

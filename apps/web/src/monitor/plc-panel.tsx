@@ -1,3 +1,5 @@
+import { useEffect, useRef } from "react";
+import { Link } from "react-router-dom";
 import { formatTime, pad2 } from "../common/utils/format.util";
 import { Icon } from "../components/icon";
 import { PlcPoint } from "../realtime/realtime.types";
@@ -88,6 +90,13 @@ const PlcDetail = ({
           </dd>
         </div>
       </dl>
+      <Link
+        className="btn btn-sm"
+        style={{ textDecoration: "none", marginTop: "var(--sp-3)" }}
+        to={`/logs?targetType=PLC_POINT&targetId=${encodeURIComponent(point.id)}`}
+      >
+        <Icon name="clock" />이 신호의 이력 보기
+      </Link>
     </>
   );
 };
@@ -120,6 +129,21 @@ const PlcSummaryBadge = (props: { total: number; abnormal: number }) => {
 export const PlcPanel = ({ points, selectedId, onSelect }: Props) => {
   const abnormal = points.filter((point) => point.abnormal).length;
   const selected = points.find((point) => point.id === selectedId);
+  const detailRef = useRef<HTMLDivElement>(null);
+
+  // 맵에서 고르면 상세가 화면 밖에 있을 수 있어 보이는 곳까지 굴린다.
+  useEffect(() => {
+    if (selectedId === null) {
+      return;
+    }
+    const reduce = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    detailRef.current?.scrollIntoView({
+      block: "nearest",
+      behavior: reduce ? "auto" : "smooth",
+    });
+  }, [selectedId]);
 
   return (
     <section className="panel" aria-labelledby="plcTitle">
@@ -176,7 +200,7 @@ export const PlcPanel = ({ points, selectedId, onSelect }: Props) => {
             PLC 연결이 꺼져 있거나 장비가 등록되지 않았습니다.
           </div>
         )}
-        <div className="plc-detail" aria-live="polite">
+        <div className="plc-detail" aria-live="polite" ref={detailRef}>
           <PlcDetail
             point={selected}
             mapTag={
