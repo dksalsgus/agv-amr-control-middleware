@@ -27,6 +27,7 @@ import {
   RobotTelemetry,
   TelemetryProvider,
 } from "./providers/telemetry.provider";
+import { LinkStateProvider } from "./providers/link-state.provider";
 import { SerialQueue } from "./serial-queue";
 
 type PolledConfig = { pollIntervalMs: number };
@@ -48,6 +49,7 @@ export class IngestService {
     private readonly robotStateProvider: RobotStateProvider,
     private readonly seqJudgeProvider: SeqJudgeProvider,
     private readonly telemetryProvider: TelemetryProvider,
+    private readonly linkStateProvider: LinkStateProvider,
   ) {}
 
   async start(): Promise<void> {
@@ -58,6 +60,7 @@ export class IngestService {
 
     for (const connection of this.connections) {
       await this.robotStateProvider.registerDevices(connection.robots);
+      await this.linkStateProvider.register(connection.id);
     }
 
     await this.restoreLatestStates();
@@ -85,6 +88,13 @@ export class IngestService {
 
     const startedAt = Date.now();
     await this.pollOnce(connection);
+
+    const retryDelayMs = await this.linkStateProvider.findRetryDelayMs(
+      connection.id,
+    );
+    if (retryDelayMs !== null) {
+      return retryDelayMs;
+    }
 
     const config = connection.config as PolledConfig;
     const elapsedMs = Date.now() - startedAt;
@@ -116,11 +126,26 @@ export class IngestService {
       return;
     }
 
+    const label = await this.toLabel(connection);
     await this.mqttLinkProvider.start(
       connection.id,
       connection.config as MqttConnectionConfig,
-      async (raw) => {
-        await this.handleRaw(connection.id, adapter, raw);
+      {
+        onMessage: async (raw) => {
+          await this.handleRaw(connection.id, adapter, raw);
+        },
+        onLinkChange: async (up) => {
+          if (up) {
+            await this.linkStateProvider.markUp(connection.id, label);
+            return;
+          }
+
+          await this.linkStateProvider.markDown(
+            connection.id,
+            label,
+            "브로커 연결 종료",
+          );
+        },
       },
     );
   }
@@ -131,14 +156,32 @@ export class IngestService {
       return;
     }
 
-    try {
-      const raws = await this.fetchRaws(connection);
+    const label = await this.toLabel(connection);
+    const raws = await this.tryFetchRaws(connection, label);
+    if (!raws) {
+      return;
+    }
 
-      for (const raw of raws) {
-        await this.handleRaw(connection.id, adapter, raw);
-      }
+    await this.linkStateProvider.markUp(connection.id, label);
+    for (const raw of raws) {
+      await this.handleRaw(connection.id, adapter, raw);
+    }
+  }
+
+  /** 실패하면 연결 실패로 세고 null을 돌려준다. */
+  private async tryFetchRaws(
+    connection: IngestConnection,
+    label: string,
+  ): Promise<unknown[] | null> {
+    try {
+      return await this.fetchRaws(connection);
     } catch (error) {
-      this.logger.warn(`폴링 실패 (${connection.id}): ${String(error)}`);
+      await this.linkStateProvider.markFailure(
+        connection.id,
+        label,
+        String(error),
+      );
+      return null;
     }
   }
 
@@ -250,6 +293,10 @@ export class IngestService {
       errorCode: reading.errorCode,
       loaded: reading.loaded,
     };
+  }
+
+  private async toLabel(connection: IngestConnection): Promise<string> {
+    return `${connection.vendorCode} ${connection.protocol}`;
   }
 
   private async findAdapter(

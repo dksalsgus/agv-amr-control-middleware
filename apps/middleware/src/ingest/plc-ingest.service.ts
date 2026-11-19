@@ -9,11 +9,13 @@ import {
 import {
   ModbusConnectionConfig,
   ModbusLinkProvider,
+  ModbusRawMessage,
 } from "./providers/modbus-link.provider";
 import {
   PlcEventProvider,
   PlcPointChange,
 } from "./providers/plc-event.provider";
+import { LinkStateProvider } from "./providers/link-state.provider";
 import { PlcPointStateProvider } from "./providers/plc-point-state.provider";
 import { SeqJudgeProvider } from "./providers/seq-judge.provider";
 
@@ -30,6 +32,7 @@ export class PlcIngestService {
     private readonly seqJudgeProvider: SeqJudgeProvider,
     private readonly plcPointStateProvider: PlcPointStateProvider,
     private readonly plcEventProvider: PlcEventProvider,
+    private readonly linkStateProvider: LinkStateProvider,
   ) {}
 
   async start(): Promise<void> {
@@ -39,6 +42,7 @@ export class PlcIngestService {
     );
 
     for (const connection of this.connections) {
+      await this.linkStateProvider.register(connection.id);
       for (const device of connection.plcDevices) {
         await this.plcPointStateProvider.registerPoints(device.points);
       }
@@ -64,6 +68,13 @@ export class PlcIngestService {
     const startedAt = Date.now();
     await this.pollOnce(connection, config);
 
+    const retryDelayMs = await this.linkStateProvider.findRetryDelayMs(
+      connection.id,
+    );
+    if (retryDelayMs !== null) {
+      return retryDelayMs;
+    }
+
     const elapsedMs = Date.now() - startedAt;
     return Math.max(0, config.pollIntervalMs - elapsedMs);
   }
@@ -83,15 +94,40 @@ export class PlcIngestService {
     connection: IngestConnection,
     config: ModbusConnectionConfig,
   ): Promise<void> {
+    const label = `${connection.vendorCode} ${connection.protocol}`;
+    const raw = await this.tryPollInputBlock(connection, config, label);
+    if (!raw) {
+      return;
+    }
+
+    await this.linkStateProvider.markUp(connection.id, label);
+
     try {
-      const raw = await this.modbusLinkProvider.pollInputBlock(
-        connection.id,
-        config,
-      );
       const reading = await this.plcAdapter.toCommon(raw);
       await this.applyReading(connection, reading);
     } catch (error) {
-      this.logger.warn(`PLC 폴링 실패 (${connection.id}): ${String(error)}`);
+      this.logger.warn(`PLC 변환 실패 (${connection.id}): ${String(error)}`);
+    }
+  }
+
+  /** 실패하면 연결 실패로 세고 null을 돌려준다. */
+  private async tryPollInputBlock(
+    connection: IngestConnection,
+    config: ModbusConnectionConfig,
+    label: string,
+  ): Promise<ModbusRawMessage | null> {
+    try {
+      return await this.modbusLinkProvider.pollInputBlock(
+        connection.id,
+        config,
+      );
+    } catch (error) {
+      await this.linkStateProvider.markFailure(
+        connection.id,
+        label,
+        String(error),
+      );
+      return null;
     }
   }
 
