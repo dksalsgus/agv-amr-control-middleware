@@ -7,13 +7,7 @@ import {
   Logger,
 } from "@nestjs/common";
 import { Request, Response } from "express";
-
-type ErrorBody = {
-  statusCode: number;
-  message: string | string[];
-  path: string;
-  timestamp: string;
-};
+import { ApiResult } from "../dto/api-result";
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -31,12 +25,7 @@ export class AllExceptionsFilter implements ExceptionFilter {
       this.logger.error(exception);
     }
 
-    const body: ErrorBody = {
-      statusCode,
-      message,
-      path: request.url,
-      timestamp: new Date().toISOString(),
-    };
+    const body = ApiResult.ofError(statusCode, message, request.url);
     response.status(statusCode).json(body);
   }
 

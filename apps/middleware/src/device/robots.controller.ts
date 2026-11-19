@@ -1,4 +1,5 @@
 import { Controller, Get, Param, Query } from "@nestjs/common";
+import { ApiResult } from "../common/dto/api-result";
 import { GetRobotParamDto } from "./dto/get-robot.request.dto";
 import {
   GetRobotTelemetryParamDto,
@@ -18,20 +19,26 @@ export class RobotsController {
   ) {}
 
   @Get()
-  getRobots(): GetRobotsResponseDto {
-    return this.robotsService.getRobots();
+  getRobots(): ApiResult<GetRobotsResponseDto> {
+    const response = this.robotsService.getRobots();
+    return ApiResult.ofSuccess(response);
   }
 
   @Get(":id")
-  getRobot(@Param() param: GetRobotParamDto): GetRobotResponseDto {
-    return this.robotsService.getRobot(param.id);
+  getRobot(@Param() param: GetRobotParamDto): ApiResult<GetRobotResponseDto> {
+    const response = this.robotsService.getRobot(param.id);
+    return ApiResult.ofSuccess(response);
   }
 
   @Get(":id/telemetry")
-  getRobotTelemetry(
+  async getRobotTelemetry(
     @Param() param: GetRobotTelemetryParamDto,
     @Query() query: GetRobotTelemetryQueryDto,
-  ): Promise<GetRobotTelemetryResponseDto> {
-    return this.robotTelemetryService.getTelemetry(param.id, query);
+  ): Promise<ApiResult<GetRobotTelemetryResponseDto>> {
+    const response = await this.robotTelemetryService.getTelemetry(
+      param.id,
+      query,
+    );
+    return ApiResult.ofSuccess(response);
   }
 }

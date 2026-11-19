@@ -23,11 +23,13 @@ docker compose up --build
 | PostgreSQL  | localhost:5432 (middleware / middleware) |
 | MQTT 브로커 | localhost:1883                           |
 
+모든 HTTP 응답은 `{ success, data, error }` 구조입니다. 실패하면 `data`가 null이고 `error`에 상태 코드와 메시지가 담깁니다.
+
 동작 확인:
 
 ```bash
 curl http://localhost:3000/health
-# {"status":"ok"}
+# {"success":true,"data":{"status":"ok"},"error":null}
 
 # 제조사 A 로봇 40대의 MQTT 메시지 (1초마다 seq가 오른다)
 docker compose exec mosquitto mosquitto_sub -t 'vendorA/amr/+/state' -v

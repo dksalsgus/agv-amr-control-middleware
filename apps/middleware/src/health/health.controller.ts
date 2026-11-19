@@ -1,4 +1,5 @@
 import { Controller, Get } from "@nestjs/common";
+import { ApiResult } from "../common/dto/api-result";
 import { GetHealthResponseDto } from "./dto/get-health.response.dto";
 import { HealthService } from "./health.service";
 
@@ -7,7 +8,8 @@ export class HealthController {
   constructor(private readonly healthService: HealthService) {}
 
   @Get()
-  getHealth(): GetHealthResponseDto {
-    return this.healthService.getHealth();
+  getHealth(): ApiResult<GetHealthResponseDto> {
+    const response = this.healthService.getHealth();
+    return ApiResult.ofSuccess(response);
   }
 }
