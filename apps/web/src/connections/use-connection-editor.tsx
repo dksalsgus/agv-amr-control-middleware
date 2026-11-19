@@ -13,6 +13,7 @@ import {
   toWriteBody,
   validateAll,
   withValue,
+  withVendorDefaults,
 } from "./connection-draft.util";
 import { conflictRows } from "./conflict.util";
 import { DEFAULTS } from "./connections.constants";
@@ -277,7 +278,9 @@ export const useConnectionEditor = (
       setPrevSelectedId(selectedId);
       setCreating(true);
       setDetail(null);
-      setDraft(emptyDraft(vendors[0]?.id ?? ""));
+      setDraft(
+        withVendorDefaults(emptyDraft(vendors[0]?.id ?? ""), vendors[0]),
+      );
       setTouched(new Set());
       setShowAll(false);
       setFlow(null);
@@ -301,11 +304,21 @@ export const useConnectionEditor = (
     }
   };
 
+  /** 새 연결은 고른 제조사, 기존 연결은 그 연결의 제조사 */
+  const findVendor = (target: ConnectionDraft): VendorItem | undefined =>
+    creating
+      ? vendors.find((vendor) => vendor.id === target.vendorId)
+      : vendors.find((vendor) => vendor.code === detail?.vendorCode);
+
   const change = (key: string, value: string) => {
     if (!draft) {
       return;
     }
-    setDraft(withValue(draft, key, value));
+    const next = withValue(draft, key, value);
+    const isConnectionTarget = key === "protocol" || key === "vendorId";
+    setDraft(
+      isConnectionTarget ? withVendorDefaults(next, findVendor(next)) : next,
+    );
     clearFinishedFlow();
     if (key === "protocol") {
       setTouched(
