@@ -66,6 +66,10 @@ curl -H "$AUTH" "http://localhost:3000/logs?type=LINK_DOWN&page=1&size=100"
 curl -H "$AUTH" http://localhost:3000/alarms
 curl -H "$AUTH" -X POST http://localhost:3000/alarms/{id}/ack
 
+# 측정 스크립트 (Node 22, 의존성 없음, 약 2분): 지연 p50·p95, 유실률, 복구 시간, CPU·메모리를 표로 출력
+# 장애를 직접 주입했다가 되돌린다. 결과 예시는 docs/measurements.md
+node scripts/measure.mjs
+
 # 측정: 연결별 수신·중복·뒤바뀜·유실 건수, 수집 구간 지연 p50·p95, 프로세스 CPU·메모리 (reset으로 구간을 새로 시작)
 curl -H "$AUTH" http://localhost:3000/metrics
 curl -H "$AUTH" -X POST http://localhost:3000/metrics/reset
@@ -350,15 +354,15 @@ erDiagram
 
 ## 과제 요구 사항과 구현
 
-| 과제 요구                                                  | 상태  | 구현                                                                                                                                             |
-| ---------------------------------------------------------- | ----- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 필수 1. 에뮬레이터 (90대와 PLC, 끊김·지연·중복·순서 주입)  | API만 | `apps/emulator`: A 40대 MQTT, B 30대 REST, C 20대 Modbus, PLC 16점. `GET/PUT :8090/faults`로 그룹별 끊김·지연·중복·뒤바뀜·유실 주입. 화면은 TODO |
-| 필수 2. 어댑터 3종과 공통 모델, 새 제조사 추가 범위 증명   | 완료  | `ingest/adapters/vendor-{a,b,c}.adapter.ts`, `plc.adapter.ts`. 범위는 위 "새 제조사" 표                                                          |
-| 필수 3. 연결 설정 (드롭다운·토글, 재배포 없이 변경)        | API만 | `POST/PATCH/DELETE /connections`, version 충돌 409, config 검증 400. 설정 화면은 TODO                                                            |
-| 필수 4. 실시간 전달 (WebSocket, 재접속 복구, 중복·순서)    | 완료  | `/ws` snapshot·delta·resync·ping, epoch와 rev. 수집 구간은 seq 판정                                                                              |
-| 필수 5. 관제 UI (맵, 상태, 연결, PLC, 장애 알림)           | 일부  | 알람 4종(ROBOT_ERROR, DEVICE_STALE, PLC_ABNORMAL, LOW_BATTERY) 판정과 `GET /alarms`, `POST /alarms/{id}/ack`, WebSocket 알람 전달. 화면은 TODO   |
-| 필수 6. 측정 (지연 p50·p95, 유실률, 복구 시간, CPU·메모리) | 일부  | `GET /metrics`: 연결별 수집 구간 지연 p50·p95, 중복·뒤바뀜·유실, CPU·메모리. 측정 스크립트와 복구 시간은 TODO                                    |
-| 제출물. `docker compose up` 한 번으로 실행                 | 완료  | `docker-compose.yml`                                                                                                                             |
+| 과제 요구                                                  | 상태  | 구현                                                                                                                                               |
+| ---------------------------------------------------------- | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 필수 1. 에뮬레이터 (90대와 PLC, 끊김·지연·중복·순서 주입)  | API만 | `apps/emulator`: A 40대 MQTT, B 30대 REST, C 20대 Modbus, PLC 16점. `GET/PUT :8090/faults`로 그룹별 끊김·지연·중복·뒤바뀜·유실 주입. 화면은 TODO   |
+| 필수 2. 어댑터 3종과 공통 모델, 새 제조사 추가 범위 증명   | 완료  | `ingest/adapters/vendor-{a,b,c}.adapter.ts`, `plc.adapter.ts`. 범위는 위 "새 제조사" 표                                                            |
+| 필수 3. 연결 설정 (드롭다운·토글, 재배포 없이 변경)        | API만 | `POST/PATCH/DELETE /connections`, version 충돌 409, config 검증 400. 설정 화면은 TODO                                                              |
+| 필수 4. 실시간 전달 (WebSocket, 재접속 복구, 중복·순서)    | 완료  | `/ws` snapshot·delta·resync·ping, epoch와 rev. 수집 구간은 seq 판정                                                                                |
+| 필수 5. 관제 UI (맵, 상태, 연결, PLC, 장애 알림)           | 일부  | 알람 4종(ROBOT_ERROR, DEVICE_STALE, PLC_ABNORMAL, LOW_BATTERY) 판정과 `GET /alarms`, `POST /alarms/{id}/ack`, WebSocket 알람 전달. 화면은 TODO     |
+| 필수 6. 측정 (지연 p50·p95, 유실률, 복구 시간, CPU·메모리) | 완료  | `node scripts/measure.mjs` 한 번으로 4종 수치가 표로 나옴. 결과는 [docs/measurements.md](docs/measurements.md). 브라우저 종단 지연은 화면 조각에서 |
+| 제출물. `docker compose up` 한 번으로 실행                 | 완료  | `docker-compose.yml`                                                                                                                               |
 
 ## 저장소 구조
 
