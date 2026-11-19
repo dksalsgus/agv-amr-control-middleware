@@ -1,5 +1,7 @@
 import { Injectable } from "@nestjs/common";
-import { LinkState } from "../../state/link-state";
+import { LinkQualitySample } from "../../state/link-quality";
+import { LinkQualityRepository } from "../../state/link-quality.repository";
+import { LinkState, LinkStateEntry } from "../../state/link-state";
 import { LinkStateRepository } from "../../state/link-state.repository";
 import { PlcDeviceLastRead, PlcPointEntry } from "../../state/plc-point-state";
 import { PlcPointStateRepository } from "../../state/plc-point-state.repository";
@@ -14,6 +16,7 @@ export class AlarmTargetProvider {
     private readonly robotStateRepository: RobotStateRepository,
     private readonly plcPointStateRepository: PlcPointStateRepository,
     private readonly linkStateRepository: LinkStateRepository,
+    private readonly linkQualityRepository: LinkQualityRepository,
     private readonly revisionRepository: RevisionRepository,
   ) {}
 
@@ -23,6 +26,17 @@ export class AlarmTargetProvider {
 
   async findPlcPoints(): Promise<PlcPointEntry[]> {
     return await this.plcPointStateRepository.findAll();
+  }
+
+  async findLinks(): Promise<LinkStateEntry[]> {
+    return await this.linkStateRepository.findAll();
+  }
+
+  async findQualitySamples(
+    connectionId: string,
+    since: Date,
+  ): Promise<LinkQualitySample[]> {
+    return await this.linkQualityRepository.findSince(connectionId, since);
   }
 
   async findLink(connectionId: string): Promise<LinkState | null> {

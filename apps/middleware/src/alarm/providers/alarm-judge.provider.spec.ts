@@ -1,4 +1,5 @@
 import { alarmConfig } from "../../config/alarm.config";
+import { linkQualityConfig } from "../../config/link-quality.config";
 import { PlcPointEntry } from "../../state/plc-point-state";
 import { RobotEntry, RobotState } from "../../state/robot-state";
 import { AlarmJudgeProvider } from "./alarm-judge.provider";
@@ -44,7 +45,7 @@ const toPoint = (alarmOnAbnormal: boolean, value: boolean | null) =>
   }) as PlcPointEntry;
 
 describe("AlarmJudgeProvider", () => {
-  const judge = new AlarmJudgeProvider(alarmConfig());
+  const judge = new AlarmJudgeProvider(alarmConfig(), linkQualityConfig());
 
   const activeCodes = async (robot: RobotEntry, stale: boolean) =>
     (await judge.judgeRobot(robot, stale, true))
@@ -67,6 +68,21 @@ describe("AlarmJudgeProvider", () => {
 
     const unknown = await judge.judgeRobot(toRobot("MOVING", 50), true, false);
     expect(unknown.every((candidate) => !candidate.active)).toBe(true);
+  });
+
+  it("유실률이 기준(5%) 이상이면 LINK_LOSS를 열고, 표본이 모자라면 열지 않는다", async () => {
+    const high = await judge.judgeLinkLoss("c1", 10, false);
+    expect(high.active).toBe(true);
+    expect(high.targetType).toBe("CONNECTION");
+    expect(high.message).toBe("통신 품질 저하(유실률 10%)");
+    expect((await judge.judgeLinkLoss("c1", 4.9, false)).active).toBe(false);
+    expect((await judge.judgeLinkLoss("c1", null, false)).active).toBe(false);
+  });
+
+  it("열린 LINK_LOSS는 해제 기준(2%) 아래로 내려가야 푼다", async () => {
+    expect((await judge.judgeLinkLoss("c1", 3, true)).active).toBe(true);
+    expect((await judge.judgeLinkLoss("c1", 1.9, true)).active).toBe(false);
+    expect((await judge.judgeLinkLoss("c1", null, true)).active).toBe(false);
   });
 
   it("알람을 켠 점만 비정상 값에서 PLC_ABNORMAL을 연다", async () => {

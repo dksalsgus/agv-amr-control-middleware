@@ -365,7 +365,7 @@ erDiagram
 | 필수 2. 어댑터 3종과 공통 모델, 새 제조사 추가 범위 증명   | 완료 | `ingest/adapters/vendor-{a,b,c}.adapter.ts`, `plc.adapter.ts`. 범위는 위 "새 제조사" 표                                                                                                                    |
 | 필수 3. 연결 설정 (드롭다운·토글, 재배포 없이 변경)        | 완료 | `POST/PATCH/DELETE /connections`, version 충돌 409, config 검증 400. 연결 설정 화면(`/connections`): 프로토콜 드롭다운, 켬·끔 토글, 저장 후 재연결 확인, 409 비교                                          |
 | 필수 4. 실시간 전달 (WebSocket, 재접속 복구, 중복·순서)    | 완료 | `/ws` snapshot·delta·resync·ping, epoch와 rev. 수집 구간은 seq 판정                                                                                                                                        |
-| 필수 5. 관제 UI (맵, 상태, 연결, PLC, 장애 알림)           | 완료 | 관제 화면(`/`): 공장 맵(Canvas, 90대), 상태 요약, 연결·PLC 패널, 로봇 상세, 열린 알람과 확인, 서버 끊김·복구 표시. 알람 4종(ROBOT_ERROR, DEVICE_STALE, PLC_ABNORMAL, LOW_BATTERY)                          |
+| 필수 5. 관제 UI (맵, 상태, 연결, PLC, 장애 알림)           | 완료 | 관제 화면(`/`): 공장 맵(Canvas, 90대), 상태 요약, 연결·PLC 패널, 로봇 상세, 열린 알람과 확인, 서버 끊김·복구 표시. 알람 5종(ROBOT_ERROR, DEVICE_STALE, PLC_ABNORMAL, LOW_BATTERY, LINK_LOSS)               |
 | 필수 6. 측정 (지연 p50·p95, 유실률, 복구 시간, CPU·메모리) | 완료 | `node scripts/measure.mjs` 한 번으로 4종 수치가 표로 나옴. 결과는 [docs/measurements.md](docs/measurements.md). 브라우저 종단 지연 p50·p95는 관제 화면 상단 요약에                                         |
 | 제출물. `docker compose up` 한 번으로 실행                 | 완료 | `docker-compose.yml`                                                                                                                                                                                       |
 
