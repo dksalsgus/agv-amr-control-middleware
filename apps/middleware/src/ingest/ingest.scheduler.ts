@@ -1,7 +1,5 @@
 import { Injectable, OnApplicationBootstrap } from "@nestjs/common";
-import { OnEvent } from "@nestjs/event-emitter";
 import { Interval } from "@nestjs/schedule";
-import { CONNECTION_CHANGED_EVENT } from "../common/events/connection.events";
 import {
   INGEST_POLL_TICK_MS,
   INGEST_PUSH_SILENCE_CHECK_MS,
@@ -12,7 +10,7 @@ import { IngestService } from "./ingest.service";
 import { PlcIngestService } from "./plc-ingest.service";
 
 /**
- * 수집을 시작하고 주기 작업을 돌린다. 연결 설정은 시작할 때 DB에서 읽고, 그 뒤로는 저장 이벤트가 올 때만 다시 맞춘다.
+ * 수집을 시작하고 주기 작업을 돌린다. 연결 설정은 시작할 때 DB에서 읽고, 그 뒤로는 연결 설정 API가 저장할 때만 다시 맞춘다.
  * 연결별 폴링은 간격이 매번 달라(DOWN이면 늘어남) 짧은 주기로 돌며 다음 폴링 시각이 된 연결만 폴링한다.
  */
 @Injectable()
@@ -38,18 +36,15 @@ export class IngestScheduler implements OnApplicationBootstrap {
     await this.plcIngestService.start();
     this.started = true;
     if (this.syncAgain) {
-      await this.sync();
+      await this.reloadConnections();
     }
   }
 
-  /** 연결 설정을 저장하면 바로 DB 설정과 맞춘다. 바뀐 연결만 다시 붙는다. */
-  @OnEvent(CONNECTION_CHANGED_EVENT, { async: true })
-  async onConnectionChanged(): Promise<void> {
-    await this.sync();
-  }
-
-  /** 시작 중이거나 이미 맞추는 중이면 끝난 뒤 다시 맞추도록 표시만 한다. */
-  private async sync(): Promise<void> {
+  /**
+   * 연결 설정을 저장한 뒤 부른다. DB 설정과 맞춰 바뀐 연결만 다시 붙는다.
+   * 시작 중이거나 이미 맞추는 중이면 끝난 뒤 다시 맞추도록 표시만 한다.
+   */
+  async reloadConnections(): Promise<void> {
     const isBusy = !this.started || this.syncing;
     if (isBusy) {
       this.syncAgain = true;

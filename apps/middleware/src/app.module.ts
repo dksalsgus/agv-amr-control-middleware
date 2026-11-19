@@ -3,7 +3,6 @@ import { Module } from "@nestjs/common";
 import { AlarmModule } from "./alarm/alarm.module";
 import { AuthModule } from "./auth/auth.module";
 import { ConfigModule, ConfigType } from "@nestjs/config";
-import { EventEmitterModule } from "@nestjs/event-emitter";
 import { ScheduleModule } from "@nestjs/schedule";
 import { alarmConfig } from "./config/alarm.config";
 import { appConfig } from "./config/app.config";
@@ -49,7 +48,6 @@ import { RealtimeModule } from "./realtime/realtime.module";
       }),
     }),
     ScheduleModule.forRoot(),
-    EventEmitterModule.forRoot(),
     LoggerModule,
     PrismaModule,
     HealthModule,

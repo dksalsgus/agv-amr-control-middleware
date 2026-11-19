@@ -4,11 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { EventEmitter2 } from "@nestjs/event-emitter";
-import {
-  CONNECTION_CHANGED_EVENT,
-  ConnectionChangedEvent,
-} from "../common/events/connection.events";
+import { IngestScheduler } from "../ingest/ingest.scheduler";
 import { VENDOR_PROTOCOLS } from "../ingest/providers/connection.constants";
 import { ConnectionsProvider } from "./connections.provider";
 import { ConnectionWithLink } from "./connections.types";
@@ -25,7 +21,7 @@ import { ConfigParts } from "./connections.types";
 export class ConnectionsService {
   constructor(
     private readonly connectionsProvider: ConnectionsProvider,
-    private readonly eventEmitter: EventEmitter2,
+    private readonly ingestScheduler: IngestScheduler,
   ) {}
 
   async getConnections(): Promise<GetConnectionsResponseDto> {
@@ -98,7 +94,7 @@ export class ConnectionsService {
       );
     }
 
-    this.emitChanged(id);
+    this.reloadIngest();
     return { id, version: request.version + 1 };
   }
 
@@ -122,7 +118,7 @@ export class ConnectionsService {
       enabled: request.enabled ?? true,
       config,
     });
-    this.emitChanged(created.id);
+    this.reloadIngest();
     return created;
   }
 
@@ -140,13 +136,12 @@ export class ConnectionsService {
     }
 
     await this.connectionsProvider.delete(id);
-    this.emitChanged(id);
+    this.reloadIngest();
   }
 
-  /** 저장한 설정을 수집에 바로 반영하게 알린다. */
-  private emitChanged(connectionId: string): void {
-    const event: ConnectionChangedEvent = { connectionId };
-    this.eventEmitter.emit(CONNECTION_CHANGED_EVENT, event);
+  /** 저장한 설정을 수집에 바로 반영한다. 다시 붙는 동안 응답을 붙잡지 않도록 기다리지 않는다. */
+  private reloadIngest(): void {
+    void this.ingestScheduler.reloadConnections();
   }
 
   /** 장비가 보내지 않거나 어댑터가 읽지 못하는 프로토콜이면 400 */

@@ -81,5 +81,6 @@ import { RestClientRepository } from "./repositories/rest-client.repository";
     MqttClientRepository,
     RestClientRepository,
   ],
+  exports: [IngestScheduler],
 })
 export class IngestModule {}
