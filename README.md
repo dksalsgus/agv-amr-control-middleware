@@ -39,6 +39,10 @@ curl http://localhost:8081/api/vehicles
 curl http://localhost:3000/robots
 curl http://localhost:3000/robots/{id}
 
+# PLC 16점의 현재 값과 값이 바뀐 이력
+curl http://localhost:3000/plc-points
+curl "http://localhost:3000/plc-points/{id}/events?page=1&size=100"
+
 # 로봇 이력 (최신 순, from/to는 ISO 8601, page는 1부터, size는 최대 1000)
 curl "http://localhost:3000/robots/{id}/telemetry?from=2026-11-19T00:00:00Z&page=1&size=100"
 ```
