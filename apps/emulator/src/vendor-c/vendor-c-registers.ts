@@ -1,3 +1,9 @@
+import { radianToDecidegree } from "../common/utils/angle.util";
+import {
+  toUint16,
+  toUint32Words,
+  toUint48Words,
+} from "../common/utils/register.util";
 import { Robot, RobotMode } from "../simulation/robot";
 import { VENDOR_C_BLOCK_SIZE } from "../config";
 
@@ -5,15 +11,6 @@ const OP_STATE_CODE: Record<RobotMode, number> = {
   IDLE: 0,
   DRIVING: 1,
   CHARGING: 2,
-};
-
-const UINT16 = 0x10000;
-
-const toUint16 = (value: number) => ((value % UINT16) + UINT16) % UINT16;
-
-const radianToDecidegree = (radian: number) => {
-  const degree = ((((radian * 180) / Math.PI) % 360) + 360) % 360;
-  return Math.round(degree * 10) % 3600;
 };
 
 /**
@@ -26,12 +23,8 @@ export class VendorCRegisterEncoder {
     const registers = new Array<number>(VENDOR_C_BLOCK_SIZE).fill(0);
     const ms = sampledAt.getTime();
 
-    registers[0] = Math.floor(robot.seq / UINT16) % UINT16;
-    registers[1] = robot.seq % UINT16;
-
-    registers[2] = Math.floor(ms / UINT16 / UINT16) % UINT16;
-    registers[3] = Math.floor(ms / UINT16) % UINT16;
-    registers[4] = ms % UINT16;
+    [registers[0], registers[1]] = toUint32Words(robot.seq);
+    [registers[2], registers[3], registers[4]] = toUint48Words(ms);
 
     registers[5] = toUint16(Math.round(robot.x * 100));
     registers[6] = toUint16(Math.round(robot.y * 100));

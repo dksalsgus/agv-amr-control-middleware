@@ -1,6 +1,5 @@
+import { toUint32Words, toUint48Words } from "../common/utils/register.util";
 import { PlcSimulator } from "./plc-simulator";
-
-const UINT16 = 0x10000;
 
 /**
  * PLC 상태를 입력 레지스터 6개로 바꾼다 (설계 문서 4장 PLC 매핑표).
@@ -13,11 +12,8 @@ export class PlcRegisterEncoder {
 
     return [
       this.toWord(plc.points),
-      Math.floor(plc.seq / UINT16) % UINT16,
-      plc.seq % UINT16,
-      Math.floor(ms / UINT16 / UINT16) % UINT16,
-      Math.floor(ms / UINT16) % UINT16,
-      ms % UINT16,
+      ...toUint32Words(plc.seq),
+      ...toUint48Words(ms),
     ];
   }
 
