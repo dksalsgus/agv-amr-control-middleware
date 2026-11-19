@@ -40,7 +40,13 @@ export class ApiClient {
       this.goToLogin();
     }
 
-    const result = (await response.json()) as ApiResult<T>;
+    // 프록시가 돌려준 502처럼 본문이 JSON이 아니면 상태 코드로 실패를 알린다.
+    const result = (await response
+      .json()
+      .catch(() => null)) as ApiResult<T> | null;
+    if (!result) {
+      throw new ApiRequestError(response.status, [response.statusText]);
+    }
     if (!result.success || !response.ok) {
       throw new ApiRequestError(response.status, this.toMessages(result));
     }
