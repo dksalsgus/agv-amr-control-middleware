@@ -60,4 +60,17 @@ export class VendorsConnectionsRepository {
     });
     return result.count;
   }
+
+  async create(
+    data: Prisma.vendors_connectionsUncheckedCreateInput,
+  ): Promise<{ id: string; version: number }> {
+    return await this.prisma.vendors_connections.create({
+      data,
+      select: { id: true, version: true },
+    });
+  }
+
+  async deleteById(id: string): Promise<void> {
+    await this.prisma.vendors_connections.delete({ where: { id } });
+  }
 }
