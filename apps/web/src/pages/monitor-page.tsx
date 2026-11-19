@@ -164,7 +164,7 @@ export const MonitorPage = () => {
       : LIVE_PILL[mode];
 
   return (
-    <div className="app" data-mode={mode}>
+    <div className="app" data-page="monitor" data-mode={mode}>
       <Gnb live={pill} />
       <ConnBanner
         mode={mode}
