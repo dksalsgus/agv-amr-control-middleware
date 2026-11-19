@@ -1,4 +1,6 @@
 import { Controller, Get, HttpCode, Param, Post } from "@nestjs/common";
+import { AuthUser } from "../auth/auth.types";
+import { CurrentUser } from "../common/decorators/current-user.decorator";
 import { ApiResult } from "../common/dto/api-result";
 import { AlarmService } from "./alarm.service";
 import { GetAlarmsResponseDto } from "./dto/get-alarms.response.dto";
@@ -19,8 +21,9 @@ export class AlarmsController {
   @HttpCode(200)
   async postAlarmAck(
     @Param() param: PostAlarmAckParamDto,
+    @CurrentUser() user: AuthUser,
   ): Promise<ApiResult<PostAlarmAckResponseDto>> {
-    const response = await this.alarmService.ackAlarm(param.id);
+    const response = await this.alarmService.ackAlarm(param.id, user.sub);
     return ApiResult.ofSuccess(response);
   }
 }

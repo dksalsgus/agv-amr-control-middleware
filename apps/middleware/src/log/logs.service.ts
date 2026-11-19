@@ -34,6 +34,7 @@ export class LogsService {
       targetType: row.target_type,
       targetId: row.target_id,
       message: row.message,
+      rolesUsersId: row.roles_users_id,
       createdAt: row.created_at.toISOString(),
     };
   }

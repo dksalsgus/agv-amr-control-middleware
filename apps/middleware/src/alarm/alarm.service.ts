@@ -47,8 +47,11 @@ export class AlarmService {
   }
 
   /** 이미 풀린 알람이면 404 */
-  async ackAlarm(id: string): Promise<PostAlarmAckResponseDto> {
-    const acked = await this.alarmStateProvider.ack(id);
+  async ackAlarm(
+    id: string,
+    rolesUsersId: string,
+  ): Promise<PostAlarmAckResponseDto> {
+    const acked = await this.alarmStateProvider.ack(id, rolesUsersId);
     if (!acked || !acked.ackedAt) {
       throw new NotFoundException(`열린 알람이 없습니다: ${id}`);
     }
