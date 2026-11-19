@@ -9,6 +9,7 @@ import { RobotTelemetryService } from "./robot-telemetry.service";
 import { RobotsController } from "./robots.controller";
 import { RobotsProvider } from "./robots.provider";
 import { RobotsService } from "./robots.service";
+import { StaleJudgeProvider } from "./stale-judge.provider";
 import { TelemetryQueryProvider } from "./telemetry-query.provider";
 
 @Module({
@@ -22,6 +23,7 @@ import { TelemetryQueryProvider } from "./telemetry-query.provider";
     TelemetryQueryProvider,
     PlcPointsProvider,
     PlcEventsQueryProvider,
+    StaleJudgeProvider,
   ],
 })
 export class DeviceModule {}

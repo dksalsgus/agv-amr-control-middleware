@@ -19,6 +19,7 @@ export class GetRobotsItemDto {
   name!: string;
   type!: string;
   rev!: number;
+  stale!: boolean;
   state!: GetRobotsStateDto | null;
 }
 

@@ -1,16 +1,16 @@
 import { Injectable } from "@nestjs/common";
-import { PlcPoint, PlcPointEntry, PlcPointValue } from "./plc-point-state";
-
-type SeqPoint = {
-  seq: number;
-  sourceTs: Date;
-};
+import {
+  PlcDeviceLastRead,
+  PlcPoint,
+  PlcPointEntry,
+  PlcPointValue,
+} from "./plc-point-state";
 
 /** PLC 점 현재 값(메모리). seq 기준은 16점을 한 번에 읽으므로 장비 단위로 둔다. */
 @Injectable()
 export class PlcPointStateRepository {
   private readonly entries = new Map<string, PlcPointEntry>();
-  private readonly lastSeqByDevice = new Map<string, SeqPoint>();
+  private readonly lastReadByDevice = new Map<string, PlcDeviceLastRead>();
 
   async register(point: PlcPoint): Promise<void> {
     this.entries.set(point.pointId, { ...point, current: null, rev: 0 });
@@ -38,11 +38,14 @@ export class PlcPointStateRepository {
     entry.rev = rev;
   }
 
-  async findLastSeq(deviceId: string): Promise<SeqPoint | null> {
-    return this.lastSeqByDevice.get(deviceId) ?? null;
+  async findLastRead(deviceId: string): Promise<PlcDeviceLastRead | null> {
+    return this.lastReadByDevice.get(deviceId) ?? null;
   }
 
-  async updateLastSeq(deviceId: string, last: SeqPoint): Promise<void> {
-    this.lastSeqByDevice.set(deviceId, last);
+  async updateLastRead(
+    deviceId: string,
+    last: PlcDeviceLastRead,
+  ): Promise<void> {
+    this.lastReadByDevice.set(deviceId, last);
   }
 }

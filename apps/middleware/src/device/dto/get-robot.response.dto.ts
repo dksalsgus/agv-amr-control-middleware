@@ -19,5 +19,6 @@ export class GetRobotResponseDto {
   name!: string;
   type!: string;
   rev!: number;
+  stale!: boolean;
   state!: GetRobotStateDto | null;
 }

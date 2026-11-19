@@ -10,17 +10,22 @@ import {
   GetRobotsStateDto,
 } from "./dto/get-robots.response.dto";
 import { RobotsProvider } from "./robots.provider";
+import { StaleJudgeProvider } from "./stale-judge.provider";
 
 @Injectable()
 export class RobotsService {
-  constructor(private readonly robotsProvider: RobotsProvider) {}
+  constructor(
+    private readonly robotsProvider: RobotsProvider,
+    private readonly staleJudgeProvider: StaleJudgeProvider,
+  ) {}
 
   async getRobots(): Promise<GetRobotsResponseDto> {
     const entries = await this.robotsProvider.findAll();
+    const now = new Date();
 
     const robots: GetRobotsItemDto[] = [];
     for (const entry of entries) {
-      robots.push(await this.toItem(entry));
+      robots.push(await this.toItem(entry, now));
     }
 
     return { robots };
@@ -32,18 +37,17 @@ export class RobotsService {
       throw new NotFoundException(`로봇이 없습니다: ${id}`);
     }
 
-    return {
-      id: entry.deviceId,
-      connectionId: entry.connectionId,
-      externalId: entry.externalId,
-      name: entry.name,
-      type: entry.type,
-      rev: entry.rev,
-      state: entry.state ? await this.toState(entry.state) : null,
-    };
+    return await this.toItem(entry, new Date());
   }
 
-  private async toItem(entry: RobotEntry): Promise<GetRobotsItemDto> {
+  private async toItem(
+    entry: RobotEntry,
+    now: Date,
+  ): Promise<GetRobotsItemDto & GetRobotResponseDto> {
+    const linkStatus = await this.robotsProvider.findLinkStatus(
+      entry.connectionId,
+    );
+
     return {
       id: entry.deviceId,
       connectionId: entry.connectionId,
@@ -51,6 +55,11 @@ export class RobotsService {
       name: entry.name,
       type: entry.type,
       rev: entry.rev,
+      stale: await this.staleJudgeProvider.isRobotStale(
+        entry.state,
+        linkStatus,
+        now,
+      ),
       state: entry.state ? await this.toState(entry.state) : null,
     };
   }
