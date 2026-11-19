@@ -31,7 +31,13 @@ curl http://localhost:3000/health
 
 # 제조사 A 로봇 40대의 MQTT 메시지 (1초마다 seq가 오른다)
 docker compose exec mosquitto mosquitto_sub -t 'vendorA/amr/+/state' -v
+
+# 미들웨어가 모은 로봇의 최신 상태
+curl http://localhost:3000/robots
+curl http://localhost:3000/robots/{id}
 ```
+
+시작할 때 `prisma migrate deploy`로 테이블을 만들고 `prisma/seed.sql`로 데모 데이터(제조사, 연결, 장비)를 넣습니다. 시드는 여러 번 실행해도 결과가 같습니다.
 
 ## 로컬 개발
 
