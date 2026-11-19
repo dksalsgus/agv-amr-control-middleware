@@ -97,3 +97,21 @@ CROSS JOIN (VALUES
 ) AS p(point_no, name, type, alarm)
 WHERE c.name = 'PLC Modbus' AND d.external_id = '0'
 ON CONFLICT (vendors_connections_devices_id, point_no) DO NOTHING;
+
+-- 역할 3종과 데모 계정 (비밀번호는 아이디 + 1234, argon2id 해시)
+INSERT INTO roles (id, code, name)
+VALUES
+  (gen_random_uuid(), 'VIEWER', '조회'),
+  (gen_random_uuid(), 'OPERATOR', '운영자'),
+  (gen_random_uuid(), 'ADMIN', '관리자')
+ON CONFLICT (code) DO NOTHING;
+
+INSERT INTO roles_users (id, roles_id, username, password_hash)
+SELECT gen_random_uuid(), r.id, u.username, u.password_hash
+FROM (VALUES
+  ('VIEWER', 'viewer', '$argon2id$v=19$m=65536,p=4,t=3$msVivQ5v1U7AZaQ/b5in/w$NtJUy+L/0i4i85VTbRPEeUaflB426Ua93o1l9Y50C8c'),
+  ('OPERATOR', 'operator', '$argon2id$v=19$m=65536,p=4,t=3$NKNvCQVm+WTs0z0H8/fnmw$IWyj/JlV6TmJiXo4N2hFDoyCPfblN0VzWV53YvVI+R0'),
+  ('ADMIN', 'admin', '$argon2id$v=19$m=65536,p=4,t=3$LVq4iZB3ga0EXtiypQ/qHA$43pHwwGOVfseU09lmJAmTT9cFuWWD8BAPmQZkFZdgM0')
+) AS u(roles_code, username, password_hash)
+JOIN roles r ON r.code = u.roles_code
+ON CONFLICT (username) DO NOTHING;
