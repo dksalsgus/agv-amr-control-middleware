@@ -55,8 +55,9 @@ model vendors_connections_devices {
   enabled                Boolean                          @default(true)
   created_at             DateTime                         @default(now()) @db.Timestamptz
 
-  vendors_connections                   vendors_connections                     @relation(fields: [vendors_connections_id], references: [id])
-  vendors_connections_devices_telemetry vendors_connections_devices_telemetry[]
+  vendors_connections                    vendors_connections                      @relation(fields: [vendors_connections_id], references: [id])
+  vendors_connections_devices_telemetry  vendors_connections_devices_telemetry[]
+  vendors_connections_devices_plc_points vendors_connections_devices_plc_points[]
 
   @@unique([vendors_connections_id, external_id])
 }
@@ -88,4 +89,41 @@ model vendors_connections_devices_telemetry {
   vendors_connections_devices vendors_connections_devices @relation(fields: [vendors_connections_devices_id], references: [id])
 
   @@index([vendors_connections_devices_id, source_ts(sort: Desc)])
+}
+
+enum vendors_connections_devices_plc_points_type {
+  DOOR
+  INTERSECTION
+  ESTOP
+  GENERIC
+}
+
+/// PLC 16점의 의미.
+model vendors_connections_devices_plc_points {
+  id                             String                                      @id @default(uuid()) @db.Uuid
+  vendors_connections_devices_id String                                      @db.Uuid
+  point_no                       Int                                         @db.SmallInt
+  name                           String
+  type                           vendors_connections_devices_plc_points_type
+  normal_value                   Boolean
+  alarm_on_abnormal              Boolean                                     @default(false)
+
+  vendors_connections_devices                   vendors_connections_devices                     @relation(fields: [vendors_connections_devices_id], references: [id])
+  vendors_connections_devices_plc_points_events vendors_connections_devices_plc_points_events[]
+
+  @@unique([vendors_connections_devices_id, point_no])
+}
+
+/// PLC 점의 값이 바뀔 때만 한 행.
+model vendors_connections_devices_plc_points_events {
+  id                                        BigInt   @id @default(autoincrement())
+  vendors_connections_devices_plc_points_id String   @db.Uuid
+  value                                     Boolean
+  seq                                       BigInt
+  source_ts                                 DateTime @db.Timestamptz
+  received_ts                               DateTime @db.Timestamptz
+
+  vendors_connections_devices_plc_points vendors_connections_devices_plc_points @relation(fields: [vendors_connections_devices_plc_points_id], references: [id])
+
+  @@index([vendors_connections_devices_plc_points_id, source_ts(sort: Desc)])
 }

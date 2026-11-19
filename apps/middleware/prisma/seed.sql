@@ -53,3 +53,47 @@ SELECT gen_random_uuid(), c.id, n::text, 'AGV', 'AGV C-' || lpad((n + 1)::text, 
 FROM vendors_connections c, generate_series(0, 19) AS n
 WHERE c.name = '제조사 C Modbus'
 ON CONFLICT (vendors_connections_id, external_id) DO NOTHING;
+
+-- PLC 인터록: Modbus TCP로 폴링하는 PLC 1대, 16점
+INSERT INTO vendors (id, code, name)
+VALUES (gen_random_uuid(), 'PLC', 'PLC 인터록')
+ON CONFLICT (code) DO NOTHING;
+
+INSERT INTO vendors_connections (id, vendors_id, name, protocol, config)
+SELECT gen_random_uuid(), v.id, 'PLC Modbus', 'MODBUS_TCP',
+  '{"host":"emulator","port":5021,"unitId":1,"pollIntervalMs":500,"baseAddress":0,"blockSize":6}'::jsonb
+FROM vendors v
+WHERE v.code = 'PLC'
+ON CONFLICT (name) DO NOTHING;
+
+INSERT INTO vendors_connections_devices (id, vendors_connections_id, external_id, type, name)
+SELECT gen_random_uuid(), c.id, '0', 'PLC', 'PLC 1'
+FROM vendors_connections c
+WHERE c.name = 'PLC Modbus'
+ON CONFLICT (vendors_connections_id, external_id) DO NOTHING;
+
+INSERT INTO vendors_connections_devices_plc_points
+  (id, vendors_connections_devices_id, point_no, name, type, normal_value, alarm_on_abnormal)
+SELECT gen_random_uuid(), d.id, p.point_no, p.name, p.type::vendors_connections_devices_plc_points_type, false, p.alarm
+FROM vendors_connections_devices d
+JOIN vendors_connections c ON c.id = d.vendors_connections_id
+CROSS JOIN (VALUES
+  (0, '도어 1 열림', 'DOOR', true),
+  (1, '도어 2 열림', 'DOOR', true),
+  (2, '도어 3 열림', 'DOOR', true),
+  (3, '도어 4 열림', 'DOOR', true),
+  (4, '교차로 1 점유', 'INTERSECTION', false),
+  (5, '교차로 2 점유', 'INTERSECTION', false),
+  (6, '교차로 3 점유', 'INTERSECTION', false),
+  (7, '교차로 4 점유', 'INTERSECTION', false),
+  (8, '비상정지 1', 'ESTOP', true),
+  (9, '비상정지 2', 'ESTOP', true),
+  (10, '신호 11', 'GENERIC', false),
+  (11, '신호 12', 'GENERIC', false),
+  (12, '신호 13', 'GENERIC', false),
+  (13, '신호 14', 'GENERIC', false),
+  (14, '신호 15', 'GENERIC', false),
+  (15, '신호 16', 'GENERIC', false)
+) AS p(point_no, name, type, alarm)
+WHERE c.name = 'PLC Modbus' AND d.external_id = '0'
+ON CONFLICT (vendors_connections_devices_id, point_no) DO NOTHING;

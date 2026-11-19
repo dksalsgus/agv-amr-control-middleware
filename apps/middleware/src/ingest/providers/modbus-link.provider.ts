@@ -74,4 +74,24 @@ export class ModbusLinkProvider {
 
     return { firstBlock, blockSize: config.blockSize, registers };
   }
+
+  /** PLC처럼 블록 하나를 입력 레지스터에서 한 번에 읽는다. */
+  async pollInputBlock(
+    connectionId: string,
+    config: ModbusConnectionConfig,
+  ): Promise<ModbusRawMessage> {
+    const registers = await this.modbusClientRepository.readInputRegisters(
+      connectionId,
+      {
+        host: config.host,
+        port: config.port,
+        unitId: config.unitId,
+        timeoutMs: READ_TIMEOUT_MS,
+      },
+      config.baseAddress,
+      config.blockSize,
+    );
+
+    return { firstBlock: 0, blockSize: config.blockSize, registers };
+  }
 }

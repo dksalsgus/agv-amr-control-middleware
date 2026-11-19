@@ -1,5 +1,7 @@
 import {
   MQTT_URL,
+  PLC_PORT,
+  PLC_STEP_INTERVAL_MS,
   VENDOR_A_PUBLISH_INTERVAL_MS,
   VENDOR_A_ROBOT_COUNT,
   VENDOR_B_PORT,
@@ -9,6 +11,8 @@ import {
   VENDOR_C_ROBOT_COUNT,
   VENDOR_C_STEP_INTERVAL_MS,
 } from "./config";
+import { PlcServer } from "./plc/plc-server";
+import { PlcSimulator } from "./plc/plc-simulator";
 import { RobotFleet } from "./simulation/robot-fleet";
 import { VendorAPublisher } from "./vendor-a/vendor-a-publisher";
 import { VendorBServer } from "./vendor-b/vendor-b-server";
@@ -48,6 +52,19 @@ const startVendorC = () => {
   }, VENDOR_C_STEP_INTERVAL_MS);
 };
 
+const startPlc = () => {
+  const plc = new PlcSimulator();
+  const server = new PlcServer(PLC_PORT, plc);
+  server.refresh(new Date());
+  server.listen();
+
+  setInterval(() => {
+    plc.step();
+    server.refresh(new Date());
+  }, PLC_STEP_INTERVAL_MS);
+};
+
 startVendorA();
 startVendorB();
 startVendorC();
+startPlc();
