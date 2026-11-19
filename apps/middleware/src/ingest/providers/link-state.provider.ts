@@ -1,10 +1,11 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { LogsRepository } from "../../history/logs.repository";
 import { LogLevel, LogType } from "../../log/log";
 import { LinkState, LinkStatus } from "../../state/link-state";
 import { LinkStateRepository } from "../../state/link-state.repository";
 import { RemovedEntityRepository } from "../../state/removed-entity.repository";
 import { RevisionRepository } from "../../state/revision.repository";
+import { AppLogger } from "../../logger/app-logger";
 
 /** 연결 UP/DOWN 판정. 상태가 바뀔 때만 logs에 남긴다. */
 @Injectable()
@@ -16,14 +17,15 @@ export class LinkStateProvider {
 
   private static readonly MAX_RETRY_MS = 10000;
 
-  private readonly logger = new Logger(LinkStateProvider.name);
-
   constructor(
     private readonly linkStateRepository: LinkStateRepository,
     private readonly logsRepository: LogsRepository,
     private readonly revisionRepository: RevisionRepository,
     private readonly removedEntityRepository: RemovedEntityRepository,
-  ) {}
+    private readonly logger: AppLogger,
+  ) {
+    this.logger.setContext(LinkStateProvider.name);
+  }
 
   async register(connectionId: string): Promise<void> {
     await this.linkStateRepository.save(connectionId, {

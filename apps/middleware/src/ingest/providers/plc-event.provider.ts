@@ -1,16 +1,19 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { VendorsConnectionsDevicesPlcPointsEventsRepository } from "../../history/vendors-connections-devices-plc-points-events.repository";
 import { PlcPointChange } from "./plc-event.types";
+import { AppLogger } from "../../logger/app-logger";
 
 /** PLC 점 이벤트 기록과 재시작 복구. 기록 실패는 밖으로 던지지 않는다. */
 @Injectable()
 export class PlcEventProvider {
-  private readonly logger = new Logger(PlcEventProvider.name);
   private failing = false;
 
   constructor(
     private readonly eventsRepository: VendorsConnectionsDevicesPlcPointsEventsRepository,
-  ) {}
+    private readonly logger: AppLogger,
+  ) {
+    this.logger.setContext(PlcEventProvider.name);
+  }
 
   async recordAll(changes: PlcPointChange[]): Promise<void> {
     if (changes.length === 0) {

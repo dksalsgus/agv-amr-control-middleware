@@ -1,4 +1,5 @@
 import { LogsRepository } from "../../history/logs.repository";
+import { AppLogger } from "../../logger/app-logger";
 import { LinkStateRepository } from "../../state/link-state.repository";
 import { RemovedEntityRepository } from "../../state/removed-entity.repository";
 import { RevisionRepository } from "../../state/revision.repository";
@@ -15,6 +16,11 @@ describe("LinkStateProvider", () => {
     logsRepository,
     new RevisionRepository(),
     removedEntityRepository,
+    {
+      setContext: jest.fn(),
+      log: jest.fn(),
+      warn: jest.fn(),
+    } as unknown as AppLogger,
   );
 
   beforeEach(async () => {

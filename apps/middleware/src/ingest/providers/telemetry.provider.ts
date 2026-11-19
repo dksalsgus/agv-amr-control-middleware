@@ -1,18 +1,21 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { VendorsConnectionsDevicesTelemetryRepository } from "../../history/vendors-connections-devices-telemetry.repository";
 import { TelemetryRow } from "../../history/vendors-connections-devices-telemetry.types";
 import { RobotOpState, RobotState } from "../../state/robot-state";
 import { RobotTelemetry } from "./telemetry.types";
+import { AppLogger } from "../../logger/app-logger";
 
 /** 로봇 이력 기록과 재시작 복구. 기록 실패는 밖으로 던지지 않는다(DB 장애가 수집을 멈추면 안 됨). */
 @Injectable()
 export class TelemetryProvider {
-  private readonly logger = new Logger(TelemetryProvider.name);
   private failing = false;
 
   constructor(
     private readonly telemetryRepository: VendorsConnectionsDevicesTelemetryRepository,
-  ) {}
+    private readonly logger: AppLogger,
+  ) {
+    this.logger.setContext(TelemetryProvider.name);
+  }
 
   async recordAll(telemetries: RobotTelemetry[]): Promise<void> {
     if (telemetries.length === 0) {

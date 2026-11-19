@@ -1,7 +1,8 @@
-import { Injectable, Logger, OnModuleDestroy } from "@nestjs/common";
+import { Injectable, OnModuleDestroy } from "@nestjs/common";
 import mqtt, { MqttClient } from "mqtt";
 import { delay } from "../../common/utils/delay.util";
 import { MqttSubscribeOptions, MqttHandlers } from "./mqtt-client.types";
+import { AppLogger } from "../../logger/app-logger";
 
 /**
  * 연결마다 MQTT 클라이언트 하나. 재접속 때 지난 메시지가 몰리지 않게 세션을 두지 않는다.
@@ -9,11 +10,14 @@ import { MqttSubscribeOptions, MqttHandlers } from "./mqtt-client.types";
  */
 @Injectable()
 export class MqttClientRepository implements OnModuleDestroy {
+  constructor(private readonly logger: AppLogger) {
+    this.logger.setContext(MqttClientRepository.name);
+  }
+
   private static readonly MIN_RETRY_MS = 1000;
 
   private static readonly MAX_RETRY_MS = 10000;
 
-  private readonly logger = new Logger(MqttClientRepository.name);
   private readonly clients = new Map<string, MqttClient>();
   private readonly retryDelays = new Map<string, number>();
   private stopping = false;

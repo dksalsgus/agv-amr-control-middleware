@@ -1,4 +1,4 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { PlcPointValue } from "../state/plc-point-state";
 import { PlcAdapter } from "./adapters/plc.adapter";
 import { PlcReading } from "./adapters/plc.types";
@@ -14,11 +14,11 @@ import { PlcPointChange } from "./providers/plc-event.types";
 import { LinkStateProvider } from "./providers/link-state.provider";
 import { PlcPointStateProvider } from "./providers/plc-point-state.provider";
 import { SeqJudgeProvider } from "./providers/seq-judge.provider";
+import { AppLogger } from "../logger/app-logger";
 
 /** PLC 수집: 16점 폴링 → seq 판정 → 값이 바뀐 점만 반영·기록. 500ms보다 짧은 펄스는 놓친다. */
 @Injectable()
 export class PlcIngestService {
-  private readonly logger = new Logger(PlcIngestService.name);
   private readonly connections = new Map<string, IngestConnection>();
 
   constructor(
@@ -29,7 +29,10 @@ export class PlcIngestService {
     private readonly plcPointStateProvider: PlcPointStateProvider,
     private readonly plcEventProvider: PlcEventProvider,
     private readonly linkStateProvider: LinkStateProvider,
-  ) {}
+    private readonly logger: AppLogger,
+  ) {
+    this.logger.setContext(PlcIngestService.name);
+  }
 
   async start(): Promise<void> {
     for (const connection of await this.loadConnections()) {
