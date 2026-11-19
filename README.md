@@ -385,6 +385,10 @@ apps/
       alarm/     알람 판정과 조회·확인 API
       realtime/  WebSocket
       config/    설정값 (@nestjs/config)
+  web/           관제 웹 (React + Vite)
+    src/api/     미들웨어 HTTP 클라이언트
+    src/auth/    토큰 로그인
+    src/pages/   화면
 infra/mosquitto/ MQTT 브로커 설정
 ```
 
@@ -397,4 +401,11 @@ pnpm install
 pnpm build
 pnpm lint
 pnpm test
+```
+
+관제 웹은 Vite 개발 서버로 띄웁니다. `/api`와 `/ws`를 미들웨어(기본 `http://localhost:3000`, `MIDDLEWARE_URL`로 바꿈)로 넘깁니다.
+
+```bash
+pnpm --filter web dev
+# http://localhost:5173 (데모 계정 operator/operator1234)
 ```
