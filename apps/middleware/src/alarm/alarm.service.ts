@@ -1,5 +1,7 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
-import { StaleJudgeProvider } from "../device/stale-judge.provider";
+import { Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { ConfigType } from "@nestjs/config";
+import { isRobotStale, isPlcStale } from "../common/utils/stale-judge.util";
+import { staleConfig } from "../config/stale.config";
 import { AlarmEntry } from "../state/alarm-state";
 import { PlcPointEntry } from "../state/plc-point-state";
 import { AlarmCandidate } from "./alarm.types";
@@ -16,7 +18,8 @@ export class AlarmService {
     private readonly alarmTargetProvider: AlarmTargetProvider,
     private readonly alarmJudgeProvider: AlarmJudgeProvider,
     private readonly alarmStateProvider: AlarmStateProvider,
-    private readonly staleJudgeProvider: StaleJudgeProvider,
+    @Inject(staleConfig.KEY)
+    private readonly staleSettings: ConfigType<typeof staleConfig>,
   ) {}
 
   /** 모든 대상을 판정해 알람을 열고 푼다. 대상이 사라진 알람도 푼다. */
@@ -70,10 +73,11 @@ export class AlarmService {
       const linkStatus = await this.alarmTargetProvider.findLinkStatus(
         robot.connectionId,
       );
-      const stale = await this.staleJudgeProvider.isRobotStale(
+      const stale = isRobotStale(
         robot.state,
         linkStatus,
         now,
+        this.staleSettings,
       );
       for (const candidate of await this.alarmJudgeProvider.judgeRobot(
         robot,
@@ -100,10 +104,11 @@ export class AlarmService {
       const linkStatus = await this.alarmTargetProvider.findLinkStatus(
         points[0].connectionId,
       );
-      const stale = await this.staleJudgeProvider.isPlcStale(
+      const stale = isPlcStale(
         await this.alarmTargetProvider.findLastRead(deviceId),
         linkStatus,
         now,
+        this.staleSettings,
       );
       candidates.push(
         await this.alarmJudgeProvider.judgePlcDevice(

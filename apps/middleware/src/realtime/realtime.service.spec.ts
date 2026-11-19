@@ -1,5 +1,4 @@
 import { staleConfig } from "../config/stale.config";
-import { StaleJudgeProvider } from "../device/stale-judge.provider";
 import { AlarmStateRepository } from "../state/alarm-state.repository";
 import { LinkStateRepository } from "../state/link-state.repository";
 import { PlcPointStateRepository } from "../state/plc-point-state.repository";
@@ -32,7 +31,7 @@ describe("RealtimeService", () => {
         removedEntityRepository,
         alarmStateRepository,
       ),
-      new StaleJudgeProvider(staleConfig()),
+      staleConfig(),
     );
 
     await robotStateRepository.register(

@@ -1,4 +1,7 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { ConfigType } from "@nestjs/config";
+import { isPlcStale } from "../common/utils/stale-judge.util";
+import { staleConfig } from "../config/stale.config";
 import { PlcPointEventRow } from "../history/vendors-connections-devices-plc-points-events.types";
 import { PlcPointEntry } from "../state/plc-point-state";
 import { GetPlcPointEventsQueryDto } from "./dto/get-plc-point-events.query.dto";
@@ -8,14 +11,14 @@ import { GetPlcPointsResponseDto } from "./dto/get-plc-points.response.dto";
 import { GetPlcPointsItemDto } from "./dto/get-plc-points.item.dto";
 import { PlcEventsQueryProvider } from "./plc-events-query.provider";
 import { PlcPointsProvider } from "./plc-points.provider";
-import { StaleJudgeProvider } from "./stale-judge.provider";
 
 @Injectable()
 export class PlcPointsService {
   constructor(
     private readonly plcPointsProvider: PlcPointsProvider,
     private readonly plcEventsQueryProvider: PlcEventsQueryProvider,
-    private readonly staleJudgeProvider: StaleJudgeProvider,
+    @Inject(staleConfig.KEY)
+    private readonly staleSettings: ConfigType<typeof staleConfig>,
   ) {}
 
   async getPlcPoints(): Promise<GetPlcPointsResponseDto> {
@@ -76,11 +79,7 @@ export class PlcPointsService {
       value,
       abnormal: value !== null && value !== entry.normalValue,
       changedAt: entry.current?.sourceTs.toISOString() ?? null,
-      stale: await this.staleJudgeProvider.isPlcStale(
-        lastRead,
-        linkStatus,
-        now,
-      ),
+      stale: isPlcStale(lastRead, linkStatus, now, this.staleSettings),
       rev: entry.rev,
     };
   }

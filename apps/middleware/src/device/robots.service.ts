@@ -1,4 +1,7 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { ConfigType } from "@nestjs/config";
+import { isRobotStale } from "../common/utils/stale-judge.util";
+import { staleConfig } from "../config/stale.config";
 import { RobotEntry, RobotState } from "../state/robot-state";
 import { GetRobotResponseDto } from "./dto/get-robot.response.dto";
 import { GetRobotStateDto } from "./dto/get-robot.state.dto";
@@ -6,13 +9,13 @@ import { GetRobotsResponseDto } from "./dto/get-robots.response.dto";
 import { GetRobotsItemDto } from "./dto/get-robots.item.dto";
 import { GetRobotsStateDto } from "./dto/get-robots.state.dto";
 import { RobotsProvider } from "./robots.provider";
-import { StaleJudgeProvider } from "./stale-judge.provider";
 
 @Injectable()
 export class RobotsService {
   constructor(
     private readonly robotsProvider: RobotsProvider,
-    private readonly staleJudgeProvider: StaleJudgeProvider,
+    @Inject(staleConfig.KEY)
+    private readonly staleSettings: ConfigType<typeof staleConfig>,
   ) {}
 
   async getRobots(): Promise<GetRobotsResponseDto> {
@@ -51,11 +54,7 @@ export class RobotsService {
       name: entry.name,
       type: entry.type,
       rev: entry.rev,
-      stale: await this.staleJudgeProvider.isRobotStale(
-        entry.state,
-        linkStatus,
-        now,
-      ),
+      stale: isRobotStale(entry.state, linkStatus, now, this.staleSettings),
       state: entry.state ? this.toState(entry.state) : null,
     };
   }
