@@ -6,6 +6,7 @@ import {
   PlcPointValue,
 } from "../../state/plc-point-state";
 import { PlcPointStateRepository } from "../../state/plc-point-state.repository";
+import { RemovedEntityRepository } from "../../state/removed-entity.repository";
 import { RevisionRepository } from "../../state/revision.repository";
 
 /** PLC 점 메모리 상태 갱신. 값이 바뀐 점마다 전역 rev를 올린다. */
@@ -14,17 +15,25 @@ export class PlcPointStateProvider {
   constructor(
     private readonly plcPointStateRepository: PlcPointStateRepository,
     private readonly revisionRepository: RevisionRepository,
+    private readonly removedEntityRepository: RemovedEntityRepository,
   ) {}
 
   async registerPoints(points: PlcPoint[]): Promise<void> {
     for (const point of points) {
-      await this.plcPointStateRepository.register(point);
+      const rev = await this.revisionRepository.next();
+      await this.plcPointStateRepository.register(point, rev);
+      await this.removedEntityRepository.remove("PLC_POINT", point.pointId);
     }
   }
 
   async unregisterPoints(deviceId: string, points: PlcPoint[]): Promise<void> {
     for (const point of points) {
       await this.plcPointStateRepository.remove(point.pointId);
+      await this.removedEntityRepository.save({
+        kind: "PLC_POINT",
+        id: point.pointId,
+        rev: await this.revisionRepository.next(),
+      });
     }
 
     await this.plcPointStateRepository.removeLastRead(deviceId);

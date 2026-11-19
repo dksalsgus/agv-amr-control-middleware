@@ -7,7 +7,7 @@ export class RobotStateRepository {
   private readonly entries = new Map<string, RobotEntry>();
   private readonly deviceIdByExternalKey = new Map<string, string>();
 
-  async register(device: RobotDevice): Promise<void> {
+  async register(device: RobotDevice, rev: number): Promise<void> {
     this.entries.set(device.deviceId, {
       deviceId: device.deviceId,
       connectionId: device.connectionId,
@@ -15,7 +15,7 @@ export class RobotStateRepository {
       name: device.name,
       type: device.type,
       state: null,
-      rev: 0,
+      rev,
     });
 
     const externalKey = this.toExternalKey(
