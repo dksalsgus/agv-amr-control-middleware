@@ -1,9 +1,9 @@
 import { Injectable } from "@nestjs/common";
+import { VendorsConnectionsDevicesPlcPointsEventsRepository } from "../history/vendors-connections-devices-plc-points-events.repository";
 import {
   PlcPointEventPageQuery,
   PlcPointEventRow,
-  VendorsConnectionsDevicesPlcPointsEventsRepository,
-} from "../history/vendors-connections-devices-plc-points-events.repository";
+} from "../history/vendors-connections-devices-plc-points-events.types";
 
 @Injectable()
 export class PlcEventsQueryProvider {

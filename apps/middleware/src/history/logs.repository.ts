@@ -1,16 +1,9 @@
 import { Injectable } from "@nestjs/common";
-import { logs, Prisma } from "@prisma/client";
+
+import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 
-export type LogRow = logs;
-
-export type LogPageQuery = {
-  type?: string;
-  from?: Date;
-  to?: Date;
-  skip: number;
-  take: number;
-};
+import { LogRow, LogPageQuery } from "./logs.types";
 
 @Injectable()
 export class LogsRepository {

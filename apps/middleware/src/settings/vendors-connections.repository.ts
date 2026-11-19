@@ -1,27 +1,14 @@
+import {
+  WITH_VENDOR_AND_DEVICES,
+  WITH_VENDOR_AND_DEVICE_COUNT,
+} from "./vendors-connections.constants";
 import { Injectable } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
-
-const WITH_VENDOR_AND_DEVICES = {
-  vendors: true,
-  vendors_connections_devices: {
-    where: { enabled: true },
-    include: { vendors_connections_devices_plc_points: true },
-  },
-} satisfies Prisma.vendors_connectionsInclude;
-
-export type ConnectionWithDevicesRow = Prisma.vendors_connectionsGetPayload<{
-  include: typeof WITH_VENDOR_AND_DEVICES;
-}>;
-
-const WITH_VENDOR_AND_DEVICE_COUNT = {
-  vendors: true,
-  _count: { select: { vendors_connections_devices: true } },
-} satisfies Prisma.vendors_connectionsInclude;
-
-export type ConnectionSummaryRow = Prisma.vendors_connectionsGetPayload<{
-  include: typeof WITH_VENDOR_AND_DEVICE_COUNT;
-}>;
+import {
+  ConnectionWithDevicesRow,
+  ConnectionSummaryRow,
+} from "./vendors-connections.types";
 
 @Injectable()
 export class VendorsConnectionsRepository {

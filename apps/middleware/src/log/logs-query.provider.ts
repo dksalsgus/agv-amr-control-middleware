@@ -1,9 +1,6 @@
 import { Injectable } from "@nestjs/common";
-import {
-  LogPageQuery,
-  LogRow,
-  LogsRepository,
-} from "../history/logs.repository";
+import { LogsRepository } from "../history/logs.repository";
+import { LogPageQuery, LogRow } from "../history/logs.types";
 
 @Injectable()
 export class LogsQueryProvider {

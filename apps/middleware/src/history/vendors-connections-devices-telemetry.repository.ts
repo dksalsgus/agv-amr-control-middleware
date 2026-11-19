@@ -1,16 +1,12 @@
 import { Injectable } from "@nestjs/common";
-import { Prisma, vendors_connections_devices_telemetry } from "@prisma/client";
+
+import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 
-export type TelemetryRow = vendors_connections_devices_telemetry;
-
-export type TelemetryPageQuery = {
-  deviceId: string;
-  from?: Date;
-  to?: Date;
-  skip: number;
-  take: number;
-};
+import {
+  TelemetryRow,
+  TelemetryPageQuery,
+} from "./vendors-connections-devices-telemetry.types";
 
 @Injectable()
 export class VendorsConnectionsDevicesTelemetryRepository {

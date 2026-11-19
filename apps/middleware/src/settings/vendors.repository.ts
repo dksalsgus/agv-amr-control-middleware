@@ -1,8 +1,8 @@
 import { Injectable } from "@nestjs/common";
-import { vendors } from "@prisma/client";
+
 import { PrismaService } from "../prisma/prisma.service";
 
-export type VendorRow = vendors;
+import { VendorRow } from "./vendors.types";
 
 @Injectable()
 export class VendorsRepository {

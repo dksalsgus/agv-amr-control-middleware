@@ -1,10 +1,8 @@
 import { Injectable } from "@nestjs/common";
 import { PlcPointType } from "../../state/plc-point-state";
 import { RobotDevice } from "../../state/robot-state";
-import {
-  ConnectionWithDevicesRow,
-  VendorsConnectionsRepository,
-} from "../../settings/vendors-connections.repository";
+import { VendorsConnectionsRepository } from "../../settings/vendors-connections.repository";
+import { ConnectionWithDevicesRow } from "../../settings/vendors-connections.types";
 import {
   ConnectionProtocol,
   PlcDevice,

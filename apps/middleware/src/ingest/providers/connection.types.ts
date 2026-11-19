@@ -1,7 +1,7 @@
-import { ConnectionWithDevicesRow } from "../../settings/vendors-connections.repository";
 import { PlcPoint } from "../../state/plc-point-state";
 import { RobotDevice } from "../../state/robot-state";
 import { CONNECTION_PROTOCOLS } from "./connection.constants";
+import { ConnectionWithDevicesRow } from "../../settings/vendors-connections.types";
 
 export type ConnectionProtocol = (typeof CONNECTION_PROTOCOLS)[number];
 
