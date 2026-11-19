@@ -68,3 +68,14 @@ export const PLC_POSITIONS: Record<number, { x: number; y: number }> = {
   8: { x: 7.5, y: 29.2 },
   9: { x: 25.5, y: 29.2 },
 };
+
+/** 맵 바닥 그림: 세로·가로 통로 위치(m)와 충전기 자리 */
+export const AISLE_X = [3, 12, 21, 30, 39, 47];
+export const AISLE_Y = [3, 10, 17, 24, 27.5];
+export const CHARGERS = Array.from({ length: 8 }, (_, k) => ({
+  x: 33 + k * 1.6,
+  y: 1.1,
+}));
+
+/** 맵을 다시 그리는 주기. 서버 delta 주기와 같다. */
+export const MAP_TICK_MS = 100;
