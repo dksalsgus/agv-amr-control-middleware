@@ -1,11 +1,13 @@
 import { createServer, IncomingMessage, Server, ServerResponse } from "http";
 import { RobotFleet } from "../simulation/robot-fleet";
 import { VendorBPayloadBuilder } from "./vendor-b-payload";
+import { Logger } from "../common/logger/logger";
 
 /** 제조사 B REST 서버: GET /api/vehicles(전체), /api/vehicles/{id}(한 대) */
 export class VendorBServer {
   private static readonly VEHICLE_PATH = /^\/api\/vehicles\/([^/]+)$/;
 
+  private readonly logger = new Logger("vendor-b");
   private readonly payloadBuilder = new VendorBPayloadBuilder();
   private server: Server | null = null;
 
@@ -19,7 +21,7 @@ export class VendorBServer {
       this.handle(request, response),
     );
     this.server.listen(this.port, () =>
-      console.log(`[vendor-b] listening :${this.port}`),
+      this.logger.log(`listening :${this.port}`),
     );
   }
 
