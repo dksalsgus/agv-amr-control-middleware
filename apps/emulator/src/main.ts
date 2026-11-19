@@ -12,5 +12,4 @@ const main = async () => {
   ]);
 };
 
-// CommonJS라 top-level await를 쓸 수 없다.
 void main();

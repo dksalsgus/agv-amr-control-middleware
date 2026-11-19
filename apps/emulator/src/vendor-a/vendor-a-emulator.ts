@@ -7,7 +7,6 @@ import {
 import { RobotFleet } from "../simulation/robot-fleet";
 import { VendorAPublisher } from "./vendor-a-publisher";
 
-/** 제조사 A: 로봇을 움직이고 주기마다 MQTT로 발행한다. */
 export class VendorAEmulator {
   private readonly fleet = new RobotFleet("A", VENDOR_A_ROBOT_COUNT);
   private readonly publisher = new VendorAPublisher(MQTT_URL, this.fleet);

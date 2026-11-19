@@ -1,6 +1,5 @@
 import { registerAs } from "@nestjs/config";
 
-/** 수집 주기와 판정 기준 */
 export const ingestConfig = registerAs("ingest", () => ({
   /** 연결 설정 변경(DB)을 확인하는 간격 */
   syncIntervalMs: 2000,

@@ -7,7 +7,6 @@ import { ModbusTarget } from "./modbus-client.types";
 export class ModbusClientRepository implements OnModuleDestroy {
   private readonly clients = new Map<string, ModbusRTU>();
 
-  /** 홀딩 레지스터(FC3) */
   async readHoldingRegisters(
     connectionId: string,
     target: ModbusTarget,
@@ -24,7 +23,6 @@ export class ModbusClientRepository implements OnModuleDestroy {
     }
   }
 
-  /** 입력 레지스터(FC4) */
   async readInputRegisters(
     connectionId: string,
     target: ModbusTarget,

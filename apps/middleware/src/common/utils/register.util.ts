@@ -1,7 +1,5 @@
-/** 16비트 레지스터 한 칸의 값 개수 */
 export const UINT16 = 0x10000;
 
-/** uint16 → int16 */
 export const toInt16 = (value: number) =>
   value >= 0x8000 ? value - UINT16 : value;
 

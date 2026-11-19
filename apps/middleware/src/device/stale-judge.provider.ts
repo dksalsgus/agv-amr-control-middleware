@@ -5,7 +5,6 @@ import { RobotState } from "../state/robot-state";
 import { staleConfig } from "../config/stale.config";
 import { ConfigType } from "@nestjs/config";
 
-/** 장비 데이터가 믿을 만한지(STALE이 아닌지) 판정한다. */
 @Injectable()
 export class StaleJudgeProvider {
   constructor(

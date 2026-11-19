@@ -73,7 +73,6 @@ export class IngestScheduler
     }
   }
 
-  /** 새로 생긴 폴링 연결에 폴링을 건다. */
   private async startPolls(): Promise<void> {
     const robotIds = await this.ingestService.findPolledConnectionIds();
     for (const id of robotIds) {

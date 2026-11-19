@@ -32,7 +32,6 @@ export class VendorCServer {
     server.on("socketError", (error) => this.logger.error(`${String(error)}`));
   }
 
-  /** 시뮬레이션이 한 단계 진행된 뒤 레지스터를 다시 채운다. */
   refresh() {
     const next = new Array<number>(this.registers.length).fill(0);
 

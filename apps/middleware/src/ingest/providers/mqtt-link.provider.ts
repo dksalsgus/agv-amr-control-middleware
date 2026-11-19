@@ -3,7 +3,6 @@ import { MqttClientRepository } from "../repositories/mqtt-client.repository";
 import { MqttHandlers } from "../repositories/mqtt-client.types";
 import { MqttConnectionConfig } from "./mqtt-link.types";
 
-/** MQTT 연결 설정으로 수신 핸들러를 등록한다. */
 @Injectable()
 export class MqttLinkProvider {
   constructor(private readonly mqttClientRepository: MqttClientRepository) {}
