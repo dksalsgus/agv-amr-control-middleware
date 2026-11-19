@@ -12,7 +12,7 @@ export class VendorAEmulator {
   private readonly fleet = new RobotFleet("A", VENDOR_A_ROBOT_COUNT);
   private readonly publisher: VendorAPublisher;
 
-  constructor(faults: FaultSettings) {
+  constructor(private readonly faults: FaultSettings) {
     this.publisher = new VendorAPublisher(MQTT_URL, this.fleet, faults);
   }
 
@@ -21,7 +21,7 @@ export class VendorAEmulator {
 
     const dtSec = VENDOR_A_PUBLISH_INTERVAL_MS / 1000;
     await runEvery(VENDOR_A_PUBLISH_INTERVAL_MS, async () => {
-      this.fleet.step(dtSec);
+      this.fleet.step(dtSec, this.faults.robotErrors);
       await this.publisher.publishAll();
     });
   }
