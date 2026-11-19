@@ -9,6 +9,10 @@ import {
   IngestConnection,
 } from "./providers/connection.provider";
 import {
+  ModbusConnectionConfig,
+  ModbusLinkProvider,
+} from "./providers/modbus-link.provider";
+import {
   MqttConnectionConfig,
   MqttLinkProvider,
 } from "./providers/mqtt-link.provider";
@@ -42,6 +46,7 @@ export class IngestService {
     private readonly connectionProvider: ConnectionProvider,
     private readonly mqttLinkProvider: MqttLinkProvider,
     private readonly restLinkProvider: RestLinkProvider,
+    private readonly modbusLinkProvider: ModbusLinkProvider,
     private readonly robotStateProvider: RobotStateProvider,
     private readonly seqJudgeProvider: SeqJudgeProvider,
     private readonly telemetryProvider: TelemetryProvider,
@@ -61,19 +66,19 @@ export class IngestService {
     }
   }
 
-  /** 주기가 된 폴링 연결(REST)을 한 번씩 폴링한다. 이전 요청이 아직 끝나지 않았으면 건너뛴다. */
+  /** 주기가 된 폴링 연결(REST, Modbus)을 한 번씩 폴링한다. 이전 요청이 아직 끝나지 않았으면 건너뛴다. */
   pollDue(now: number) {
     for (const connection of this.connections) {
-      if (connection.protocol !== "REST") {
+      if (connection.protocol === "MQTT") {
         continue;
       }
 
-      const config = connection.config as RestConnectionConfig;
+      const config = connection.config as { pollIntervalMs: number };
       if (!this.isPollDue(connection.id, config.pollIntervalMs, now)) {
         continue;
       }
 
-      void this.pollRest(connection, config, now);
+      void this.poll(connection, now);
     }
   }
 
@@ -113,11 +118,7 @@ export class IngestService {
     return !state.inFlight && now - state.lastPolledAt >= intervalMs;
   }
 
-  private async pollRest(
-    connection: IngestConnection,
-    config: RestConnectionConfig,
-    now: number,
-  ) {
+  private async poll(connection: IngestConnection, now: number) {
     const adapter = this.findAdapter(connection.vendorCode);
     if (!adapter) {
       return;
@@ -126,8 +127,7 @@ export class IngestService {
     this.pollStates.set(connection.id, { lastPolledAt: now, inFlight: true });
 
     try {
-      const externalIds = connection.robots.map((robot) => robot.externalId);
-      const raws = await this.restLinkProvider.poll(config, externalIds);
+      const raws = await this.fetchRaws(connection);
 
       for (const raw of raws) {
         this.handleRaw(connection.id, adapter, raw);
@@ -140,6 +140,19 @@ export class IngestService {
         inFlight: false,
       });
     }
+  }
+
+  private fetchRaws(connection: IngestConnection): Promise<unknown[]> {
+    const externalIds = connection.robots.map((robot) => robot.externalId);
+
+    if (connection.protocol === "REST") {
+      const config = connection.config as RestConnectionConfig;
+      return this.restLinkProvider.poll(config, externalIds);
+    }
+
+    const config = connection.config as ModbusConnectionConfig;
+    const blockNumbers = externalIds.map((externalId) => Number(externalId));
+    return this.modbusLinkProvider.poll(connection.id, config, blockNumbers);
   }
 
   private handleRaw(
