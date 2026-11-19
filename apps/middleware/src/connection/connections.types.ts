@@ -13,6 +13,7 @@ export type ConfigParts = {
 export type ConnectionChanges = {
   name?: string;
   enabled?: boolean;
+  protocol?: string;
   config?: Record<string, unknown>;
 };
 
