@@ -1,3 +1,4 @@
+import { linkConfig } from "../../config/link.config";
 import { LogsRepository } from "../../history/logs.repository";
 import { AppLogger } from "../../logger/app-logger";
 import { LinkStateRepository } from "../../state/link-state.repository";
@@ -12,6 +13,7 @@ describe("LinkStateProvider", () => {
   const linkStateRepository = new LinkStateRepository();
   const removedEntityRepository = new RemovedEntityRepository();
   const provider = new LinkStateProvider(
+    linkConfig(),
     linkStateRepository,
     logsRepository,
     new RevisionRepository(),

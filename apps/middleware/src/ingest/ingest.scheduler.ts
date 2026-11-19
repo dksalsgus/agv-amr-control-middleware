@@ -2,27 +2,29 @@ import {
   Injectable,
   OnApplicationBootstrap,
   OnApplicationShutdown,
+  Inject,
 } from "@nestjs/common";
 import { delay } from "../common/utils/delay.util";
 import { IngestService } from "./ingest.service";
 import { PlcIngestService } from "./plc-ingest.service";
 import { PollOnce } from "./ingest-scheduler.types";
 import { AppLogger } from "../logger/app-logger";
+import { ingestConfig } from "../config/ingest.config";
+import { ConfigType } from "@nestjs/config";
 
 /** 수집을 시작하고 폴링 연결마다 루프를 돌린다. 느린 연결이 다른 연결을 막지 않는다. */
 @Injectable()
 export class IngestScheduler
   implements OnApplicationBootstrap, OnApplicationShutdown
 {
-  /** 연결 설정 변경(DB)을 확인하는 간격 */
-  private static readonly SYNC_INTERVAL_MS = 2000;
-
   private running = false;
   private readonly loops: Promise<void>[] = [];
   /** 폴링 루프가 돌고 있는 연결. 같은 연결에 루프가 둘 생기지 않게 한다. */
   private readonly activeLoops = new Set<string>();
 
   constructor(
+    @Inject(ingestConfig.KEY)
+    private readonly config: ConfigType<typeof ingestConfig>,
     private readonly ingestService: IngestService,
     private readonly plcIngestService: PlcIngestService,
     private readonly logger: AppLogger,
@@ -47,7 +49,7 @@ export class IngestScheduler
   /** 재배포 없이 바뀐 설정을 반영한다. 새로 생긴 폴링 연결은 루프를 띄운다. */
   private async runSyncLoop(): Promise<void> {
     while (this.running) {
-      await delay(IngestScheduler.SYNC_INTERVAL_MS);
+      await delay(this.config.syncIntervalMs);
       await this.sync();
       await this.startPollLoops();
     }

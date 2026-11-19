@@ -1,8 +1,10 @@
-import { Injectable, OnModuleDestroy } from "@nestjs/common";
+import { Injectable, OnModuleDestroy, Inject } from "@nestjs/common";
 import mqtt, { MqttClient } from "mqtt";
 import { delay } from "../../common/utils/delay.util";
 import { MqttSubscribeOptions, MqttHandlers } from "./mqtt-client.types";
 import { AppLogger } from "../../logger/app-logger";
+import { linkConfig } from "../../config/link.config";
+import { ConfigType } from "@nestjs/config";
 
 /**
  * 연결마다 MQTT 클라이언트 하나. 재접속 때 지난 메시지가 몰리지 않게 세션을 두지 않는다.
@@ -10,17 +12,17 @@ import { AppLogger } from "../../logger/app-logger";
  */
 @Injectable()
 export class MqttClientRepository implements OnModuleDestroy {
-  constructor(private readonly logger: AppLogger) {
-    this.logger.setContext(MqttClientRepository.name);
-  }
-
-  private static readonly MIN_RETRY_MS = 1000;
-
-  private static readonly MAX_RETRY_MS = 10000;
-
   private readonly clients = new Map<string, MqttClient>();
   private readonly retryDelays = new Map<string, number>();
   private stopping = false;
+
+  constructor(
+    @Inject(linkConfig.KEY)
+    private readonly config: ConfigType<typeof linkConfig>,
+    private readonly logger: AppLogger,
+  ) {
+    this.logger.setContext(MqttClientRepository.name);
+  }
 
   async subscribe(
     connectionId: string,
@@ -36,7 +38,7 @@ export class MqttClientRepository implements OnModuleDestroy {
     });
 
     client.on("connect", async () => {
-      this.retryDelays.set(connectionId, MqttClientRepository.MIN_RETRY_MS);
+      this.retryDelays.set(connectionId, this.config.minRetryMs);
       await handlers.onLinkChange(true);
       await this.handleConnect(client, connectionId, options);
     });
@@ -89,10 +91,10 @@ export class MqttClientRepository implements OnModuleDestroy {
     connectionId: string,
   ): Promise<void> {
     const delayMs =
-      this.retryDelays.get(connectionId) ?? MqttClientRepository.MIN_RETRY_MS;
+      this.retryDelays.get(connectionId) ?? this.config.minRetryMs;
     this.retryDelays.set(
       connectionId,
-      Math.min(delayMs * 2, MqttClientRepository.MAX_RETRY_MS),
+      Math.min(delayMs * 2, this.config.maxRetryMs),
     );
 
     await delay(delayMs);

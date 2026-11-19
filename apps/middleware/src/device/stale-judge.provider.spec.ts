@@ -1,8 +1,9 @@
 import { RobotState } from "../state/robot-state";
+import { staleConfig } from "../config/stale.config";
 import { StaleJudgeProvider } from "./stale-judge.provider";
 
 describe("StaleJudgeProvider", () => {
-  const judge = new StaleJudgeProvider();
+  const judge = new StaleJudgeProvider(staleConfig());
   const now = new Date("2026-11-19T00:00:10Z");
   const at = (seconds: number) =>
     new Date(Date.parse("2026-11-19T00:00:00Z") + seconds * 1000);

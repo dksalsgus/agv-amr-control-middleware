@@ -1,7 +1,9 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Inject } from "@nestjs/common";
 import { ModbusClientRepository } from "../repositories/modbus-client.repository";
 import { ModbusTarget } from "../repositories/modbus-client.types";
 import { ModbusConnectionConfig, ModbusRawMessage } from "./modbus-link.types";
+import { ingestConfig } from "../../config/ingest.config";
+import { ConfigType } from "@nestjs/config";
 
 /** 블록 단위로 폴링한다. 블록이 요청 사이에 쪼개지지 않아 차량 값과 seq가 어긋나지 않는다. */
 @Injectable()
@@ -9,9 +11,9 @@ export class ModbusLinkProvider {
   /** Modbus 한 요청의 레지스터 수 상한 */
   private static readonly MAX_REGISTERS_PER_READ = 125;
 
-  private static readonly READ_TIMEOUT_MS = 800;
-
   constructor(
+    @Inject(ingestConfig.KEY)
+    private readonly config: ConfigType<typeof ingestConfig>,
     private readonly modbusClientRepository: ModbusClientRepository,
   ) {}
 
@@ -86,7 +88,7 @@ export class ModbusLinkProvider {
       host: config.host,
       port: config.port,
       unitId: config.unitId,
-      timeoutMs: ModbusLinkProvider.READ_TIMEOUT_MS,
+      timeoutMs: this.config.modbusReadTimeoutMs,
     };
   }
 }

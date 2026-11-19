@@ -1,9 +1,10 @@
+import { ingestConfig } from "../../config/ingest.config";
 import { SeqJudgeProvider } from "./seq-judge.provider";
 
 const at = (seconds: number) => new Date(seconds * 1000);
 
 describe("SeqJudgeProvider", () => {
-  const judge = new SeqJudgeProvider();
+  const judge = new SeqJudgeProvider(ingestConfig());
   const last = { seq: 10, sourceTs: at(100) };
 
   it("처음 받은 값은 반영한다", async () => {

@@ -1,11 +1,15 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Inject } from "@nestjs/common";
 import { SeqPoint, SeqJudgement } from "./seq-judge.types";
+import { ingestConfig } from "../../config/ingest.config";
+import { ConfigType } from "@nestjs/config";
 
 /** 장비별 seq 판정 (설계 문서 6장) */
 @Injectable()
 export class SeqJudgeProvider {
-  /** seq가 줄어도 sourceTs가 이만큼 앞서면 장비 재시작으로 본다. */
-  private static readonly RESTART_THRESHOLD_MS = 5000;
+  constructor(
+    @Inject(ingestConfig.KEY)
+    private readonly config: ConfigType<typeof ingestConfig>,
+  ) {}
 
   async judge(last: SeqPoint | null, next: SeqPoint): Promise<SeqJudgement> {
     if (!last) {
@@ -34,6 +38,6 @@ export class SeqJudgeProvider {
 
   private isRestart(last: SeqPoint, next: SeqPoint): boolean {
     const aheadMs = next.sourceTs.getTime() - last.sourceTs.getTime();
-    return aheadMs >= SeqJudgeProvider.RESTART_THRESHOLD_MS;
+    return aheadMs >= this.config.restartThresholdMs;
   }
 }
