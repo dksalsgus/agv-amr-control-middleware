@@ -4,7 +4,8 @@ export type LogType =
   | "ALARM_RAISED"
   | "ALARM_CLEARED"
   | "ALARM_ACKED"
-  | "CONFIG_CHANGED";
+  | "CONFIG_CHANGED"
+  | "PLC_WRITE";
 
 export type LogTargetType = "CONNECTION" | "DEVICE" | "PLC_POINT";
 

@@ -1,4 +1,10 @@
-import { Inject, Injectable, OnApplicationBootstrap } from "@nestjs/common";
+import {
+  ConflictException,
+  Inject,
+  Injectable,
+  OnApplicationBootstrap,
+  ServiceUnavailableException,
+} from "@nestjs/common";
 import { ConfigType } from "@nestjs/config";
 import { judgeSeq } from "../common/utils/seq-judge.util";
 import { ingestConfig } from "../config/ingest.config";
@@ -95,6 +101,33 @@ export class PlcIngestService implements OnApplicationBootstrap {
     const current = this.connections.get(id);
     if (current) {
       await this.close(current);
+    }
+  }
+
+  /**
+   * 관제에서 PLC 점 값을 쓴다(인터록 제어). 바뀐 값은 다음 폴링에서 읽혀 화면에 반영된다.
+   * 연결이 꺼져 있으면 409, PLC가 답하지 않으면 503.
+   */
+  async writePoint(
+    connectionId: string,
+    pointNo: number,
+    value: boolean,
+  ): Promise<void> {
+    const connection = this.connections.get(connectionId);
+    if (!connection) {
+      throw new ConflictException("PLC 연결이 꺼져 있어 쓸 수 없습니다.");
+    }
+
+    try {
+      await this.deviceTransportProvider.writePlcCoil(
+        connection,
+        pointNo,
+        value,
+      );
+    } catch (error) {
+      throw new ServiceUnavailableException(
+        `PLC에 쓰지 못했습니다: ${toErrorMessage(error)}`,
+      );
     }
   }
 

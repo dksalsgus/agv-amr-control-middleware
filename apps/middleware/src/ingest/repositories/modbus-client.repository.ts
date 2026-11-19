@@ -39,6 +39,22 @@ export class ModbusClientRepository implements OnModuleDestroy {
     }
   }
 
+  /** 코일(FC5) 하나를 쓴다. */
+  async writeCoil(
+    connectionId: string,
+    target: ModbusTarget,
+    address: number,
+    value: boolean,
+  ): Promise<void> {
+    try {
+      const client = await this.getClient(connectionId, target);
+      await client.writeCoil(address, value);
+    } catch (error) {
+      await this.disconnect(connectionId);
+      throw error;
+    }
+  }
+
   async onModuleDestroy() {
     for (const connectionId of Array.from(this.clients.keys())) {
       await this.disconnect(connectionId);

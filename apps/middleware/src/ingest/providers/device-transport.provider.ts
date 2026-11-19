@@ -75,6 +75,21 @@ export class DeviceTransportProvider {
     return { firstBlock: 0, blockSize: config.blockSize, registers };
   }
 
+  /** PLC 점 값을 코일에 쓴다. 코일 번호는 점 번호와 같다. */
+  async writePlcCoil(
+    connection: IngestConnection,
+    pointNo: number,
+    value: boolean,
+  ): Promise<void> {
+    const config = connection.config as ModbusConnectionConfig;
+    await this.modbusClientRepository.writeCoil(
+      connection.id,
+      this.toTarget(config),
+      pointNo,
+      value,
+    );
+  }
+
   /** 접속을 끊는다. REST는 붙어 있는 접속이 없다. */
   async close(connection: IngestConnection): Promise<void> {
     if (connection.protocol === "MQTT") {

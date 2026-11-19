@@ -85,6 +85,6 @@ import { RestClientRepository } from "./repositories/rest-client.repository";
     MqttClientRepository,
     RestClientRepository,
   ],
-  exports: [ConnectionReloadService],
+  exports: [ConnectionReloadService, PlcIngestService],
 })
 export class IngestModule {}
