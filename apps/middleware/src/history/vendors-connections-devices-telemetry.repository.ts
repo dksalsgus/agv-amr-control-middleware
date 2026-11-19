@@ -16,22 +16,26 @@ export type TelemetryPageQuery = {
 export class VendorsConnectionsDevicesTelemetryRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  insert(
+  async insert(
     data: Prisma.vendors_connections_devices_telemetryUncheckedCreateInput,
-  ) {
-    return this.prisma.vendors_connections_devices_telemetry.create({ data });
+  ): Promise<TelemetryRow> {
+    return await this.prisma.vendors_connections_devices_telemetry.create({
+      data,
+    });
   }
 
   /** 장비별 마지막 행. 재시작 때 메모리 상태를 되살리는 데 쓴다. */
-  findLatestPerDevice(): Promise<TelemetryRow[]> {
-    return this.prisma.$queryRaw<TelemetryRow[]>`
+  async findLatestPerDevice(): Promise<TelemetryRow[]> {
+    return await this.prisma.$queryRaw<TelemetryRow[]>`
       SELECT DISTINCT ON (vendors_connections_devices_id) *
       FROM vendors_connections_devices_telemetry
       ORDER BY vendors_connections_devices_id, source_ts DESC
     `;
   }
 
-  async findPage(query: TelemetryPageQuery) {
+  async findPage(
+    query: TelemetryPageQuery,
+  ): Promise<{ rows: TelemetryRow[]; total: number }> {
     const where: Prisma.vendors_connections_devices_telemetryWhereInput = {
       vendors_connections_devices_id: query.deviceId,
       source_ts: { gte: query.from, lte: query.to },

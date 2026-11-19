@@ -28,7 +28,7 @@ export class ModbusClientRepository implements OnModuleDestroy {
       const result = await client.readHoldingRegisters(address, length);
       return result.data;
     } catch (error) {
-      this.close(connectionId);
+      await this.close(connectionId);
       throw error;
     }
   }
@@ -45,14 +45,14 @@ export class ModbusClientRepository implements OnModuleDestroy {
       const result = await client.readInputRegisters(address, length);
       return result.data;
     } catch (error) {
-      this.close(connectionId);
+      await this.close(connectionId);
       throw error;
     }
   }
 
-  onModuleDestroy() {
-    for (const connectionId of this.clients.keys()) {
-      this.close(connectionId);
+  async onModuleDestroy() {
+    for (const connectionId of [...this.clients.keys()]) {
+      await this.close(connectionId);
     }
   }
 
@@ -78,13 +78,13 @@ export class ModbusClientRepository implements OnModuleDestroy {
     return client;
   }
 
-  private close(connectionId: string) {
+  private async close(connectionId: string): Promise<void> {
     const client = this.clients.get(connectionId);
     if (!client) {
       return;
     }
 
-    client.close();
     this.clients.delete(connectionId);
+    await new Promise<void>((resolve) => client.close(() => resolve()));
   }
 }
