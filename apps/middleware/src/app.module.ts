@@ -10,7 +10,6 @@ import { authConfig } from "./config/auth.config";
 import { databaseConfig } from "./config/database.config";
 import { ingestConfig } from "./config/ingest.config";
 import { linkConfig } from "./config/link.config";
-import { metricsConfig } from "./config/metrics.config";
 import { queueConfig } from "./config/queue.config";
 import { realtimeConfig } from "./config/realtime.config";
 import { staleConfig } from "./config/stale.config";
@@ -38,7 +37,6 @@ import { RealtimeModule } from "./realtime/realtime.module";
         alarmConfig,
         authConfig,
         queueConfig,
-        metricsConfig,
       ],
     }),
     BullModule.forRootAsync({
