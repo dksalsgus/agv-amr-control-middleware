@@ -16,6 +16,8 @@ export class LogsRepository {
   ): Promise<{ rows: LogRow[]; total: number }> {
     const where: Prisma.logsWhereInput = {
       type: query.type,
+      target_type: query.targetType,
+      target_id: query.targetId,
       created_at: { gte: query.from, lte: query.to },
     };
 

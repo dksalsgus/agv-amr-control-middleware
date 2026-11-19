@@ -12,6 +12,8 @@ export class LogsService {
   async getLogs(query: GetLogsQueryDto): Promise<GetLogsResponseDto> {
     const { rows, total } = await this.logsQueryProvider.findPage({
       type: query.type,
+      targetType: query.targetType,
+      targetId: query.targetId,
       from: query.from,
       to: query.to,
       skip: query.skip,
@@ -28,6 +30,7 @@ export class LogsService {
       id: row.id.toString(),
       type: row.type,
       level: row.level,
+      alarmCode: row.alarm_code,
       targetType: row.target_type,
       targetId: row.target_id,
       message: row.message,
