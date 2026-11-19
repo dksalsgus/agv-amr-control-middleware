@@ -54,6 +54,10 @@ curl http://localhost:3000/connections
 # 시스템 로그 (연결 끊김·복구 등, 최신 순, type으로 거를 수 있다)
 curl "http://localhost:3000/logs?type=LINK_DOWN&page=1&size=100"
 
+# 지금 열린 알람(최근 순)과 알람 확인 (이미 풀린 알람이면 404)
+curl http://localhost:3000/alarms
+curl -X POST http://localhost:3000/alarms/{id}/ack
+
 # 에뮬레이터 원본 데이터 확인
 docker compose exec mosquitto mosquitto_sub -t 'vendorA/amr/+/state' -v
 curl http://localhost:8081/api/vehicles
@@ -139,7 +143,7 @@ flowchart LR
 ```mermaid
 flowchart TB
   CT["<b>Controller</b><br/>REST Controller · WebSocket Gateway · 폴링 스케줄러"]
-  SV["<b>Service</b><br/>수집 · 연결 설정 · 실시간 전달 · 조회"]
+  SV["<b>Service</b><br/>수집 · 연결 설정 · 실시간 전달 · 알람 · 조회"]
   PV["<b>Provider</b><br/>제조사 어댑터(A, B, C, PLC) · seq 판정 · STALE 판정 · 연결 상태"]
   RP["<b>Repository</b><br/>MQTT · REST · Modbus 클라이언트 · Prisma · 메모리 상태 저장소"]
   CT --> SV --> PV --> RP
@@ -305,15 +309,15 @@ erDiagram
 
 ## 과제 요구 사항과 구현
 
-| 과제 요구                                                  | 상태  | 구현                                                                                    |
-| ---------------------------------------------------------- | ----- | --------------------------------------------------------------------------------------- |
-| 필수 1. 에뮬레이터 (90대와 PLC, 끊김·지연·중복·순서 주입)  | 일부  | `apps/emulator`: A 40대 MQTT, B 30대 REST, C 20대 Modbus, PLC 16점. 장애 주입은 TODO    |
-| 필수 2. 어댑터 3종과 공통 모델, 새 제조사 추가 범위 증명   | 완료  | `ingest/adapters/vendor-{a,b,c}.adapter.ts`, `plc.adapter.ts`. 범위는 위 "새 제조사" 표 |
-| 필수 3. 연결 설정 (드롭다운·토글, 재배포 없이 변경)        | API만 | `POST/PATCH/DELETE /connections`, version 충돌 409, config 검증 400. 설정 화면은 TODO   |
-| 필수 4. 실시간 전달 (WebSocket, 재접속 복구, 중복·순서)    | 완료  | `/ws` snapshot·delta·resync·ping, epoch와 rev. 수집 구간은 seq 판정                     |
-| 필수 5. 관제 UI (맵, 상태, 연결, PLC, 장애 알림)           | TODO  | 조회 API와 WebSocket은 준비됨. 알람(조각 10)과 화면은 진행 예정                         |
-| 필수 6. 측정 (지연 p50·p95, 유실률, 복구 시간, CPU·메모리) | TODO  | 조각 13                                                                                 |
-| 제출물. `docker compose up` 한 번으로 실행                 | 완료  | `docker-compose.yml`                                                                    |
+| 과제 요구                                                  | 상태  | 구현                                                                                                                                            |
+| ---------------------------------------------------------- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| 필수 1. 에뮬레이터 (90대와 PLC, 끊김·지연·중복·순서 주입)  | 일부  | `apps/emulator`: A 40대 MQTT, B 30대 REST, C 20대 Modbus, PLC 16점. 장애 주입은 TODO                                                            |
+| 필수 2. 어댑터 3종과 공통 모델, 새 제조사 추가 범위 증명   | 완료  | `ingest/adapters/vendor-{a,b,c}.adapter.ts`, `plc.adapter.ts`. 범위는 위 "새 제조사" 표                                                         |
+| 필수 3. 연결 설정 (드롭다운·토글, 재배포 없이 변경)        | API만 | `POST/PATCH/DELETE /connections`, version 충돌 409, config 검증 400. 설정 화면은 TODO                                                           |
+| 필수 4. 실시간 전달 (WebSocket, 재접속 복구, 중복·순서)    | 완료  | `/ws` snapshot·delta·resync·ping, epoch와 rev. 수집 구간은 seq 판정                                                                             |
+| 필수 5. 관제 UI (맵, 상태, 연결, PLC, 장애 알림)           | 일부  | 알람 4종(ROBOT_ERROR, DEVICE_STALE, PLC_ABNORMAL, LOW_BATTERY) 판정과 `GET /alarms`, `POST /alarms/{id}/ack`. WebSocket 알람 전달과 화면은 TODO |
+| 필수 6. 측정 (지연 p50·p95, 유실률, 복구 시간, CPU·메모리) | TODO  | 조각 13                                                                                                                                         |
+| 제출물. `docker compose up` 한 번으로 실행                 | 완료  | `docker-compose.yml`                                                                                                                            |
 
 ## 저장소 구조
 
@@ -333,6 +337,7 @@ apps/
       connection/ 연결 설정 API
       device/    로봇·PLC 조회 API, STALE 판정
       log/       로그 조회 API
+      alarm/     알람 판정과 조회·확인 API
       realtime/  WebSocket
       config/    설정값 (@nestjs/config)
 infra/mosquitto/ MQTT 브로커 설정
