@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { toggleInSet } from "../common/utils/set.util";
 import { Gnb, LivePill } from "../components/gnb";
 import { ToastList } from "../components/toast-list";
 import { useToasts } from "../components/use-toasts";
@@ -6,15 +7,19 @@ import { connectionsApi } from "../connections/connections.api";
 import { ConnectionItem } from "../connections/connections.types";
 import { ConnBanner } from "../monitor/conn-banner";
 import { ConnectionPanel } from "../monitor/connection-panel";
-import { FILTER_STATES } from "../monitor/monitor.constants";
-import { MonitorMode } from "../monitor/monitor.types";
+import { FILTER_STATES, VENDOR_KEYS } from "../monitor/monitor.constants";
+import { MapLegend } from "../monitor/map-legend";
+import { MapToolbar } from "../monitor/map-toolbar";
+import { MonitorMode, VendorKey } from "../monitor/monitor.types";
 import {
   downLinks,
+  isVisible,
   toMapRobots,
   toMonitorMode,
   toVendorKeys,
 } from "../monitor/monitor.util";
 import { PlcPanel } from "../monitor/plc-panel";
+import { RobotMap } from "../monitor/robot-map";
 import { SummaryBar } from "../monitor/summary-bar";
 import { useMonitorToasts } from "../monitor/use-monitor-toasts";
 import { useRealtime } from "../realtime/use-realtime";
@@ -34,9 +39,14 @@ export const MonitorPage = () => {
   const { toasts, push } = useToasts();
   const [connections, setConnections] = useState<ConnectionItem[]>([]);
   const [selectedPlcId, setSelectedPlcId] = useState<string | null>(null);
+  const [selectedRobotId, setSelectedRobotId] = useState<string | null>(null);
+  const [vendors, setVendors] = useState<ReadonlySet<VendorKey>>(
+    () => new Set(VENDOR_KEYS),
+  );
   const [states, setStates] = useState<ReadonlySet<string>>(
     () => new Set(FILTER_STATES),
   );
+  const filters = useMemo(() => ({ vendors, states }), [vendors, states]);
 
   useEffect(() => {
     connectionsApi
@@ -74,6 +84,38 @@ export const MonitorPage = () => {
 
   const pickSummary = (key: string) =>
     setStates(new Set(key === "ALL" ? FILTER_STATES : [key]));
+
+  const resetFilters = () => {
+    setVendors(new Set(VENDOR_KEYS));
+    setStates(new Set(FILTER_STATES));
+  };
+
+  const toggleVendor = (vendor: VendorKey) =>
+    setVendors((current) => toggleInSet(current, vendor));
+
+  const toggleState = (state: string) =>
+    setStates((current) => toggleInSet(current, state));
+
+  /** 필터에 가려진 로봇을 고르면 필터를 풀어 보이게 한다. */
+  const revealRobot = (id: string) => {
+    const robot = robots.find((item) => item.id === id);
+    if (robot && !isVisible(robot, filters)) {
+      resetFilters();
+    }
+    setSelectedRobotId(id);
+  };
+
+  const findRobot = (query: string) => {
+    const keyword = query.trim().toUpperCase();
+    const robot =
+      robots.find((item) => item.name.toUpperCase() === keyword) ??
+      robots.find((item) => item.name.toUpperCase().includes(keyword));
+    if (!robot) {
+      push(`‘${query}’에 해당하는 로봇이 없습니다.`, "warn");
+      return;
+    }
+    revealRobot(robot.id);
+  };
 
   const frozen = mode === "disconnected" || mode === "reconnecting";
   const pill =
@@ -136,7 +178,29 @@ export const MonitorPage = () => {
             />
           </div>
         </div>
-        <div className="col col-center" />
+        <div className="col col-center">
+          <MapToolbar
+            robots={robots}
+            filters={filters}
+            onToggleVendor={toggleVendor}
+            onToggleState={toggleState}
+            onReset={resetFilters}
+            onFind={findRobot}
+          />
+          <RobotMap
+            robots={robots}
+            plcPoints={plcPoints}
+            filters={filters}
+            selectedId={selectedRobotId}
+            waiting={mode === "connecting"}
+            frozenAt={frozen ? view.disconnectedAt : null}
+            onSelect={setSelectedRobotId}
+          />
+          <MapLegend
+            visible={robots.filter((robot) => isVisible(robot, filters)).length}
+            total={robots.length}
+          />
+        </div>
         <div className="col col-right" />
       </main>
       <ToastList toasts={toasts} />
