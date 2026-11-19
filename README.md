@@ -39,7 +39,7 @@ curl http://localhost:3000/health
 # {"success":true,"data":{"status":"ok"},"error":null}
 
 # 데모 계정 로그인 (viewer/viewer1234, operator/operator1234, admin/admin1234). accessToken이 온다
-# 역할별 접근 제한은 설계만 하고 적용하지 않았다 (docs/design-rationale.md 16장). 다른 API는 토큰 없이 부른다
+# 역할별 기능 차이는 두지 않는다 (docs/design-rationale.md 16장). 토큰 검증은 아직 적용 전이라 다른 API는 토큰 없이 부른다
 curl -X POST http://localhost:3000/auth/login -H 'content-type: application/json' \
   -d '{"username":"admin","password":"admin1234"}'
 
