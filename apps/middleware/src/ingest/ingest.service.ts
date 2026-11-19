@@ -2,7 +2,6 @@ import { Inject, Injectable } from "@nestjs/common";
 import { toErrorMessage } from "../common/utils/error.util";
 import { ConfigType } from "@nestjs/config";
 import { ingestConfig } from "../config/ingest.config";
-import { linkConfig } from "../config/link.config";
 import { judgeSeq } from "../common/utils/seq-judge.util";
 import { RobotState } from "../state/robot-state";
 import {
@@ -28,14 +27,10 @@ import { AppLogger } from "../logger/app-logger";
 export class IngestService {
   private readonly connections = new Map<string, IngestConnection>();
   private readonly queues = new Map<string, SerialQueue>();
-  /** MQTT 연결별 마지막 수신 시각(ms) */
-  private readonly lastReceivedAt = new Map<string, number>();
 
   constructor(
-    @Inject(linkConfig.KEY)
-    private readonly config: ConfigType<typeof linkConfig>,
     @Inject(ingestConfig.KEY)
-    private readonly ingestSettings: ConfigType<typeof ingestConfig>,
+    private readonly config: ConfigType<typeof ingestConfig>,
     @Inject(VENDOR_ADAPTERS)
     private readonly adapters: VendorAdapter<unknown>[],
     private readonly connectionProvider: ConnectionProvider,
@@ -87,20 +82,18 @@ export class IngestService {
     }
   }
 
-  /**
-   * MQTT는 발행이 멈춰도 브로커 연결은 살아 있어 끊김 이벤트가 오지 않는다.
-   * 기준 시간 넘게 메시지가 없으면 DOWN으로 바꾸고, 다시 받으면 onMessage에서 UP으로 돌린다.
-   */
+  /** 기준 시간 넘게 메시지가 없는 MQTT 연결을 DOWN으로 바꾼다. 다시 받으면 UP으로 돌아온다. */
   async checkPushSilence(): Promise<void> {
-    const now = Date.now();
-    for (const [connectionId, receivedAt] of this.lastReceivedAt) {
+    const silentIds = await this.linkStateProvider.findSilentConnectionIds(
+      new Date(),
+    );
+
+    for (const connectionId of silentIds) {
       const connection = this.connections.get(connectionId);
-      const isPushSilent = now - receivedAt > this.config.pushSilenceMs;
-      if (connection && isPushSilent) {
-        await this.linkStateProvider.markDown(
+      if (connection) {
+        await this.linkStateProvider.markSilent(
           connectionId,
           this.toLabel(connection),
-          `${this.config.pushSilenceMs / 1000}초 동안 수신 없음`,
         );
       }
     }
@@ -168,7 +161,6 @@ export class IngestService {
   }
 
   private async stopLink(connection: IngestConnection): Promise<void> {
-    this.lastReceivedAt.delete(connection.id);
     await this.deviceTransportProvider.close(connection);
   }
 
@@ -197,11 +189,10 @@ export class IngestService {
     }
 
     const label = this.toLabel(connection);
-    this.lastReceivedAt.set(connection.id, Date.now());
+    await this.linkStateProvider.watchSilence(connection.id);
     await this.deviceTransportProvider.subscribe(connection, {
       onMessage: async (raw) => {
-        this.lastReceivedAt.set(connection.id, Date.now());
-        await this.linkStateProvider.markUp(connection.id, label);
+        await this.linkStateProvider.markReceived(connection.id, label);
         await this.handleRaw(
           connection.id,
           this.toLabel(connection),
@@ -335,7 +326,7 @@ export class IngestService {
     const judgement = judgeSeq(
       entry.state,
       reading,
-      this.ingestSettings.restartThresholdMs,
+      this.config.restartThresholdMs,
     );
     await this.ingestMetricsProvider.record(
       label,

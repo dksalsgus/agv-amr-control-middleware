@@ -107,4 +107,27 @@ describe("LinkStateProvider", () => {
 
     expect(await findStatus()).toBe("DOWN");
   });
+
+  it("MQTT는 감시를 시작한 뒤 기준 시간 넘게 받지 않으면 조용한 연결로 잡힌다", async () => {
+    const pushSilenceMs = linkConfig().pushSilenceMs;
+    expect(await provider.findSilentConnectionIds(new Date())).toEqual([]);
+
+    await provider.watchSilence(id);
+    const later = new Date(Date.now() + pushSilenceMs + 1);
+    expect(await provider.findSilentConnectionIds(later)).toEqual([id]);
+
+    await provider.markReceived(id, "A");
+    expect(await findStatus()).toBe("UP");
+    expect(await provider.findSilentConnectionIds(new Date())).toEqual([]);
+  });
+
+  it("조용하면 DOWN으로 바꾸고 이유를 남긴다", async () => {
+    await provider.markSilent(id, "A");
+
+    expect(await findStatus()).toBe("DOWN");
+    expect(insert.mock.calls[0][0]).toMatchObject({
+      type: "LINK_DOWN",
+      message: "A 연결 끊김: 3초 동안 수신 없음",
+    });
+  });
 });
