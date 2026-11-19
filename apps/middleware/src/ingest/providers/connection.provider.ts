@@ -21,6 +21,8 @@ export type IngestConnection = {
   id: string;
   vendorCode: string;
   protocol: ConnectionProtocol;
+  /** 설정이 바뀔 때마다 오른다. 다르면 다시 붙는다. */
+  version: number;
   config: unknown;
   robots: RobotDevice[];
   plcDevices: PlcDevice[];
@@ -66,6 +68,7 @@ export class ConnectionProvider {
       id: row.id,
       vendorCode: row.vendors.code,
       protocol: row.protocol as ConnectionProtocol,
+      version: row.version,
       config: row.config,
       robots,
       plcDevices,

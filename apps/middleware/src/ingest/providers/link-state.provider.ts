@@ -27,6 +27,10 @@ export class LinkStateProvider {
     });
   }
 
+  async unregister(connectionId: string): Promise<void> {
+    await this.linkStateRepository.remove(connectionId);
+  }
+
   async markUp(connectionId: string, label: string): Promise<void> {
     const state = await this.findState(connectionId);
     if (state.status === "UP") {

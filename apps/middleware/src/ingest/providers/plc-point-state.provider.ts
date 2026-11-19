@@ -22,6 +22,14 @@ export class PlcPointStateProvider {
     }
   }
 
+  async unregisterPoints(deviceId: string, points: PlcPoint[]): Promise<void> {
+    for (const point of points) {
+      await this.plcPointStateRepository.remove(point.pointId);
+    }
+
+    await this.plcPointStateRepository.removeLastRead(deviceId);
+  }
+
   async findById(pointId: string): Promise<PlcPointEntry | undefined> {
     return await this.plcPointStateRepository.findById(pointId);
   }

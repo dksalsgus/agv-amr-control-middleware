@@ -17,6 +17,12 @@ export class RobotStateProvider {
     }
   }
 
+  async unregisterDevices(devices: RobotDevice[]): Promise<void> {
+    for (const device of devices) {
+      await this.robotStateRepository.remove(device.deviceId);
+    }
+  }
+
   async findByExternalId(
     connectionId: string,
     externalId: string,

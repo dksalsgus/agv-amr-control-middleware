@@ -13,4 +13,8 @@ export class LinkStateRepository {
   async save(connectionId: string, state: LinkState): Promise<void> {
     this.states.set(connectionId, state);
   }
+
+  async remove(connectionId: string): Promise<void> {
+    this.states.delete(connectionId);
+  }
 }

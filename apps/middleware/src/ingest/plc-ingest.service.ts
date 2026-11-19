@@ -23,7 +23,7 @@ import { SeqJudgeProvider } from "./providers/seq-judge.provider";
 @Injectable()
 export class PlcIngestService {
   private readonly logger = new Logger(PlcIngestService.name);
-  private connections: IngestConnection[] = [];
+  private readonly connections = new Map<string, IngestConnection>();
 
   constructor(
     private readonly connectionProvider: ConnectionProvider,
@@ -36,30 +36,43 @@ export class PlcIngestService {
   ) {}
 
   async start(): Promise<void> {
-    const connections = await this.connectionProvider.findEnabledConnections();
-    this.connections = connections.filter(
-      (connection) => connection.plcDevices.length > 0,
-    );
-
-    for (const connection of this.connections) {
-      await this.linkStateProvider.register(connection.id);
-      for (const device of connection.plcDevices) {
-        await this.plcPointStateProvider.registerPoints(device.points);
-      }
+    for (const connection of await this.loadConnections()) {
+      await this.register(connection);
     }
 
     await this.restoreLatestValues();
   }
 
+  /** DB 설정과 맞춘다. 폴링이라 다시 붙는 것은 다음 폴링이 새 설정을 읽는 것으로 충분하다. */
+  async sync(): Promise<void> {
+    const latest = await this.loadConnections();
+    const latestIds = new Set(latest.map((connection) => connection.id));
+
+    for (const current of [...this.connections.values()]) {
+      if (!latestIds.has(current.id)) {
+        await this.close(current);
+      }
+    }
+
+    for (const connection of latest) {
+      const current = this.connections.get(connection.id);
+      if (!current) {
+        await this.register(connection);
+      } else if (current.version !== connection.version) {
+        await this.modbusLinkProvider.disconnect(current.id);
+        this.connections.set(connection.id, connection);
+        await this.linkStateProvider.register(connection.id);
+      }
+    }
+  }
+
   async findPolledConnectionIds(): Promise<string[]> {
-    return this.connections.map((connection) => connection.id);
+    return [...this.connections.keys()];
   }
 
   /** 한 번 폴링하고 다음 폴링까지 기다릴 ms를 돌려준다. 연결이 없으면 null. */
   async poll(connectionId: string): Promise<number | null> {
-    const connection = this.connections.find(
-      (item) => item.id === connectionId,
-    );
+    const connection = this.connections.get(connectionId);
     if (!connection) {
       return null;
     }
@@ -77,6 +90,33 @@ export class PlcIngestService {
 
     const elapsedMs = Date.now() - startedAt;
     return Math.max(0, config.pollIntervalMs - elapsedMs);
+  }
+
+  private async loadConnections(): Promise<IngestConnection[]> {
+    const connections = await this.connectionProvider.findEnabledConnections();
+    return connections.filter((connection) => connection.plcDevices.length > 0);
+  }
+
+  private async register(connection: IngestConnection): Promise<void> {
+    this.connections.set(connection.id, connection);
+    await this.linkStateProvider.register(connection.id);
+
+    for (const device of connection.plcDevices) {
+      await this.plcPointStateProvider.registerPoints(device.points);
+    }
+  }
+
+  private async close(connection: IngestConnection): Promise<void> {
+    this.connections.delete(connection.id);
+    await this.modbusLinkProvider.disconnect(connection.id);
+    await this.linkStateProvider.unregister(connection.id);
+
+    for (const device of connection.plcDevices) {
+      await this.plcPointStateProvider.unregisterPoints(
+        device.deviceId,
+        device.points,
+      );
+    }
   }
 
   /** 점 값만 되살린다. 이벤트는 값이 바뀔 때만 쌓여 seq 기준으로는 쓸 수 없다. */
