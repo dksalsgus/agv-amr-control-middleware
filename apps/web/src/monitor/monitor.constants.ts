@@ -29,7 +29,6 @@ export const ALARM_LABEL: Record<string, string> = {
   DEVICE_STALE: "데이터 끊김",
   PLC_ABNORMAL: "PLC 비정상",
   LOW_BATTERY: "배터리 부족",
-  LINK_DOWN: "연결 끊김",
 };
 
 export const SEV_RANK: Record<string, number> = {

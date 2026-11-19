@@ -73,21 +73,6 @@ describe("AlarmJudgeProvider", () => {
     expect(unknown.every((candidate) => !candidate.active)).toBe(true);
   });
 
-  it("연결이 끊기면 장비별 DEVICE_STALE 대신 LINK_DOWN 하나만 연다", async () => {
-    const down = await judge.judgeRobot(toRobot("MOVING", 50), true, "DOWN");
-    expect(down.every((candidate) => !candidate.active)).toBe(true);
-    expect((await judge.judgePlcDevice("plc", true, "DOWN")).active).toBe(
-      false,
-    );
-
-    const link = await judge.judgeLink("c1", "DOWN", 30);
-    expect(link.code).toBe("LINK_DOWN");
-    expect(link.targetType).toBe("CONNECTION");
-    expect(link.active).toBe(true);
-    expect(link.message).toContain("30대");
-    expect((await judge.judgeLink("c1", "UP", 30)).active).toBe(false);
-  });
-
   it("알람을 켠 점만 비정상 값에서 PLC_ABNORMAL을 연다", async () => {
     expect(await judge.judgePlcPoint(toPoint(false, true))).toBeNull();
     expect((await judge.judgePlcPoint(toPoint(true, true)))?.active).toBe(true);
