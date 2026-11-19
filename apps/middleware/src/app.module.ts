@@ -10,6 +10,7 @@ import { authConfig } from "./config/auth.config";
 import { databaseConfig } from "./config/database.config";
 import { ingestConfig } from "./config/ingest.config";
 import { linkConfig } from "./config/link.config";
+import { metricsConfig } from "./config/metrics.config";
 import { queueConfig } from "./config/queue.config";
 import { realtimeConfig } from "./config/realtime.config";
 import { staleConfig } from "./config/stale.config";
@@ -18,6 +19,7 @@ import { DeviceModule } from "./device/device.module";
 import { HealthModule } from "./health/health.module";
 import { IngestModule } from "./ingest/ingest.module";
 import { LogModule } from "./log/log.module";
+import { MetricsModule } from "./metrics/metrics.module";
 import { LoggerModule } from "./logger/logger.module";
 import { PrismaModule } from "./prisma/prisma.module";
 import { RealtimeModule } from "./realtime/realtime.module";
@@ -36,6 +38,7 @@ import { RealtimeModule } from "./realtime/realtime.module";
         alarmConfig,
         authConfig,
         queueConfig,
+        metricsConfig,
       ],
     }),
     BullModule.forRootAsync({
@@ -55,6 +58,7 @@ import { RealtimeModule } from "./realtime/realtime.module";
     RealtimeModule,
     AlarmModule,
     AuthModule,
+    MetricsModule,
   ],
 })
 export class AppModule {}
