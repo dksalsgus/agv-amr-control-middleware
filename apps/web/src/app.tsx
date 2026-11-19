@@ -4,7 +4,7 @@ import { LoginPage } from "./pages/login-page";
 import { MonitorPage } from "./pages/monitor-page";
 import { ConnectionsPage } from "./pages/connections-page";
 import { LogsPage } from "./pages/logs-page";
-import { PlaceholderPage } from "./pages/placeholder-page";
+import { FaultsPage } from "./pages/faults-page";
 
 export const App = () => (
   <BrowserRouter>
@@ -38,7 +38,7 @@ export const App = () => (
         path="/faults"
         element={
           <RequireAuth>
-            <PlaceholderPage title="장애 주입" />
+            <FaultsPage />
           </RequireAuth>
         }
       />

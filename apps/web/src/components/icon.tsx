@@ -79,6 +79,8 @@ const ICON_PATHS = {
       <path d="M12 7v5l3 2" />
     </>
   ),
+  bolt: <path d="M13 3 5 14h6l-1 7 8-11h-6z" />,
+  edit: <path d="M4 20h4L19 9l-4-4L4 16z" />,
   filter: <path d="M4 5h16l-6 7.5V19l-4-2v-4.5z" />,
   prev: <path d="M15 6l-6 6 6 6" />,
   next: <path d="M9 6l6 6-6 6" />,
