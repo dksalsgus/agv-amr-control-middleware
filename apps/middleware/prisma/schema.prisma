@@ -9,10 +9,15 @@ datasource db {
 
 /// 제조사. code로 코드의 어댑터 class를 찾는다.
 model vendors {
+  /// 제조사 id
   id         String   @id @default(uuid()) @db.Uuid
+  /// 제조사 코드(VENDOR_A, VENDOR_B, VENDOR_C, PLC). 어댑터를 찾는 키
   code       String   @unique
+  /// 화면에 보이는 제조사 이름
   name       String
+  /// 행을 만든 시각
   created_at DateTime @default(now()) @db.Timestamptz
+  /// 행을 마지막으로 고친 시각
   updated_at DateTime @default(now()) @updatedAt @db.Timestamptz
 
   vendors_connections vendors_connections[]
@@ -20,14 +25,23 @@ model vendors {
 
 /// 연결 설정. 행 하나가 어댑터 인스턴스 하나다.
 model vendors_connections {
+  /// 연결 id
   id         String   @id @default(uuid()) @db.Uuid
+  /// 이 연결의 제조사(vendors.id)
   vendors_id String   @db.Uuid
+  /// 화면에 보이는 연결 이름(유일)
   name       String   @unique
+  /// 통신 방식(MQTT, REST, MODBUS_TCP)
   protocol   String   @db.VarChar(20)
+  /// 켜져 있으면 수집한다
   enabled    Boolean  @default(true)
+  /// 프로토콜별 접속 정보(JSON). 형식은 코드의 DTO가 검증한다
   config     Json
+  /// 저장할 때마다 1씩 오른다. 동시 수정 충돌(409) 감지에 쓴다
   version    Int      @default(1)
+  /// 행을 만든 시각
   created_at DateTime @default(now()) @db.Timestamptz
+  /// 행을 마지막으로 고친 시각
   updated_at DateTime @default(now()) @updatedAt @db.Timestamptz
 
   vendors                     vendors                       @relation(fields: [vendors_id], references: [id])
@@ -36,13 +50,21 @@ model vendors_connections {
 
 /// 로봇과 PLC 장비. id가 공통 모델의 deviceId다.
 model vendors_connections_devices {
+  /// 장비 id(공통 모델의 deviceId)
   id                     String   @id @default(uuid()) @db.Uuid
+  /// 이 장비가 붙은 연결(vendors_connections.id)
   vendors_connections_id String   @db.Uuid
+  /// 제조사가 쓰는 장비 번호(시리얼, Modbus 블록 번호 등). 연결 안에서 유일
   external_id            String
+  /// 장비 종류(AMR, AGV, PLC)
   type                   String   @db.VarChar(20)
+  /// 화면에 보이는 장비 이름
   name                   String
+  /// 켜져 있으면 수집한다
   enabled                Boolean  @default(true)
+  /// 행을 만든 시각
   created_at             DateTime @default(now()) @db.Timestamptz
+  /// 행을 마지막으로 고친 시각
   updated_at             DateTime @default(now()) @updatedAt @db.Timestamptz
 
   vendors_connections                    vendors_connections                      @relation(fields: [vendors_connections_id], references: [id])
@@ -52,22 +74,37 @@ model vendors_connections_devices {
   @@unique([vendors_connections_id, external_id])
 }
 
-/// 받아들인 로봇 상태 전부. 초당 90행.
+/// 받아들인 로봇 상태 전부. 초당 90행, 24시간 보관.
 model vendors_connections_devices_telemetry {
+  /// 행 번호
   id                             BigInt   @id @default(autoincrement())
+  /// 상태를 보낸 로봇(vendors_connections_devices.id)
   vendors_connections_devices_id String   @db.Uuid
+  /// 장비가 붙인 순번. 이보다 작거나 같은 메시지는 버린다
   seq                            BigInt
+  /// 장비가 상태를 만든 시각
   source_ts                      DateTime @db.Timestamptz
+  /// 미들웨어가 받은 시각. 보관 기간 정리 기준
   received_ts                    DateTime @db.Timestamptz
+  /// 맵 x 좌표(m)
   x                              Float    @db.Real
+  /// 맵 y 좌표(m)
   y                              Float    @db.Real
+  /// 방향(도, 0~360)
   theta                          Float    @db.Real
+  /// 속도(m/s)
   speed                          Float    @db.Real
+  /// 배터리(%)
   battery_pct                    Int      @db.SmallInt
+  /// 운행 상태(IDLE, MOVING, CHARGING, PAUSED, ERROR)
   op_state                       String   @db.VarChar(20)
+  /// 오류 코드. 없으면 null
   error_code                     String?
+  /// 적재 여부
   loaded                         Boolean
+  /// 행을 만든 시각
   created_at                     DateTime @default(now()) @db.Timestamptz
+  /// 행을 마지막으로 고친 시각
   updated_at                     DateTime @default(now()) @updatedAt @db.Timestamptz
 
   vendors_connections_devices vendors_connections_devices @relation(fields: [vendors_connections_devices_id], references: [id])
@@ -79,14 +116,23 @@ model vendors_connections_devices_telemetry {
 
 /// PLC 16점의 의미.
 model vendors_connections_devices_plc_points {
+  /// PLC 점 id
   id                             String   @id @default(uuid()) @db.Uuid
+  /// 이 점이 속한 PLC 장비(vendors_connections_devices.id)
   vendors_connections_devices_id String   @db.Uuid
+  /// 점 번호(0~15). 입력 레지스터 0의 비트 위치
   point_no                       Int      @db.SmallInt
+  /// 화면에 보이는 점 이름
   name                           String
+  /// 점 종류(DOOR, INTERSECTION, ESTOP, GENERIC)
   type                           String   @db.VarChar(20)
+  /// 정상일 때의 값
   normal_value                   Boolean
+  /// 정상 값과 다르면 알람을 띄운다
   alarm_on_abnormal              Boolean  @default(false)
+  /// 행을 만든 시각
   created_at                     DateTime @default(now()) @db.Timestamptz
+  /// 행을 마지막으로 고친 시각
   updated_at                     DateTime @default(now()) @updatedAt @db.Timestamptz
 
   vendors_connections_devices                   vendors_connections_devices                     @relation(fields: [vendors_connections_devices_id], references: [id])
@@ -95,15 +141,23 @@ model vendors_connections_devices_plc_points {
   @@unique([vendors_connections_devices_id, point_no])
 }
 
-/// PLC 점의 값이 바뀔 때만 한 행.
+/// PLC 점의 값이 바뀔 때만 한 행. 30일 보관.
 model vendors_connections_devices_plc_points_events {
+  /// 행 번호
   id                                        BigInt   @id @default(autoincrement())
+  /// 값이 바뀐 PLC 점(vendors_connections_devices_plc_points.id)
   vendors_connections_devices_plc_points_id String   @db.Uuid
+  /// 바뀐 뒤의 값
   value                                     Boolean
+  /// PLC가 붙인 순번
   seq                                       BigInt
+  /// PLC가 값을 만든 시각
   source_ts                                 DateTime @db.Timestamptz
+  /// 미들웨어가 받은 시각. 보관 기간 정리 기준
   received_ts                               DateTime @db.Timestamptz
+  /// 행을 만든 시각
   created_at                                DateTime @default(now()) @db.Timestamptz
+  /// 행을 마지막으로 고친 시각
   updated_at                                DateTime @default(now()) @updatedAt @db.Timestamptz
 
   vendors_connections_devices_plc_points vendors_connections_devices_plc_points @relation(fields: [vendors_connections_devices_plc_points_id], references: [id])
@@ -113,18 +167,27 @@ model vendors_connections_devices_plc_points_events {
   @@index([received_ts])
 }
 
-/// 연결 기록과 알람을 쌓는 시스템 로그. 추가만 한다.
+/// 연결 기록, 알람, 설정 변경을 쌓는 시스템 로그. 추가만 한다. 30일 보관.
 model logs {
+  /// 행 번호
   id          BigInt   @id @default(autoincrement())
+  /// 로그 종류(LINK_UP, LINK_DOWN, ALARM_RAISED, ALARM_CLEARED, ALARM_ACKED, CONFIG_CHANGED)
   type        String   @db.VarChar(20)
+  /// 심각도(INFO, WARN, CRITICAL)
   level       String   @db.VarChar(10)
+  /// 알람 코드. 알람 로그일 때만
   alarm_code  String?  @db.VarChar(20)
+  /// 대상 종류(CONNECTION, DEVICE, PLC_POINT)
   target_type String   @db.VarChar(20)
+  /// 대상 id(연결, 장비, PLC 점)
   target_id   String   @db.Uuid
+  /// 화면에 보이는 설명
   message     String
-  /// 알람을 확인하거나 연결 설정을 바꾼 사용자. ALARM_ACKED, CONFIG_CHANGED일 때만
+  /// 알람을 확인하거나 연결 설정을 바꾼 사용자(users.id). ALARM_ACKED, CONFIG_CHANGED일 때만
   users_id    String?  @db.Uuid
+  /// 행을 만든 시각
   created_at  DateTime @default(now()) @db.Timestamptz
+  /// 행을 마지막으로 고친 시각
   updated_at  DateTime @default(now()) @updatedAt @db.Timestamptz
 
   users users? @relation(fields: [users_id], references: [id])
@@ -135,21 +198,31 @@ model logs {
 
 /// 권한 역할. code는 VIEWER(조회), OPERATOR(알람 확인), ADMIN(연결 설정 변경)
 model roles {
+  /// 역할 id
   id         String   @id @default(uuid()) @db.Uuid
+  /// 역할 코드(VIEWER, OPERATOR, ADMIN)
   code       String   @unique @db.VarChar(20)
+  /// 화면에 보이는 역할 이름
   name       String
+  /// 행을 만든 시각
   created_at DateTime @default(now()) @db.Timestamptz
+  /// 행을 마지막으로 고친 시각
   updated_at DateTime @default(now()) @updatedAt @db.Timestamptz
 
   user_roles user_roles[]
 }
 
-/// 데모 계정. password_hash는 argon2id. 역할은 user_roles로 잇는다.
+/// 데모 계정. 역할은 user_roles로 잇는다.
 model users {
+  /// 사용자 id
   id            String   @id @default(uuid()) @db.Uuid
+  /// 로그인 아이디(유일)
   username      String   @unique
+  /// 비밀번호 해시(argon2id)
   password_hash String
+  /// 행을 만든 시각
   created_at    DateTime @default(now()) @db.Timestamptz
+  /// 행을 마지막으로 고친 시각
   updated_at    DateTime @default(now()) @updatedAt @db.Timestamptz
 
   user_roles user_roles[]
@@ -158,9 +231,13 @@ model users {
 
 /// 사용자와 역할의 매핑. 한 사용자가 여러 역할을 가질 수 있다.
 model user_roles {
+  /// 사용자(users.id)
   users_id   String   @db.Uuid
+  /// 역할(roles.id)
   roles_id   String   @db.Uuid
+  /// 행을 만든 시각
   created_at DateTime @default(now()) @db.Timestamptz
+  /// 행을 마지막으로 고친 시각
   updated_at DateTime @default(now()) @updatedAt @db.Timestamptz
 
   users users @relation(fields: [users_id], references: [id])
