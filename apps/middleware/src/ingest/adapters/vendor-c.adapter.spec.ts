@@ -27,8 +27,8 @@ const block = (overrides: Record<number, number> = {}) => {
 describe("VendorCAdapter", () => {
   const adapter = new VendorCAdapter();
 
-  it("레지스터 블록을 공통 모델로 바꾼다 (cm→m, 0.1도→도, cm/s→m/s)", () => {
-    const [reading] = adapter.toCommon({
+  it("레지스터 블록을 공통 모델로 바꾼다 (cm→m, 0.1도→도, cm/s→m/s)", async () => {
+    const [reading] = await adapter.toCommon({
       firstBlock: 3,
       blockSize: 16,
       registers: block(),
@@ -49,10 +49,10 @@ describe("VendorCAdapter", () => {
     });
   });
 
-  it("이어 붙은 블록을 firstBlock부터 차례로 나눈다", () => {
+  it("이어 붙은 블록을 firstBlock부터 차례로 나눈다", async () => {
     const registers = [...block(), ...block(), ...block()];
 
-    const readings = adapter.toCommon({
+    const readings = await adapter.toCommon({
       firstBlock: 7,
       blockSize: 16,
       registers,
@@ -65,8 +65,8 @@ describe("VendorCAdapter", () => {
     ]);
   });
 
-  it("상태 4와 오류 코드를 ERROR와 코드 문자열로 바꾼다", () => {
-    const [reading] = adapter.toCommon({
+  it("상태 4와 오류 코드를 ERROR와 코드 문자열로 바꾼다", async () => {
+    const [reading] = await adapter.toCommon({
       firstBlock: 0,
       blockSize: 16,
       registers: block({ 10: 4, 11: 31 }),

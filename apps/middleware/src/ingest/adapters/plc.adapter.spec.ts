@@ -3,7 +3,7 @@ import { PlcAdapter } from "./plc.adapter";
 describe("PlcAdapter", () => {
   const adapter = new PlcAdapter();
 
-  it("워드 하나를 점 16개로, 이어지는 레지스터를 seq와 시각으로 바꾼다", () => {
+  it("워드 하나를 점 16개로, 이어지는 레지스터를 seq와 시각으로 바꾼다", async () => {
     const ms = 1_700_000_000_123;
     const registers = [
       0b1000_0000_0000_1001,
@@ -14,7 +14,7 @@ describe("PlcAdapter", () => {
       ms % 0x10000,
     ];
 
-    const reading = adapter.toCommon({
+    const reading = await adapter.toCommon({
       firstBlock: 0,
       blockSize: 6,
       registers,

@@ -25,15 +25,13 @@ const OP_STATE_BY_MODE: Record<VendorAMode, RobotOpState> = {
   fault: "ERROR",
 };
 
-/**
- * 제조사 A: MQTT JSON. 토픽 vendorA/amr/{serial}/state, 좌표 m, 방향 rad, 배터리 0~1.
- */
+/** 제조사 A: MQTT JSON (m, rad, 배터리 0~1) */
 @Injectable()
 export class VendorAAdapter implements VendorAdapter<MqttRawMessage> {
   readonly vendorCode = "VENDOR_A";
 
-  toCommon(raw: MqttRawMessage): RobotReading[] {
-    const serial = this.parseSerial(raw.topic);
+  async toCommon(raw: MqttRawMessage): Promise<RobotReading[]> {
+    const serial = await this.parseSerial(raw.topic);
     const payload = JSON.parse(raw.payload.toString()) as VendorAPayload;
 
     return [
@@ -53,7 +51,8 @@ export class VendorAAdapter implements VendorAdapter<MqttRawMessage> {
     ];
   }
 
-  private parseSerial(topic: string): string {
+  /** 토픽 vendorA/amr/{serial}/state 에서 serial을 꺼낸다. */
+  private async parseSerial(topic: string): Promise<string> {
     const serial = topic.split("/")[2];
     if (!serial) {
       throw new Error(`제조사 A 토픽 형식이 아니다: ${topic}`);

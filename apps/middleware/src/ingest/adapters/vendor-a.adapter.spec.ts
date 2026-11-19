@@ -19,10 +19,10 @@ const basePayload = {
 describe("VendorAAdapter", () => {
   const adapter = new VendorAAdapter();
 
-  it("제조사 A 메시지를 공통 모델로 바꾼다", () => {
+  it("제조사 A 메시지를 공통 모델로 바꾼다", async () => {
     const raw = toRaw("vendorA/amr/A-007/state", basePayload);
 
-    const [reading] = adapter.toCommon(raw);
+    const [reading] = await adapter.toCommon(raw);
 
     expect(reading).toEqual({
       externalId: "A-007",
@@ -39,33 +39,33 @@ describe("VendorAAdapter", () => {
     });
   });
 
-  it("음수 rad는 0~360도로 바꾼다", () => {
+  it("음수 rad는 0~360도로 바꾼다", async () => {
     const raw = toRaw("vendorA/amr/A-001/state", {
       ...basePayload,
       pose: { x: 0, y: 0, theta: -Math.PI / 2 },
     });
 
-    const [reading] = adapter.toCommon(raw);
+    const [reading] = await adapter.toCommon(raw);
 
     expect(reading.theta).toBeCloseTo(270);
   });
 
-  it("fault가 있으면 ERROR와 오류 코드를 준다", () => {
+  it("fault가 있으면 ERROR와 오류 코드를 준다", async () => {
     const raw = toRaw("vendorA/amr/A-001/state", {
       ...basePayload,
       mode: "fault",
       fault: { code: "E-101" },
     });
 
-    const [reading] = adapter.toCommon(raw);
+    const [reading] = await adapter.toCommon(raw);
 
     expect(reading.opState).toBe("ERROR");
     expect(reading.errorCode).toBe("E-101");
   });
 
-  it("토픽에 serial이 없으면 예외를 던진다", () => {
+  it("토픽에 serial이 없으면 예외를 던진다", async () => {
     const raw = toRaw("vendorA", basePayload);
 
-    expect(() => adapter.toCommon(raw)).toThrow();
+    await expect(adapter.toCommon(raw)).rejects.toThrow();
   });
 });
