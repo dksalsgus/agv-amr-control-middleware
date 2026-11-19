@@ -1,6 +1,15 @@
 import { ConnectionItem } from "../connections/connections.types";
-import { Link, RealtimeView, Robot } from "../realtime/realtime.types";
-import { VENDOR_KEY_BY_CODE } from "./monitor.constants";
+import {
+  Link,
+  PlcPoint,
+  RealtimeView,
+  Robot,
+} from "../realtime/realtime.types";
+import {
+  PLC_POSITIONS,
+  PLC_TAG,
+  VENDOR_KEY_BY_CODE,
+} from "./monitor.constants";
 import { MapFilters, MapRobot, MonitorMode, VendorKey } from "./monitor.types";
 
 /** 접속 전 첫 스냅샷 대기, 끊김, 재접속 중, 현장 연결 DOWN을 구분한다. */
@@ -69,3 +78,19 @@ export const isVisible = (robot: MapRobot, filters: MapFilters): boolean =>
 
 export const downLinks = (links: ReadonlyMap<string, Link>): Link[] =>
   Array.from(links.values()).filter((link) => link.status === "DOWN");
+
+/** 맵에 그리는 PLC 점의 이름표(D1, X2…). 맵 위치가 없는 점은 빠진다. */
+export const toPlcMapTags = (points: PlcPoint[]): Map<string, string> => {
+  const tags = new Map<string, string>();
+  const counters = new Map<string, number>();
+  for (const point of points) {
+    const tag = PLC_TAG[point.type];
+    if (!PLC_POSITIONS[point.pointNo] || !tag) {
+      continue;
+    }
+    const order = (counters.get(point.type) ?? 0) + 1;
+    counters.set(point.type, order);
+    tags.set(point.id, `${tag}${order}`);
+  }
+  return tags;
+};

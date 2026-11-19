@@ -1,4 +1,4 @@
-export type RouteNodeKind = "CHARGER" | "STATION" | "STORAGE";
+export type RouteNodeKind = "CHARGER" | "STATION" | "STORAGE" | "JUNCTION";
 
 export interface RouteNode {
   id: string;

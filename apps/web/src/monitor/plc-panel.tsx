@@ -1,6 +1,7 @@
 import { formatTime, pad2 } from "../common/utils/format.util";
 import { Icon } from "../components/icon";
 import { PlcPoint } from "../realtime/realtime.types";
+import { toPlcMapTags } from "./monitor.util";
 
 type Props = {
   points: PlcPoint[];
@@ -27,7 +28,13 @@ const PlcFlag = ({ point }: { point: PlcPoint }) => {
   return point.stale ? <span className="plc-flag is-stale">STALE</span> : null;
 };
 
-const PlcDetail = ({ point }: { point?: PlcPoint }) => {
+const PlcDetail = ({
+  point,
+  mapTag,
+}: {
+  point?: PlcPoint;
+  mapTag?: string;
+}) => {
   if (!point) {
     return <p className="muted">신호를 고르면 상세 값을 보여 줍니다.</p>;
   }
@@ -38,6 +45,10 @@ const PlcDetail = ({ point }: { point?: PlcPoint }) => {
         점 {pad2(point.pointNo)} · {point.name}
       </p>
       <dl className="kv">
+        <div className="od-field">
+          <dt>맵 위치</dt>
+          <dd className="mono">{mapTag ?? "맵에 표시 안 함"}</dd>
+        </div>
         <div className="od-field">
           <dt>유형</dt>
           <dd className="mono">{point.type}</dd>
@@ -166,7 +177,12 @@ export const PlcPanel = ({ points, selectedId, onSelect }: Props) => {
           </div>
         )}
         <div className="plc-detail" aria-live="polite">
-          <PlcDetail point={selected} />
+          <PlcDetail
+            point={selected}
+            mapTag={
+              selected ? toPlcMapTags(points).get(selected.id) : undefined
+            }
+          />
         </div>
       </div>
     </section>

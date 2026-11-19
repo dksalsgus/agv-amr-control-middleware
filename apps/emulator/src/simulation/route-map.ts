@@ -5,47 +5,98 @@ import {
   RouteSearchStep,
 } from "./route-map.types";
 
-/** 바닥에 그려진 통로망. 왼쪽 열은 충전소, 오른쪽 열은 적재장, 나머지는 작업대다. 단위 m */
+/**
+ * 관제 웹 맵에 점선으로 그린 통로망과 같은 좌표다. 단위 m
+ * 통로 교차점 중 출하장 쪽 맨 위 줄은 작업대(STATION), 나머지는 랙 앞 적재 지점(STORAGE)이다.
+ * 충전기는 맨 아래 가로 통로 바로 밑에 있고, 통로에서 짧은 진입로로 들어간다.
+ */
 export class RouteMap {
-  static readonly NODES: RouteNode[] = [
-    { id: "CHG-1", x: 5, y: 5, kind: "CHARGER" },
-    { id: "WS-1", x: 15, y: 5, kind: "STATION" },
-    { id: "WS-2", x: 25, y: 5, kind: "STATION" },
-    { id: "WS-3", x: 35, y: 5, kind: "STATION" },
-    { id: "STO-1", x: 45, y: 5, kind: "STORAGE" },
-    { id: "CHG-2", x: 5, y: 15, kind: "CHARGER" },
-    { id: "WS-4", x: 15, y: 15, kind: "STATION" },
-    { id: "WS-5", x: 25, y: 15, kind: "STATION" },
-    { id: "WS-6", x: 35, y: 15, kind: "STATION" },
-    { id: "STO-2", x: 45, y: 15, kind: "STORAGE" },
-    { id: "CHG-3", x: 5, y: 25, kind: "CHARGER" },
-    { id: "WS-7", x: 15, y: 25, kind: "STATION" },
-    { id: "WS-8", x: 25, y: 25, kind: "STATION" },
-    { id: "WS-9", x: 35, y: 25, kind: "STATION" },
-    { id: "STO-3", x: 45, y: 25, kind: "STORAGE" },
-  ];
+  private static readonly AISLE_X = [3, 12, 21, 30, 39, 47];
+  private static readonly AISLE_Y = [3, 10, 17, 24, 27.5];
+  private static readonly SHIPPING_Y = 27.5;
+  private static readonly CHARGER_Y = 1.1;
+  private static readonly CHARGER_X = Array.from(
+    { length: 8 },
+    (_, k) => Math.round((33 + k * 1.6) * 10) / 10,
+  );
 
-  /** 가로 통로는 세 줄 모두, 세로 통로는 x = 5, 25, 45에만 있다. */
-  static readonly LANES: RouteLane[] = [
-    ["CHG-1", "WS-1"],
-    ["WS-1", "WS-2"],
-    ["WS-2", "WS-3"],
-    ["WS-3", "STO-1"],
-    ["CHG-2", "WS-4"],
-    ["WS-4", "WS-5"],
-    ["WS-5", "WS-6"],
-    ["WS-6", "STO-2"],
-    ["CHG-3", "WS-7"],
-    ["WS-7", "WS-8"],
-    ["WS-8", "WS-9"],
-    ["WS-9", "STO-3"],
-    ["CHG-1", "CHG-2"],
-    ["CHG-2", "CHG-3"],
-    ["WS-2", "WS-5"],
-    ["WS-5", "WS-8"],
-    ["STO-1", "STO-2"],
-    ["STO-2", "STO-3"],
-  ];
+  static readonly NODES: RouteNode[] = RouteMap.buildNodes();
+  static readonly LANES: RouteLane[] = RouteMap.buildLanes();
+
+  private static buildNodes() {
+    const crossings = RouteMap.AISLE_Y.flatMap((y) =>
+      RouteMap.rowX(y).map((x) => ({
+        id: RouteMap.crossingId(x, y),
+        x,
+        y,
+        kind: RouteMap.crossingKind(x, y),
+      })),
+    );
+    const chargers = RouteMap.CHARGER_X.map((x, k) => ({
+      id: RouteMap.chargerId(k),
+      x,
+      y: RouteMap.CHARGER_Y,
+      kind: "CHARGER" as const,
+    }));
+
+    return crossings.concat(chargers);
+  }
+
+  private static buildLanes() {
+    const rows = RouteMap.AISLE_Y.flatMap((y) =>
+      RouteMap.consecutivePairs(RouteMap.rowX(y)).map(
+        ([a, b]): RouteLane => [
+          RouteMap.crossingId(a, y),
+          RouteMap.crossingId(b, y),
+        ],
+      ),
+    );
+    const columns = RouteMap.AISLE_X.flatMap((x) =>
+      RouteMap.consecutivePairs(RouteMap.AISLE_Y).map(
+        ([a, b]): RouteLane => [
+          RouteMap.crossingId(x, a),
+          RouteMap.crossingId(x, b),
+        ],
+      ),
+    );
+    const chargerEntries = RouteMap.CHARGER_X.map(
+      (x, k): RouteLane => [
+        RouteMap.chargerId(k),
+        RouteMap.crossingId(x, RouteMap.AISLE_Y[0]),
+      ],
+    );
+
+    return rows.concat(columns, chargerEntries);
+  }
+
+  /** 맨 아래 가로 통로에는 충전기 진입로 갈림점도 있다. */
+  private static rowX(y: number) {
+    if (y !== RouteMap.AISLE_Y[0]) {
+      return RouteMap.AISLE_X;
+    }
+
+    return RouteMap.AISLE_X.concat(RouteMap.CHARGER_X).sort((a, b) => a - b);
+  }
+
+  private static crossingKind(x: number, y: number): RouteNodeKind {
+    if (!RouteMap.AISLE_X.includes(x)) {
+      return "JUNCTION";
+    }
+
+    return y === RouteMap.SHIPPING_Y ? "STATION" : "STORAGE";
+  }
+
+  private static consecutivePairs(values: number[]) {
+    return values.slice(1).map((value, i) => [values[i], value]);
+  }
+
+  private static crossingId(x: number, y: number) {
+    return `N-${x}-${y}`;
+  }
+
+  private static chargerId(index: number) {
+    return `CHG-${index + 1}`;
+  }
 
   randomNode(kind?: RouteNodeKind) {
     const candidates = RouteMap.NODES.filter(
