@@ -85,6 +85,12 @@ export class ModbusClientRepository implements OnModuleDestroy {
     }
 
     this.clients.delete(connectionId);
+
+    // 이미 끊긴 소켓은 close 콜백이 오지 않아 기다리면 멈춘다.
+    if (!client.isOpen) {
+      return;
+    }
+
     await new Promise<void>((resolve) => client.close(() => resolve()));
   }
 }
