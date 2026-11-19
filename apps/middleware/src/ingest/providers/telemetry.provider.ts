@@ -1,8 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
-import {
-  TelemetryRow,
-  VendorsConnectionsDevicesTelemetryRepository,
-} from "../../history/vendors-connections-devices-telemetry.repository";
+import { VendorsConnectionsDevicesTelemetryRepository } from "../../history/vendors-connections-devices-telemetry.repository";
+import { TelemetryRow } from "../../history/vendors-connections-devices-telemetry.types";
 import { RobotOpState, RobotState } from "../../state/robot-state";
 import { RobotTelemetry } from "./telemetry.types";
 

@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
-import { VendorRow, VendorsRepository } from "../settings/vendors.repository";
+import { VendorsRepository } from "../settings/vendors.repository";
+import { VendorRow } from "../settings/vendors.types";
 
 @Injectable()
 export class VendorsProvider {

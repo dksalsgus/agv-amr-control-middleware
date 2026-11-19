@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
-import { PlcPointEventRow } from "../history/vendors-connections-devices-plc-points-events.repository";
+import { PlcPointEventRow } from "../history/vendors-connections-devices-plc-points-events.types";
 import { PlcPointEntry } from "../state/plc-point-state";
 import { GetPlcPointEventsQueryDto } from "./dto/get-plc-point-events.request.dto";
 import {

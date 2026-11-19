@@ -1,9 +1,9 @@
 import { Injectable } from "@nestjs/common";
+import { VendorsConnectionsDevicesTelemetryRepository } from "../history/vendors-connections-devices-telemetry.repository";
 import {
   TelemetryPageQuery,
   TelemetryRow,
-  VendorsConnectionsDevicesTelemetryRepository,
-} from "../history/vendors-connections-devices-telemetry.repository";
+} from "../history/vendors-connections-devices-telemetry.types";
 
 @Injectable()
 export class TelemetryQueryProvider {

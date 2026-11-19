@@ -1,19 +1,10 @@
 import { Injectable } from "@nestjs/common";
-import {
-  Prisma,
-  vendors_connections_devices_plc_points_events,
-} from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
-
-export type PlcPointEventRow = vendors_connections_devices_plc_points_events;
-
-export type PlcPointEventPageQuery = {
-  pointId: string;
-  from?: Date;
-  to?: Date;
-  skip: number;
-  take: number;
-};
+import {
+  PlcPointEventRow,
+  PlcPointEventPageQuery,
+} from "./vendors-connections-devices-plc-points-events.types";
 
 @Injectable()
 export class VendorsConnectionsDevicesPlcPointsEventsRepository {

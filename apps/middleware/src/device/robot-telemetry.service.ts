@@ -1,5 +1,5 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
-import { TelemetryRow } from "../history/vendors-connections-devices-telemetry.repository";
+import { TelemetryRow } from "../history/vendors-connections-devices-telemetry.types";
 import { GetRobotTelemetryQueryDto } from "./dto/get-robot-telemetry.request.dto";
 import {
   GetRobotTelemetryItemDto,

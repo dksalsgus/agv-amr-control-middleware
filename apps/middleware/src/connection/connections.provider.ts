@@ -4,32 +4,14 @@ import {
   Injectable,
 } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
-import {
-  ConnectionSummaryRow,
-  VendorsConnectionsRepository,
-} from "../settings/vendors-connections.repository";
+import { VendorsConnectionsRepository } from "../settings/vendors-connections.repository";
 import { VendorsRepository } from "../settings/vendors.repository";
-import { LinkState } from "../state/link-state";
 import { LinkStateRepository } from "../state/link-state.repository";
-
-export type ConnectionChanges = {
-  name?: string;
-  enabled?: boolean;
-  config?: Record<string, unknown>;
-};
-
-export type NewConnection = {
-  vendorId: string;
-  name: string;
-  protocol: string;
-  enabled: boolean;
-  config: Record<string, unknown>;
-};
-
-export type ConnectionWithLink = {
-  row: ConnectionSummaryRow;
-  link: LinkState | null;
-};
+import {
+  ConnectionChanges,
+  NewConnection,
+  ConnectionWithLink,
+} from "./connections.types";
 
 /** 연결 설정(DB)과 연결 상태(메모리)를 합친다. */
 @Injectable()
