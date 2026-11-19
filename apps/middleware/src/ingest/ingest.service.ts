@@ -1,7 +1,9 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { toErrorMessage } from "../common/utils/error.util";
 import { ConfigType } from "@nestjs/config";
+import { ingestConfig } from "../config/ingest.config";
 import { linkConfig } from "../config/link.config";
+import { judgeSeq } from "../common/utils/seq-judge.util";
 import { RobotState } from "../state/robot-state";
 import {
   RobotReading,
@@ -17,7 +19,6 @@ import { MqttConnectionConfig } from "./providers/mqtt-link.types";
 import { RestLinkProvider } from "./providers/rest-link.provider";
 import { RestConnectionConfig } from "./providers/rest-link.types";
 import { RobotStateProvider } from "./providers/robot-state.provider";
-import { SeqJudgeProvider } from "./providers/seq-judge.provider";
 import { HistoryQueueProvider } from "./providers/history-queue.provider";
 import { IngestMetricsProvider } from "./providers/ingest-metrics.provider";
 import { TelemetryProvider } from "./providers/telemetry.provider";
@@ -38,6 +39,8 @@ export class IngestService {
   constructor(
     @Inject(linkConfig.KEY)
     private readonly config: ConfigType<typeof linkConfig>,
+    @Inject(ingestConfig.KEY)
+    private readonly ingestSettings: ConfigType<typeof ingestConfig>,
     @Inject(VENDOR_ADAPTERS)
     private readonly adapters: VendorAdapter<unknown>[],
     private readonly connectionProvider: ConnectionProvider,
@@ -45,7 +48,6 @@ export class IngestService {
     private readonly restLinkProvider: RestLinkProvider,
     private readonly modbusLinkProvider: ModbusLinkProvider,
     private readonly robotStateProvider: RobotStateProvider,
-    private readonly seqJudgeProvider: SeqJudgeProvider,
     private readonly telemetryProvider: TelemetryProvider,
     private readonly historyQueueProvider: HistoryQueueProvider,
     private readonly ingestMetricsProvider: IngestMetricsProvider,
@@ -362,7 +364,11 @@ export class IngestService {
       return null;
     }
 
-    const judgement = await this.seqJudgeProvider.judge(entry.state, reading);
+    const judgement = judgeSeq(
+      entry.state,
+      reading,
+      this.ingestSettings.restartThresholdMs,
+    );
     await this.ingestMetricsProvider.record(
       label,
       judgement,

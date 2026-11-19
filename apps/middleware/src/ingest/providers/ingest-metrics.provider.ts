@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { IngestMetricsRepository } from "../../state/ingest-metrics.repository";
-import { SeqJudgement } from "./seq-judge.types";
+import { SeqJudgement } from "../../common/utils/seq-judge.types";
 
 /** seq 판정 결과를 측정용으로 센다(설계 문서 6장 측정 방법). */
 @Injectable()

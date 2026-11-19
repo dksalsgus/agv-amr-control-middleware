@@ -26,7 +26,6 @@ import { PlcEventProvider } from "./providers/plc-event.provider";
 import { PlcPointStateProvider } from "./providers/plc-point-state.provider";
 import { RestLinkProvider } from "./providers/rest-link.provider";
 import { RobotStateProvider } from "./providers/robot-state.provider";
-import { SeqJudgeProvider } from "./providers/seq-judge.provider";
 import { TelemetryProvider } from "./providers/telemetry.provider";
 import { ModbusClientRepository } from "./repositories/modbus-client.repository";
 import { MqttClientRepository } from "./repositories/mqtt-client.repository";
@@ -66,7 +65,6 @@ import { RestClientRepository } from "./repositories/rest-client.repository";
     PlcPointStateProvider,
     RestLinkProvider,
     RobotStateProvider,
-    SeqJudgeProvider,
     TelemetryProvider,
     PlcAdapter,
     VendorAAdapter,
