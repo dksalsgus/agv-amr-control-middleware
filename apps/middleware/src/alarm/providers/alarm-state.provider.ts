@@ -57,7 +57,8 @@ export class AlarmStateProvider {
       ackedAt: new Date(),
       rev: await this.revisionRepository.next(),
     };
-    if (!(await this.alarmStateRepository.replace(acked))) {
+    const isReplaced = await this.alarmStateRepository.replace(acked);
+    if (!isReplaced) {
       return null;
     }
 
