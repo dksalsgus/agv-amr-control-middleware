@@ -12,6 +12,7 @@ import {
   FieldDef,
   FieldErrors,
   Protocol,
+  VendorItem,
 } from "./connections.types";
 
 const CONFIG_PREFIX = "cfg.";
@@ -55,6 +56,17 @@ export const emptyDraft = (vendorId: string): ConnectionDraft => ({
   protocol: "MQTT",
   config: Object.assign({}, DEFAULTS.MQTT),
 });
+
+/** 그 제조사·프로토콜의 기본 접속 정보로 접속 정보를 새로 채운다. 이름과 프로토콜은 그대로 둔다. */
+export const withVendorDefaults = (
+  draft: ConnectionDraft,
+  vendor: VendorItem | undefined,
+): ConnectionDraft => {
+  const defaults = vendor?.connectionDefaults[draft.protocol] ?? {};
+  return Object.assign({}, draft, {
+    config: configToDraft(draft.protocol, defaults),
+  });
+};
 
 export const getValue = (draft: ConnectionDraft, key: string): string => {
   if (isConfigKey(key)) {

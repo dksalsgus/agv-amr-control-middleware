@@ -21,7 +21,13 @@ export type ConnectionDetail = ConnectionItem & {
 };
 
 /** GET /vendors 항목 */
-export type VendorItem = { id: string; code: string; name: string };
+export type VendorItem = {
+  id: string;
+  code: string;
+  name: string;
+  /** 지원 프로토콜별 기본 접속 정보(서버가 정함) */
+  connectionDefaults: Partial<Record<Protocol, Record<string, unknown>>>;
+};
 
 export type FieldDef = {
   key: string;
