@@ -1,7 +1,11 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
 import { StaleJudgeProvider } from "../device/stale-judge.provider";
+import { AlarmEntry } from "../state/alarm-state";
 import { PlcPointEntry } from "../state/plc-point-state";
 import { AlarmCandidate } from "./alarm.types";
+import { GetAlarmsItemDto } from "./dto/get-alarms.item.dto";
+import { GetAlarmsResponseDto } from "./dto/get-alarms.response.dto";
+import { PostAlarmAckResponseDto } from "./dto/post-alarm-ack.response.dto";
 import { AlarmJudgeProvider } from "./providers/alarm-judge.provider";
 import { AlarmStateProvider } from "./providers/alarm-state.provider";
 import { AlarmTargetProvider } from "./providers/alarm-target.provider";
@@ -30,6 +34,30 @@ export class AlarmService {
         await this.alarmStateProvider.clear(entry);
       }
     }
+  }
+
+  /** 최근에 열린 알람부터 */
+  async getAlarms(): Promise<GetAlarmsResponseDto> {
+    const entries = await this.alarmStateProvider.findOpen();
+    const alarms: GetAlarmsItemDto[] = entries
+      .sort((a, b) => b.raisedAt.getTime() - a.raisedAt.getTime())
+      .map((entry) => this.toItem(entry));
+
+    return { alarms };
+  }
+
+  /** 이미 풀린 알람이면 404 */
+  async ackAlarm(id: string): Promise<PostAlarmAckResponseDto> {
+    const acked = await this.alarmStateProvider.ack(id);
+    if (!acked || !acked.ackedAt) {
+      throw new NotFoundException(`열린 알람이 없습니다: ${id}`);
+    }
+
+    return {
+      id: acked.id,
+      ackedAt: acked.ackedAt.toISOString(),
+      rev: acked.rev,
+    };
   }
 
   private async collectCandidates(now: Date): Promise<AlarmCandidate[]> {
@@ -102,6 +130,20 @@ export class AlarmService {
     if (candidate.code === "DEVICE_STALE") {
       await this.alarmTargetProvider.touchDevice(candidate.targetId);
     }
+  }
+
+  private toItem(entry: AlarmEntry): GetAlarmsItemDto {
+    return {
+      id: entry.id,
+      code: entry.code,
+      level: entry.level,
+      targetType: entry.targetType,
+      targetId: entry.targetId,
+      message: entry.message,
+      raisedAt: entry.raisedAt.toISOString(),
+      ackedAt: entry.ackedAt?.toISOString() ?? null,
+      rev: entry.rev,
+    };
   }
 
   private toKey(alarm: {

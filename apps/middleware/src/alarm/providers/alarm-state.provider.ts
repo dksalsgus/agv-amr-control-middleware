@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { randomUUID } from "crypto";
 import { LogsRepository } from "../../history/logs.repository";
-import { LogType } from "../../log/log";
+import { LogLevel, LogType } from "../../log/log";
 import { AppLogger } from "../../logger/app-logger";
 import { AlarmEntry } from "../../state/alarm-state";
 import { AlarmStateRepository } from "../../state/alarm-state.repository";
@@ -36,6 +36,35 @@ export class AlarmStateProvider {
     );
   }
 
+  /** 이미 확인한 알람은 그대로 돌려준다. 그사이 풀렸으면 null */
+  async ack(id: string): Promise<AlarmEntry | null> {
+    const open = await this.alarmStateRepository.findById(id);
+    if (!open) {
+      return null;
+    }
+    if (open.ackedAt) {
+      return open;
+    }
+
+    const acked: AlarmEntry = {
+      id: open.id,
+      code: open.code,
+      level: open.level,
+      targetType: open.targetType,
+      targetId: open.targetId,
+      message: open.message,
+      raisedAt: open.raisedAt,
+      ackedAt: new Date(),
+      rev: await this.revisionRepository.next(),
+    };
+    if (!(await this.alarmStateRepository.replace(acked))) {
+      return null;
+    }
+
+    await this.writeLog("ALARM_ACKED", "INFO", acked, `${acked.message} 확인`);
+    return acked;
+  }
+
   async raise(candidate: AlarmCandidate): Promise<void> {
     const entry: AlarmEntry = {
       id: randomUUID(),
@@ -49,7 +78,7 @@ export class AlarmStateProvider {
       rev: await this.revisionRepository.next(),
     };
     await this.alarmStateRepository.save(entry);
-    await this.writeLog("ALARM_RAISED", entry, entry.message);
+    await this.writeLog("ALARM_RAISED", entry.level, entry, entry.message);
   }
 
   async clear(entry: AlarmEntry): Promise<void> {
@@ -59,12 +88,18 @@ export class AlarmStateProvider {
       id: entry.id,
       rev: await this.revisionRepository.next(),
     });
-    await this.writeLog("ALARM_CLEARED", entry, `${entry.message} 해제`);
+    await this.writeLog(
+      "ALARM_CLEARED",
+      entry.level,
+      entry,
+      `${entry.message} 해제`,
+    );
   }
 
   /** 로그 기록 실패는 판정을 멈추지 않도록 서버 로그만 남긴다. */
   private async writeLog(
     type: LogType,
+    level: LogLevel,
     entry: AlarmEntry,
     message: string,
   ): Promise<void> {
@@ -73,7 +108,7 @@ export class AlarmStateProvider {
     try {
       await this.logsRepository.insert({
         type,
-        level: entry.level,
+        level,
         alarm_code: entry.code,
         target_type: entry.targetType,
         target_id: entry.targetId,
