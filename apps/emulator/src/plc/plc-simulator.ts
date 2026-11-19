@@ -1,10 +1,10 @@
 import { PLC_POINT_COUNT } from "../config";
 
-/** 한 주기에 점 하나가 뒤집힐 확률. 500ms 주기에서 점마다 평균 25초에 한 번 바뀐다. */
-const FLIP_PROBABILITY = 0.02;
-
 /** PLC 인터록 16점. false(정상)로 시작해 가끔 뒤집힌다. */
 export class PlcSimulator {
+  /** 한 주기에 점 하나가 뒤집힐 확률. 500ms 주기에서 점마다 평균 25초에 한 번 바뀐다. */
+  private static readonly FLIP_PROBABILITY = 0.02;
+
   seq = 0;
   readonly points: boolean[] = new Array<boolean>(PLC_POINT_COUNT).fill(false);
 
@@ -12,7 +12,7 @@ export class PlcSimulator {
 
   step() {
     for (const pointNo of this.points.keys()) {
-      if (this.random() < FLIP_PROBABILITY) {
+      if (this.random() < PlcSimulator.FLIP_PROBABILITY) {
         this.points[pointNo] = !this.points[pointNo];
       }
     }

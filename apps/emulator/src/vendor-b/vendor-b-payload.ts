@@ -1,27 +1,18 @@
 import { radianToDegree } from "../common/utils/angle.util";
-import { Robot, RobotMode } from "../simulation/robot";
-
-/** 제조사 B의 REST JSON 형식 (설계 문서 4장 로봇 매핑표 B열) */
-export type VendorBVehicle = {
-  vehicleId: string;
-  sequence: number;
-  timestamp: number;
-  position: { xMm: number; yMm: number };
-  headingDeg: number;
-  speedMmS: number;
-  batteryLevel: number;
-  status: "IDLE" | "RUN" | "CHG" | "STOP" | "ERR";
-  errorCode: string;
-  hasLoad: boolean;
-};
-
-const STATUS_MAP: Record<RobotMode, VendorBVehicle["status"]> = {
-  IDLE: "IDLE",
-  DRIVING: "RUN",
-  CHARGING: "CHG",
-};
+import { Robot } from "../simulation/robot";
+import { RobotMode } from "../simulation/robot.types";
+import { VendorBVehicle } from "./vendor-b-payload.types";
 
 export class VendorBPayloadBuilder {
+  private static readonly STATUS_MAP: Record<
+    RobotMode,
+    VendorBVehicle["status"]
+  > = {
+    IDLE: "IDLE",
+    DRIVING: "RUN",
+    CHARGING: "CHG",
+  };
+
   build(robot: Robot, sampledAt: Date): VendorBVehicle {
     return {
       vehicleId: robot.serial,
@@ -34,7 +25,7 @@ export class VendorBPayloadBuilder {
       headingDeg: Math.round(radianToDegree(robot.theta) * 10) / 10,
       speedMmS: Math.round(robot.speed * 1000),
       batteryLevel: Math.round(robot.batteryPct),
-      status: STATUS_MAP[robot.mode],
+      status: VendorBPayloadBuilder.STATUS_MAP[robot.mode],
       errorCode: "",
       hasLoad: robot.loaded,
     };
