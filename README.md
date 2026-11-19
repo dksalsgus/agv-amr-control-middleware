@@ -45,6 +45,9 @@ curl http://localhost:3000/robots/{id}
 curl http://localhost:3000/plc-points
 curl "http://localhost:3000/plc-points/{id}/events?page=1&size=100"
 
+# 시스템 로그 (연결 끊김·복구 등, 최신 순, type으로 거를 수 있다)
+curl "http://localhost:3000/logs?type=LINK_DOWN&page=1&size=100"
+
 # 로봇 이력 (최신 순, from/to는 ISO 8601, page는 1부터, size는 최대 1000)
 curl "http://localhost:3000/robots/{id}/telemetry?from=2026-11-19T00:00:00Z&page=1&size=100"
 ```
