@@ -1,3 +1,4 @@
+import { MAP_HEIGHT_M, MAP_WIDTH_M } from "../config";
 import { RouteMap } from "./route-map";
 import { RouteNode } from "./route-map.types";
 
@@ -14,7 +15,7 @@ const isLane = (a: RouteNode, b: RouteNode) =>
 describe("RouteMap", () => {
   const routeMap = new RouteMap();
 
-  it("모든 통로는 있는 지점끼리 잇고, 지점은 맵(50x30) 안에 있다", () => {
+  it("모든 통로는 있는 지점끼리 잇고, 지점은 맵 안에 있다", () => {
     for (const lane of RouteMap.LANES) {
       expect(nodeById(lane[0])).toBeDefined();
       expect(nodeById(lane[1])).toBeDefined();
@@ -22,9 +23,9 @@ describe("RouteMap", () => {
 
     for (const node of RouteMap.NODES) {
       expect(node.x).toBeGreaterThanOrEqual(0);
-      expect(node.x).toBeLessThanOrEqual(50);
+      expect(node.x).toBeLessThanOrEqual(MAP_WIDTH_M);
       expect(node.y).toBeGreaterThanOrEqual(0);
-      expect(node.y).toBeLessThanOrEqual(30);
+      expect(node.y).toBeLessThanOrEqual(MAP_HEIGHT_M);
     }
   });
 
