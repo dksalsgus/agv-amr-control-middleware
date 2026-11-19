@@ -1,3 +1,4 @@
+import { RealtimeAlarmDto } from "./realtime-alarm.dto";
 import { RealtimeLinkDto } from "./realtime-link.dto";
 import { RealtimePlcPointDto } from "./realtime-plc-point.dto";
 import { RealtimeRemovedDto } from "./realtime-removed.dto";
@@ -10,5 +11,6 @@ export class DeltaMessageDto {
   robots!: RealtimeRobotDto[];
   plcPoints!: RealtimePlcPointDto[];
   links!: RealtimeLinkDto[];
+  alarms!: RealtimeAlarmDto[];
   removed!: RealtimeRemovedDto[];
 }

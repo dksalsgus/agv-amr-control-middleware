@@ -90,7 +90,7 @@ docker compose restart middleware  # 이력의 마지막 행으로 로봇 90대�
 
 ### 실시간 (WebSocket)
 
-메시지는 `{ "event", "data" }` JSON입니다. `hello`를 보내면 전체 상태가 오고, 이후 100ms마다 바뀐 것만 옵니다.
+메시지는 `{ "event", "data" }` JSON입니다. `hello`를 보내면 전체 상태(robots, plcPoints, links, alarms)가 오고, 이후 100ms마다 바뀐 것만 옵니다. 풀린 알람은 delta의 `removed`에 kind `ALARM`으로 실립니다.
 
 ```bash
 npx wscat -c ws://localhost:3000/ws
@@ -221,7 +221,7 @@ sequenceDiagram
   participant W as 화면
   participant S as 미들웨어
   W->>S: hello {}
-  S->>W: snapshot {epoch, rev, robots, plcPoints, links}
+  S->>W: snapshot {epoch, rev, robots, plcPoints, links, alarms}
   loop 100ms마다 (바뀐 것이 있을 때)
     S->>W: delta {fromRev, rev, 바뀐 엔티티, removed}
   end
@@ -311,15 +311,15 @@ erDiagram
 
 ## 과제 요구 사항과 구현
 
-| 과제 요구                                                  | 상태  | 구현                                                                                                                                            |
-| ---------------------------------------------------------- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| 필수 1. 에뮬레이터 (90대와 PLC, 끊김·지연·중복·순서 주입)  | 일부  | `apps/emulator`: A 40대 MQTT, B 30대 REST, C 20대 Modbus, PLC 16점. 장애 주입은 TODO                                                            |
-| 필수 2. 어댑터 3종과 공통 모델, 새 제조사 추가 범위 증명   | 완료  | `ingest/adapters/vendor-{a,b,c}.adapter.ts`, `plc.adapter.ts`. 범위는 위 "새 제조사" 표                                                         |
-| 필수 3. 연결 설정 (드롭다운·토글, 재배포 없이 변경)        | API만 | `POST/PATCH/DELETE /connections`, version 충돌 409, config 검증 400. 설정 화면은 TODO                                                           |
-| 필수 4. 실시간 전달 (WebSocket, 재접속 복구, 중복·순서)    | 완료  | `/ws` snapshot·delta·resync·ping, epoch와 rev. 수집 구간은 seq 판정                                                                             |
-| 필수 5. 관제 UI (맵, 상태, 연결, PLC, 장애 알림)           | 일부  | 알람 4종(ROBOT_ERROR, DEVICE_STALE, PLC_ABNORMAL, LOW_BATTERY) 판정과 `GET /alarms`, `POST /alarms/{id}/ack`. WebSocket 알람 전달과 화면은 TODO |
-| 필수 6. 측정 (지연 p50·p95, 유실률, 복구 시간, CPU·메모리) | TODO  | 조각 13                                                                                                                                         |
-| 제출물. `docker compose up` 한 번으로 실행                 | 완료  | `docker-compose.yml`                                                                                                                            |
+| 과제 요구                                                  | 상태  | 구현                                                                                                                                           |
+| ---------------------------------------------------------- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| 필수 1. 에뮬레이터 (90대와 PLC, 끊김·지연·중복·순서 주입)  | 일부  | `apps/emulator`: A 40대 MQTT, B 30대 REST, C 20대 Modbus, PLC 16점. 장애 주입은 TODO                                                           |
+| 필수 2. 어댑터 3종과 공통 모델, 새 제조사 추가 범위 증명   | 완료  | `ingest/adapters/vendor-{a,b,c}.adapter.ts`, `plc.adapter.ts`. 범위는 위 "새 제조사" 표                                                        |
+| 필수 3. 연결 설정 (드롭다운·토글, 재배포 없이 변경)        | API만 | `POST/PATCH/DELETE /connections`, version 충돌 409, config 검증 400. 설정 화면은 TODO                                                          |
+| 필수 4. 실시간 전달 (WebSocket, 재접속 복구, 중복·순서)    | 완료  | `/ws` snapshot·delta·resync·ping, epoch와 rev. 수집 구간은 seq 판정                                                                            |
+| 필수 5. 관제 UI (맵, 상태, 연결, PLC, 장애 알림)           | 일부  | 알람 4종(ROBOT_ERROR, DEVICE_STALE, PLC_ABNORMAL, LOW_BATTERY) 판정과 `GET /alarms`, `POST /alarms/{id}/ack`, WebSocket 알람 전달. 화면은 TODO |
+| 필수 6. 측정 (지연 p50·p95, 유실률, 복구 시간, CPU·메모리) | TODO  | 조각 13                                                                                                                                        |
+| 제출물. `docker compose up` 한 번으로 실행                 | 완료  | `docker-compose.yml`                                                                                                                           |
 
 ## 저장소 구조
 

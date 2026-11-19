@@ -1,4 +1,6 @@
 import { Injectable } from "@nestjs/common";
+import { AlarmEntry } from "../state/alarm-state";
+import { AlarmStateRepository } from "../state/alarm-state.repository";
 import { LinkStateEntry, LinkStatus } from "../state/link-state";
 import { LinkStateRepository } from "../state/link-state.repository";
 import { PlcDeviceLastRead, PlcPointEntry } from "../state/plc-point-state";
@@ -17,6 +19,7 @@ export class RealtimeStateProvider {
     private readonly plcPointStateRepository: PlcPointStateRepository,
     private readonly linkStateRepository: LinkStateRepository,
     private readonly removedEntityRepository: RemovedEntityRepository,
+    private readonly alarmStateRepository: AlarmStateRepository,
   ) {}
 
   async findEpoch(): Promise<string> {
@@ -37,6 +40,10 @@ export class RealtimeStateProvider {
 
   async findLinks(): Promise<LinkStateEntry[]> {
     return await this.linkStateRepository.findAll();
+  }
+
+  async findAlarms(): Promise<AlarmEntry[]> {
+    return await this.alarmStateRepository.findAll();
   }
 
   async findRemovedAfter(rev: number): Promise<RemovedEntity[]> {
