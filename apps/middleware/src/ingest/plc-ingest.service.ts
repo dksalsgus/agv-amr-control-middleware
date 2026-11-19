@@ -1,4 +1,5 @@
 import { Injectable } from "@nestjs/common";
+import { toErrorMessage } from "../common/utils/error.util";
 import { PlcPointValue } from "../state/plc-point-state";
 import { PlcAdapter } from "./adapters/plc.adapter";
 import { PlcReading } from "./adapters/plc.types";
@@ -168,7 +169,7 @@ export class PlcIngestService {
       await this.linkStateProvider.markFailure(
         connection.id,
         label,
-        String(error),
+        toErrorMessage(error),
       );
       return null;
     }

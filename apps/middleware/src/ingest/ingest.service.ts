@@ -1,4 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
+import { toErrorMessage } from "../common/utils/error.util";
 import { ConfigType } from "@nestjs/config";
 import { linkConfig } from "../config/link.config";
 import { RobotState } from "../state/robot-state";
@@ -270,7 +271,7 @@ export class IngestService {
       await this.linkStateProvider.markFailure(
         connection.id,
         label,
-        String(error),
+        toErrorMessage(error),
       );
       return null;
     }
