@@ -269,9 +269,9 @@ export const ConnectionForm = (props: Props) => {
             hint={
               props.creating
                 ? "바꾸면 아래 접속 정보 항목이 바뀝니다."
-                : fixedHint
+                : "바꾸면 접속 정보를 새로 입력합니다. 제조사 장비가 지원하지 않으면 저장할 때 막힙니다."
             }
-            disabled={!props.creating}
+            disabled={false}
             onChange={props.onChange}
           />
         </div>
