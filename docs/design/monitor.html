@@ -265,6 +265,7 @@ ul, ol { padding: 0; list-style: none; }
 .gnb-tab:hover { color: var(--text-1); background: var(--surface-1); }
 .gnb-tab[aria-current="page"] { color: var(--text-1); border-bottom-color: var(--accent); }
 .gnb-tab:focus-visible { outline-offset: -2px; }
+a.gnb-tab { text-decoration: none; }
 .gnb-end { display: flex; align-items: center; gap: var(--sp-3); margin-left: auto; }
 .gnb-clock { font-size: var(--fs-sm); color: var(--text-2); }
 .live-pill {
@@ -284,7 +285,6 @@ ul, ol { padding: 0; list-style: none; }
   background: var(--surface-3); color: var(--text-1); font-size: var(--fs-xs); font-weight: var(--fw-bold);
 }
 .gnb-user-name { font-size: var(--fs-sm); font-weight: var(--fw-semibold); line-height: var(--lh-tight); white-space: nowrap; }
-.role-badge { font-family: var(--font-mono); font-size: 11px; font-weight: var(--fw-semibold); color: var(--accent); line-height: var(--lh-tight); white-space: nowrap; }
 
 /* ===== 화면 뼈대 ===== */
 .app { display: grid; grid-template-rows: auto auto auto minmax(0, 1fr) auto; height: 100vh; }
@@ -478,34 +478,6 @@ span.alarm-target { color: var(--text-1); cursor: default; text-decoration: none
 .sev[data-sev="WARN"] { color: var(--sev-warn); }
 .sev[data-sev="CRITICAL"] { color: var(--sev-critical); }
 
-/* 로그·알람 이력 드로어 */
-.drawer {
-  position: fixed; inset: 0 0 0 auto; margin: 0; width: min(720px, 100vw); max-width: none; height: 100vh; max-height: none;
-  padding: 0; border: 0; border-left: 1px solid var(--line-strong);
-  background: var(--surface-1); color: var(--text-1); box-shadow: var(--shadow-pop);
-}
-.drawer[open] { display: grid; grid-template-rows: auto auto minmax(0, 1fr) auto; animation: drawer-in var(--dur-slow) var(--ease-out); }
-.drawer.is-closing { animation: drawer-out 240ms var(--ease-in) forwards; }
-.drawer::backdrop { background: rgba(0,0,0,0.5); }
-@keyframes drawer-in { from { transform: translateX(32px); opacity: 0; } to { transform: none; opacity: 1; } }
-@keyframes drawer-out { to { transform: translateX(32px); opacity: 0; } }
-.drawer-head { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-4) var(--sp-5); border-bottom: 1px solid var(--line); }
-.drawer-title { font-size: var(--fs-lg); font-weight: var(--fw-bold); }
-.drawer-head .btn-icon { margin-left: auto; }
-.drawer-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: var(--sp-3) var(--sp-5); border-bottom: 1px solid var(--line); }
-.log-table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
-.log-table th { position: sticky; top: 0; z-index: 1; background: var(--surface-1); text-align: left; font-size: var(--fs-xs); font-weight: var(--fw-semibold); color: var(--text-3); padding: var(--sp-2) var(--sp-3); border-bottom: 1px solid var(--line); white-space: nowrap; }
-.log-table td { padding: var(--sp-2) var(--sp-3); border-bottom: 1px solid var(--line); vertical-align: top; }
-.log-table tr:hover td { background: var(--surface-2); }
-.log-table th:first-child, .log-table td:first-child { padding-left: var(--sp-5); }
-.log-ts { font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--text-2); white-space: nowrap; }
-.log-type { white-space: nowrap; }
-.log-type small { display: block; font-family: var(--font-mono); font-size: 11px; color: var(--text-3); }
-.log-target { font-family: var(--font-mono); font-size: var(--fs-xs); white-space: nowrap; }
-.log-msg { color: var(--text-2); }
-.drawer-foot { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-3) var(--sp-5); border-top: 1px solid var(--line); font-size: var(--fs-sm); }
-.drawer-foot .page-info { color: var(--text-2); margin-right: auto; }
-
 /* 토스트 */
 .toasts { position: fixed; right: var(--sp-5); bottom: 64px; z-index: 20; display: grid; gap: var(--sp-2); pointer-events: none; }
 .toast {
@@ -572,8 +544,9 @@ span.alarm-target { color: var(--text-1); cursor: default; text-decoration: none
       </div>
     </div>
     <nav class="gnb-tabs" aria-label="주 메뉴">
-      <button type="button" class="gnb-tab" data-nav="monitor" aria-current="page">관제</button>
-      <button type="button" class="gnb-tab" data-nav="connections">연결 설정</button>
+      <a class="gnb-tab" href="monitor.html" aria-current="page">관제</a>
+      <a class="gnb-tab" href="logs.html">이력</a>
+      <a class="gnb-tab" href="connections.html">연결 설정</a>
       <button type="button" class="gnb-tab" data-nav="faults">장애 주입</button>
     </nav>
     <div class="gnb-end">
@@ -581,11 +554,8 @@ span.alarm-target { color: var(--text-1); cursor: default; text-decoration: none
       <span class="gnb-clock mono" id="clock">--:--:--</span>
       <span class="gnb-divider" aria-hidden="true"></span>
       <div class="gnb-user">
-        <span class="avatar" id="userAvatar" aria-hidden="true">김</span>
-        <div class="od-stack" style="--od-gap:0">
-          <span class="gnb-user-name" id="userName">김도윤</span>
-          <span class="role-badge" id="userRole">OPERATOR · 운영</span>
-        </div>
+        <span class="avatar" aria-hidden="true">김</span>
+        <span class="gnb-user-name">김도윤</span>
       </div>
       <button type="button" class="btn btn-ghost btn-sm" id="logoutBtn">
         <svg class="od-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l-5-5 5-5"/><path d="M5 12h11"/></svg>
@@ -685,11 +655,7 @@ span.alarm-target { color: var(--text-1); cursor: default; text-decoration: none
       <section class="panel" aria-labelledby="alarmTitle" style="display:grid;grid-template-rows:auto auto minmax(0,1fr);min-height:0;padding-bottom:0">
         <div class="panel-head">
           <h2 class="panel-title" id="alarmTitle" tabindex="-1">열린 알람</h2>
-          <span class="badge" data-tone="danger" id="alarmUnackedBadge"></span>
-          <button type="button" class="btn btn-sm end" id="openLogBtn" aria-haspopup="dialog">
-            <svg class="od-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 7v5l3 2"/></svg>
-            로그·알람 이력
-          </button>
+          <span class="badge end" data-tone="danger" id="alarmUnackedBadge"></span>
         </div>
         <div id="permNote"></div>
         <div class="col-scroll" style="padding-bottom:var(--sp-4)">
@@ -711,42 +677,8 @@ span.alarm-target { color: var(--text-1); cursor: default; text-decoration: none
       <label class="demo-opt"><input type="radio" name="mode" value="reconnecting"><span>재접속 → 복구</span></label>
       <label class="demo-opt"><input type="radio" name="mode" value="linkDown"><span>연결 1개 DOWN</span></label>
     </fieldset>
-    <fieldset class="demo-group" id="demoRole">
-      <legend>역할</legend>
-      <label class="demo-opt"><input type="radio" name="role" value="VIEWER"><span>VIEWER</span></label>
-      <label class="demo-opt"><input type="radio" name="role" value="OPERATOR" checked><span>OPERATOR</span></label>
-      <label class="demo-opt"><input type="radio" name="role" value="ADMIN"><span>ADMIN</span></label>
-    </fieldset>
   </footer>
 </div>
-
-<!-- 로그·알람 이력 패널 -->
-<dialog class="drawer" id="logDrawer" aria-labelledby="logTitle">
-  <div class="drawer-head">
-    <h2 class="drawer-title" id="logTitle">로그·알람 이력</h2>
-    <span class="panel-meta" id="logTotal"></span>
-    <button type="button" class="btn btn-ghost btn-icon" id="logClose" aria-label="이력 패널 닫기">
-      <svg class="od-icon" style="--od-icon-size:18px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
-    </button>
-  </div>
-  <div class="drawer-filters" role="group" aria-label="로그 유형 필터" id="logFilters"></div>
-  <div class="od-scroll">
-    <table class="log-table">
-      <thead><tr><th scope="col">시각</th><th scope="col">유형</th><th scope="col">등급</th><th scope="col">대상</th><th scope="col">메시지</th></tr></thead>
-      <tbody id="logBody"></tbody>
-    </table>
-    <div class="empty" id="logEmpty" hidden><strong>이 유형의 기록이 없습니다</strong><span>다른 유형을 고르거나 ‘전체’로 돌아가세요.</span></div>
-  </div>
-  <div class="drawer-foot">
-    <span class="page-info mono" id="pageInfo"></span>
-    <button type="button" class="btn btn-sm" id="pagePrev">
-      <svg class="od-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>이전
-    </button>
-    <button type="button" class="btn btn-sm" id="pageNext">
-      다음<svg class="od-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
-    </button>
-  </div>
-</dialog>
 
 <div class="toasts" id="toasts" aria-live="polite"></div>
 
@@ -758,7 +690,6 @@ const STALE_MS = 3000;
 const TICK_MS = 100;
 const MAP_W = 50;
 const MAP_H = 30;
-const LOG_PAGE_SIZE = 14;
 const RECONNECT_MS = 3000;
 
 const VENDORS = {
@@ -770,13 +701,8 @@ const OP_STATES = ['MOVING', 'IDLE', 'CHARGING', 'PAUSED', 'ERROR'];
 const OP_LABEL = { IDLE: '대기', MOVING: '주행', CHARGING: '충전', PAUSED: '일시정지', ERROR: '오류', STALE: '끊김' };
 const FILTER_STATES = ['MOVING', 'IDLE', 'CHARGING', 'PAUSED', 'ERROR', 'STALE'];
 const ALARM_LABEL = { ROBOT_ERROR: '로봇 오류', DEVICE_STALE: '데이터 끊김', PLC_ABNORMAL: 'PLC 비정상', LOW_BATTERY: '배터리 부족' };
-const LOG_LABEL = { LINK_UP: '연결됨', LINK_DOWN: '연결 끊김', ALARM_RAISED: '알람 발생', ALARM_CLEARED: '알람 해제', ALARM_ACKED: '알람 확인' };
 const SEV_RANK = { CRITICAL: 3, WARN: 2, INFO: 1 };
-const ROLE_INFO = {
-  VIEWER: { name: '이현수', label: '조회' },
-  OPERATOR: { name: '김도윤', label: '운영' },
-  ADMIN: { name: '박서연', label: '관리' },
-};
+const CURRENT_USER = '김도윤';
 const ERROR_CODES = {
   'E-214': '경로 장애물 감지로 정지',
   'E-031': '구동 모터 과전류',
@@ -836,14 +762,11 @@ const neighbors = (i, j) => [[i + 1, j], [i - 1, j], [i, j + 1], [i, j - 1]]
 /* ===== 상태 ===== */
 const state = {
   mode: 'connecting',
-  role: 'OPERATOR',
   selectedId: null,
   hoverId: null,
   selectedPlc: 9,
   vendors: new Set(['A', 'B', 'C']),
   states: new Set(FILTER_STATES),
-  logFilter: 'ALL',
-  logPage: 1,
   linkDown: false,
   linkDownAt: 0,
   reconnectStart: 0,
@@ -853,7 +776,6 @@ let frozenAt = Date.now();
 const dataNow = () => frozenAt ?? Date.now();
 const isFrozen = () => frozenAt !== null;
 const isStreaming = () => state.mode === 'live' || state.mode === 'linkDown';
-const canAck = () => state.role !== 'VIEWER';
 
 /* ===== 가짜 데이터: 연결 ===== */
 const BOOT = Date.now();
@@ -958,61 +880,21 @@ const isStale = (r) => dataNow() - r.lastRecv > STALE_MS;
 const filterKey = (r) => (isStale(r) ? 'STALE' : r.opState);
 const isVisible = (r) => state.vendors.has(r.vendor) && state.states.has(filterKey(r));
 
-/* ===== 가짜 데이터: 알람·로그 ===== */
+/* ===== 가짜 데이터: 알람 ===== */
 let alarmSeq = 1;
-let logSeq = 1;
 const alarms = [];
-const logs = [];
-const addLog = ({ type, severity, target, message, ts = Date.now() }) => {
-  logs.unshift({ id: logSeq++, type, severity, target, message, ts });
-};
 const raiseAlarm = ({ type, severity, targetKind, targetId, target, message, raisedAt = Date.now(), autoClearAt = null }) => {
   const a = { id: alarmSeq++, type, severity, targetKind, targetId, target, message, raisedAt, acked: false, ackedBy: null, ackedAt: null, autoClearAt };
   alarms.push(a);
-  addLog({ type: 'ALARM_RAISED', severity, target, message: `[${ALARM_LABEL[type]}] ${message}`, ts: raisedAt });
   return a;
 };
 const clearAlarm = (a, reason) => {
   const i = alarms.indexOf(a);
   if (i < 0) return;
   alarms.splice(i, 1);
-  addLog({ type: 'ALARM_CLEARED', severity: a.severity, target: a.target, message: `[${ALARM_LABEL[a.type]}] ${reason}` });
 };
 
 const seedHistory = () => {
-  const robotNames = robots.map((r) => r.name);
-  const conns = connections.map((c) => c.name);
-  for (let k = 0; k < 22; k++) {
-    const t0 = BOOT - randIn(12, 178) * 60e3;
-    const kind = pick(['link', 'error', 'battery', 'plc', 'stale', 'error', 'battery']);
-    if (kind === 'link') {
-      const c = pick(conns);
-      const gap = Math.round(randIn(8, 70));
-      addLog({ type: 'LINK_DOWN', severity: 'WARN', target: c, message: '하트비트 응답 없음 (5초 초과)', ts: t0 });
-      addLog({ type: 'LINK_UP', severity: 'INFO', target: c, message: `연결 복구 (끊김 ${gap}초)`, ts: t0 + gap * 1000 });
-    } else if (kind === 'error') {
-      const rn = pick(robotNames);
-      const code = pick(Object.keys(ERROR_CODES));
-      const sev = rand() < 0.4 ? 'CRITICAL' : 'WARN';
-      addLog({ type: 'ALARM_RAISED', severity: sev, target: rn, message: `[로봇 오류] ${code} ${ERROR_CODES[code]}`, ts: t0 });
-      addLog({ type: 'ALARM_ACKED', severity: sev, target: rn, message: `[로봇 오류] ${pick(['김도윤', '박서연'])} 확인`, ts: t0 + randIn(30, 140) * 1000 });
-      addLog({ type: 'ALARM_CLEARED', severity: sev, target: rn, message: '[로봇 오류] 오류 해제 — 운행 재개', ts: t0 + randIn(160, 600) * 1000 });
-    } else if (kind === 'battery') {
-      const rn = pick(robotNames);
-      const b = Math.round(randIn(11, 19));
-      const sev = b < 15 ? 'WARN' : 'INFO';
-      addLog({ type: 'ALARM_RAISED', severity: sev, target: rn, message: `[배터리 부족] 배터리 ${b}%`, ts: t0 });
-      addLog({ type: 'ALARM_CLEARED', severity: sev, target: rn, message: '[배터리 부족] 충전 시작 — 기준 이상 회복', ts: t0 + randIn(300, 900) * 1000 });
-    } else if (kind === 'plc') {
-      const p = pick(plcPoints.slice(0, 4));
-      addLog({ type: 'ALARM_RAISED', severity: 'WARN', target: plcLabel(p), message: `[PLC 비정상] ${p.name} — 정상 OFF, 현재 ON`, ts: t0 });
-      addLog({ type: 'ALARM_CLEARED', severity: 'WARN', target: plcLabel(p), message: '[PLC 비정상] 정상 값으로 복귀', ts: t0 + randIn(20, 240) * 1000 });
-    } else {
-      const rn = pick(robotNames);
-      addLog({ type: 'ALARM_RAISED', severity: 'WARN', target: rn, message: `[데이터 끊김] ${randIn(3.1, 6).toFixed(1)}초 동안 데이터 없음`, ts: t0 });
-      addLog({ type: 'ALARM_CLEARED', severity: 'WARN', target: rn, message: '[데이터 끊김] 데이터 수신 재개', ts: t0 + randIn(4, 30) * 1000 });
-    }
-  }
   // 현재 열린 알람
   raiseAlarm({ type: 'PLC_ABNORMAL', severity: 'CRITICAL', targetKind: 'plc', targetId: 9, target: plcLabel(plcPoints[9]), message: '비상정지 2 눌림 — 정상 OFF, 현재 ON', raisedAt: plcPoints[9].changedAt });
   raiseAlarm({ type: 'ROBOT_ERROR', severity: 'CRITICAL', targetKind: 'robot', targetId: 'B-AGV-07', target: 'B-AGV-07', message: `E-214 ${ERROR_CODES['E-214']}`, raisedAt: BOOT - 4 * 60e3 - 5e3 });
@@ -1023,8 +905,6 @@ const seedHistory = () => {
   const stale = raiseAlarm({ type: 'DEVICE_STALE', severity: 'WARN', targetKind: 'robot', targetId: 'A-AMR-29', target: 'A-AMR-29', message: '3초 넘게 데이터 없음 — 마지막 위치 유지', raisedAt: BOOT - 252e3 + 3000 });
   raiseAlarm({ type: 'DEVICE_STALE', severity: 'INFO', targetKind: 'plc', targetId: 15, target: plcLabel(plcPoints[15]), message: '공기압 센서 값 갱신 없음', raisedAt: BOOT - 35e3 });
   stale.acked = true; stale.ackedBy = '박서연'; stale.ackedAt = BOOT - 190e3;
-  addLog({ type: 'ALARM_ACKED', severity: 'WARN', target: 'A-AMR-29', message: '[데이터 끊김] 박서연 확인', ts: stale.ackedAt });
-  logs.sort((a, b) => b.ts - a.ts);
 };
 seedHistory();
 
@@ -1105,7 +985,7 @@ const processAutoClear = () => {
       changed = true;
     }
   }
-  if (changed) { renderAlarms(); renderLogs(); }
+  if (changed) renderAlarms();
 };
 
 /* ===== 연결 DOWN 시나리오 ===== */
@@ -1115,7 +995,6 @@ const dropLink = () => {
   c.status = 'DOWN'; c.changedAt = now;
   state.linkDown = true; state.linkDownAt = now;
   for (const r of robots) if (r.connId === 'conn-b') { r.feedAlive = false; r.lastRecv = Math.min(r.lastRecv, now - 2200); }
-  addLog({ type: 'LINK_DOWN', severity: 'CRITICAL', target: c.name, message: 'HTTP 폴링 실패 — 응답 시간 초과 (3회 연속)' });
   raiseAlarm({ type: 'DEVICE_STALE', severity: 'CRITICAL', targetKind: 'conn', targetId: c.id, target: c.name, message: '연결 DOWN — 소속 로봇 30대 데이터 끊김' });
   toast('제조사 B REST 연결 DOWN — 소속 로봇 30대 데이터 끊김', 'danger');
 };
@@ -1125,7 +1004,6 @@ const restoreLink = () => {
   c.status = 'UP'; c.changedAt = now;
   state.linkDown = false;
   for (const r of robots) if (r.connId === 'conn-b') { r.feedAlive = true; r.lastRecv = now; }
-  addLog({ type: 'LINK_UP', severity: 'INFO', target: c.name, message: `연결 복구 (끊김 ${Math.round((now - state.linkDownAt) / 1000)}초)` });
   const a = alarms.find((x) => x.targetKind === 'conn' && x.targetId === c.id);
   if (a) clearAlarm(a, '연결 복구 — 데이터 수신 재개');
 };
@@ -1245,14 +1123,6 @@ const renderFrozenOverlay = () => {
   } else {
     el.hidden = true;
   }
-};
-
-/* ===== 렌더: 사용자 ===== */
-const renderUser = () => {
-  const info = ROLE_INFO[state.role];
-  document.getElementById('userName').textContent = info.name;
-  document.getElementById('userAvatar').textContent = info.name.slice(0, 1);
-  document.getElementById('userRole').textContent = `${state.role} · ${info.label}`;
 };
 
 /* ===== 렌더: 상단 요약 ===== */
@@ -1488,11 +1358,9 @@ const renderAlarms = () => {
   document.getElementById('alarmUnackedBadge').textContent = `미확인 ${unacked}`;
   document.getElementById('alarmUnackedBadge').hidden = unacked === 0;
   const connected = isStreaming();
-  document.getElementById('permNote').innerHTML = !canAck()
-    ? `<p class="perm-note">${icon('lock')}VIEWER 권한은 알람을 조회만 할 수 있습니다. 확인은 OPERATOR 이상.</p>`
-    : !connected && state.mode !== 'connecting'
-      ? `<p class="perm-note">${icon('unplug')}서버 연결이 복구되면 알람을 확인할 수 있습니다.</p>`
-      : '';
+  document.getElementById('permNote').innerHTML = !connected && state.mode !== 'connecting'
+    ? `<p class="perm-note">${icon('unplug')}서버 연결이 복구되면 알람을 확인할 수 있습니다.</p>`
+    : '';
   const list = document.getElementById('alarmList');
   if (!alarms.length) {
     list.innerHTML = '<li class="empty"><strong>열린 알람이 없습니다</strong><span>새 알람이 생기면 여기에 바로 표시됩니다.</span></li>';
@@ -1505,7 +1373,7 @@ const renderAlarms = () => {
     const ackState = a.acked
       ? `<span class="ack-state is-acked">${icon('check')} 확인됨 · ${esc(a.ackedBy)} ${fmtTime(a.ackedAt)}</span>`
       : '<span class="ack-state">미확인</span>';
-    const btn = a.acked || !canAck() ? '' : `<button type="button" class="btn btn-primary btn-sm" data-ack="${a.id}" ${connected ? '' : 'disabled'}>확인</button>`;
+    const btn = a.acked ? '' : `<button type="button" class="btn btn-primary btn-sm" data-ack="${a.id}" ${connected ? '' : 'disabled'}>확인</button>`;
     return `
       <li class="alarm" data-id="${a.id}" data-sev="${a.severity}" data-acked="${a.acked}" tabindex="-1">
         <div class="alarm-head">${sevHtml(a.severity)}<span class="alarm-type">${ALARM_LABEL[a.type]}</span><time class="alarm-time" datetime="${new Date(a.raisedAt).toISOString()}">${fmtTime(a.raisedAt)}</time></div>
@@ -1517,47 +1385,14 @@ const renderAlarms = () => {
 };
 const ackAlarm = (id) => {
   const a = alarms.find((x) => x.id === id);
-  if (!a || a.acked || !canAck() || !isStreaming()) return;
+  if (!a || a.acked || !isStreaming()) return;
   a.acked = true;
-  a.ackedBy = ROLE_INFO[state.role].name;
+  a.ackedBy = CURRENT_USER;
   a.ackedAt = Date.now();
-  addLog({ type: 'ALARM_ACKED', severity: a.severity, target: a.target, message: `[${ALARM_LABEL[a.type]}] ${a.ackedBy} 확인` });
   renderAlarms();
   renderSummary();
-  renderLogs();
   const row = document.querySelector(`#alarmList [data-id="${id}"]`);
   (row || document.getElementById('alarmTitle')).focus();
-};
-
-/* ===== 렌더: 로그 이력 ===== */
-const LOG_FILTERS = ['ALL', 'LINK_UP', 'LINK_DOWN', 'ALARM_RAISED', 'ALARM_CLEARED', 'ALARM_ACKED'];
-const renderLogFilters = () => {
-  document.getElementById('logFilters').innerHTML = '<span class="filter-label">유형</span>' + LOG_FILTERS.map((k) => {
-    const n = k === 'ALL' ? logs.length : logs.filter((l) => l.type === k).length;
-    return `<button type="button" class="chip" data-logtype="${k}" aria-pressed="${state.logFilter === k}">${k === 'ALL' ? '전체' : LOG_LABEL[k]} <span class="mono">${n}</span></button>`;
-  }).join('');
-};
-const renderLogs = () => {
-  const dlg = document.getElementById('logDrawer');
-  if (!dlg.open) return;
-  renderLogFilters();
-  const rows = state.logFilter === 'ALL' ? logs : logs.filter((l) => l.type === state.logFilter);
-  const pages = Math.max(1, Math.ceil(rows.length / LOG_PAGE_SIZE));
-  state.logPage = clamp(state.logPage, 1, pages);
-  const slice = rows.slice((state.logPage - 1) * LOG_PAGE_SIZE, state.logPage * LOG_PAGE_SIZE);
-  document.getElementById('logTotal').textContent = `${rows.length}건`;
-  document.getElementById('logEmpty').hidden = rows.length > 0;
-  document.getElementById('logBody').innerHTML = slice.map((l) => `
-    <tr>
-      <td class="log-ts">${fmtTime(l.ts)}<br><span class="faint">${fmtAgo(Date.now() - l.ts)}</span></td>
-      <td class="log-type">${LOG_LABEL[l.type]}<small>${l.type}</small></td>
-      <td>${sevHtml(l.severity)}</td>
-      <td class="log-target">${esc(l.target)}</td>
-      <td class="log-msg">${esc(l.message)}</td>
-    </tr>`).join('');
-  document.getElementById('pageInfo').textContent = `${state.logPage} / ${pages} 페이지`;
-  document.getElementById('pagePrev').disabled = state.logPage <= 1;
-  document.getElementById('pageNext').disabled = state.logPage >= pages;
 };
 
 /* ===== 맵(Canvas 2D) ===== */
@@ -1851,45 +1686,8 @@ document.getElementById('alarmList').addEventListener('click', (e) => {
   }
 });
 
-// 로그 드로어
-const drawer = document.getElementById('logDrawer');
-const openLogBtn = document.getElementById('openLogBtn');
-openLogBtn.addEventListener('click', () => {
-  drawer.classList.remove('is-closing');
-  drawer.showModal();
-  state.logPage = 1;
-  renderLogs();
-  document.getElementById('logClose').focus();
-});
-const closeDrawer = () => {
-  if (!drawer.open || drawer.classList.contains('is-closing')) return;
-  if (reducedMotion.matches) { drawer.close(); return; }
-  drawer.classList.add('is-closing');
-  setTimeout(() => { drawer.classList.remove('is-closing'); drawer.close(); }, 240);
-};
-document.getElementById('logClose').addEventListener('click', closeDrawer);
-drawer.addEventListener('cancel', (e) => { e.preventDefault(); closeDrawer(); });
-drawer.addEventListener('click', (e) => { if (e.target === drawer) closeDrawer(); });
-drawer.addEventListener('close', () => openLogBtn.focus());
-document.getElementById('logFilters').addEventListener('click', (e) => {
-  const b = e.target.closest('[data-logtype]');
-  if (!b) return;
-  state.logFilter = b.dataset.logtype;
-  state.logPage = 1;
-  renderLogs();
-  const again = document.querySelector(`#logFilters [data-logtype="${state.logFilter}"]`);
-  if (again) again.focus();
-});
-document.getElementById('pagePrev').addEventListener('click', () => { state.logPage -= 1; renderLogs(); });
-document.getElementById('pageNext').addEventListener('click', () => { state.logPage += 1; renderLogs(); });
-
 // 상단 내비게이션
-document.querySelectorAll('[data-nav]').forEach((b) => b.addEventListener('click', () => {
-  if (b.dataset.nav === 'monitor') return;
-  const name = b.textContent.trim();
-  const note = b.dataset.nav === 'connections' && state.role !== 'ADMIN' ? ' (변경은 ADMIN만 가능)' : '';
-  toast(`‘${name}’ 화면은 다음 단계에서 같은 스타일로 만듭니다${note}.`, 'info');
-}));
+document.querySelector('[data-nav="faults"]').addEventListener('click', () => toast('‘장애 주입’ 화면은 다음 단계에서 같은 스타일로 만듭니다.', 'info'));
 document.getElementById('logoutBtn').addEventListener('click', () => toast('로그아웃하면 로그인 화면으로 이동합니다 (데모).', 'info'));
 
 // 데모 컨트롤
@@ -1898,23 +1696,15 @@ document.getElementById('demoMode').addEventListener('change', (e) => {
   state.userTouchedMode = true;
   setMode(e.target.value);
 });
-document.getElementById('demoRole').addEventListener('change', (e) => {
-  if (e.target.name !== 'role') return;
-  state.role = e.target.value;
-  renderUser();
-  renderAlarms();
-});
 
 /* ===== 전체 렌더 ===== */
 const renderAll = () => {
   renderStatus();
-  renderUser();
   renderSummary();
   renderConnections();
   renderPlc();
   renderAlarms();
   buildDetail();
-  renderLogs();
   drawMap();
 };
 

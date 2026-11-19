@@ -284,7 +284,6 @@ ul, ol { padding: 0; list-style: none; }
   background: var(--surface-3); color: var(--text-1); font-size: var(--fs-xs); font-weight: var(--fw-bold);
 }
 .gnb-user-name { font-size: var(--fs-sm); font-weight: var(--fw-semibold); line-height: var(--lh-tight); white-space: nowrap; }
-.role-badge { font-family: var(--font-mono); font-size: 11px; font-weight: var(--fw-semibold); color: var(--accent); line-height: var(--lh-tight); white-space: nowrap; }
 
 
 /* ===== 화면 뼈대 (연결 설정) ===== */
@@ -298,12 +297,6 @@ a.gnb-tab { text-decoration: none; }
 .page-head-row .btn { margin-left: auto; }
 .page-title { font-size: var(--fs-xl); font-weight: var(--fw-bold); line-height: var(--lh-tight); }
 .page-desc { font-size: var(--fs-sm); color: var(--text-2); }
-.readonly-note {
-  display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3);
-  border-radius: var(--radius-md); background: #11253A; border: 1px solid #1E3F63; color: #CFE5FF; font-size: var(--fs-sm);
-}
-.readonly-note strong { font-weight: var(--fw-bold); }
-
 .workspace { display: grid; grid-template-columns: 440px minmax(0, 1fr); gap: 1px; min-height: 0; background: var(--line); }
 
 /* 연결 목록 */
@@ -563,6 +556,7 @@ select.input-lg {
     </div>
     <nav class="gnb-tabs" aria-label="주 메뉴">
       <a class="gnb-tab" href="monitor.html">관제</a>
+      <a class="gnb-tab" href="logs.html">이력</a>
       <a class="gnb-tab" href="connections.html" aria-current="page">연결 설정</a>
       <button type="button" class="gnb-tab" data-nav="faults">장애 주입</button>
     </nav>
@@ -571,11 +565,8 @@ select.input-lg {
       <span class="gnb-clock mono" id="clock">--:--:--</span>
       <span class="gnb-divider" aria-hidden="true"></span>
       <div class="gnb-user">
-        <span class="avatar" id="userAvatar" aria-hidden="true">박</span>
-        <div class="od-stack" style="--od-gap:0">
-          <span class="gnb-user-name" id="userName">박서연</span>
-          <span class="role-badge" id="userRole">ADMIN · 관리</span>
-        </div>
+        <span class="avatar" aria-hidden="true">김</span>
+        <span class="gnb-user-name">김도윤</span>
       </div>
       <button type="button" class="btn btn-ghost btn-sm" id="logoutBtn">
         <svg class="od-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l-5-5 5-5"/><path d="M5 12h11"/></svg>
@@ -596,7 +587,6 @@ select.input-lg {
         새 연결
       </button>
     </div>
-    <p class="readonly-note" id="readonlyNote" hidden></p>
   </section>
 
   <main class="workspace">
@@ -632,12 +622,6 @@ select.input-lg {
       <label class="demo-opt"><input type="radio" name="outcome" value="fail"><span>저장 후 연결 실패</span></label>
     </fieldset>
     <button type="button" class="demo-btn" id="demoInvalid">검증 실패 값 넣기 (400)</button>
-    <fieldset class="demo-group" id="demoRole">
-      <legend>역할</legend>
-      <label class="demo-opt"><input type="radio" name="role" value="VIEWER"><span>VIEWER</span></label>
-      <label class="demo-opt"><input type="radio" name="role" value="OPERATOR"><span>OPERATOR</span></label>
-      <label class="demo-opt"><input type="radio" name="role" value="ADMIN" checked><span>ADMIN</span></label>
-    </fieldset>
   </footer>
 </div>
 
@@ -665,11 +649,7 @@ const STOP_MS = 900;
 const NAME_MAX = 40;
 const VENDOR_LABEL = { A: '제조사 A', B: '제조사 B', C: '제조사 C', PLC: 'PLC' };
 const PROTOCOL_LABEL = { MQTT: 'MQTT', REST: 'REST', MODBUS_TCP: 'MODBUS_TCP' };
-const ROLE_INFO = {
-  VIEWER: { name: '이현수', label: '조회' },
-  OPERATOR: { name: '김도윤', label: '운영' },
-  ADMIN: { name: '박서연', label: '관리' },
-};
+const CURRENT_USER = '김도윤';
 const OTHER_EDITOR = '정하늘';
 
 /* ===== 유틸 ===== */
@@ -684,7 +664,6 @@ const ICON_PATHS = {
   info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><path d="M12 7.5v.5"/>',
   warn: '<path d="M12 3.5 2.8 19.5h18.4z"/><path d="M12 10v4.5"/><path d="M12 17.2v.3"/>',
   critical: '<path d="M8.2 3h7.6L21 8.2v7.6L15.8 21H8.2L3 15.8V8.2z"/><path d="M12 8v5"/><path d="M12 16v.3"/>',
-  lock: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
   unplug: '<path d="M4 20l4-4"/><path d="M20 4l-4 4"/><path d="M7 13l4 4"/><path d="M13 7l4 4"/><path d="M3 3l18 18"/>',
   trash: '<path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="M6 7l1 13h10l1-13"/>',
   refresh: '<path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/>',
@@ -744,7 +723,6 @@ const connById = (id) => conns.find((c) => c.id === id);
 
 /* ===== 화면 상태 ===== */
 const state = {
-  role: 'ADMIN',
   outcome: 'ok',
   selectedId: 'conn-a',
   mode: 'edit',            // edit | create
@@ -756,7 +734,6 @@ const state = {
   busy: false,
   flow: null,              // { phase, ... } 저장 진행·결과
 };
-const isReadOnly = () => state.role !== 'ADMIN';
 const selected = () => (state.mode === 'edit' ? connById(state.selectedId) : null);
 
 /* ===== 초안 ===== */
@@ -889,7 +866,6 @@ const devicesText = (c) => `${c.devices}대${c.note ? ` · ${c.note}` : ''}`;
 const renderList = () => {
   const up = conns.filter((c) => c.status === 'UP' && !c.phase).length;
   document.getElementById('listMeta').textContent = `${conns.length}개 · UP ${up}`;
-  const ro = isReadOnly();
   const draftRow = state.mode === 'create' ? `
     <li class="conn-row" data-draft="true" aria-current="true">
       <div class="conn-pick" style="cursor:default">
@@ -914,7 +890,7 @@ const renderList = () => {
         ${statusBadge(c)}
         <span class="switch-wrap">
           <span aria-hidden="true">${c.enabled ? '켬' : '끔'}</span>
-          <button type="button" class="switch" role="switch" data-toggle="${c.id}" aria-checked="${c.enabled}" aria-label="${esc(c.name)} enabled" ${ro || c.phase || (state.busy && c.id === state.selectedId) ? 'disabled' : ''}></button>
+          <button type="button" class="switch" role="switch" data-toggle="${c.id}" aria-checked="${c.enabled}" aria-label="${esc(c.name)} enabled" ${c.phase || (state.busy && c.id === state.selectedId) ? 'disabled' : ''}></button>
         </span>
       </div>
     </li>`;
@@ -938,7 +914,6 @@ const renderHead = () => {
     host.innerHTML = '<h2 class="editor-title" id="editorTitle" tabindex="-1">연결을 고르세요</h2>';
     return;
   }
-  const ro = isReadOnly();
   host.innerHTML = `
     <div class="od-stack" style="--od-gap:4px;min-width:0">
       <div class="editor-title-row">
@@ -954,7 +929,7 @@ const renderHead = () => {
         <div><dt>마지막 수정</dt><dd>${esc(c.updatedBy)} · ${fmtTime(c.updatedAt)}</dd></div>
       </dl>
     </div>
-    <button type="button" class="btn btn-danger" id="deleteBtn" ${ro || state.busy || c.phase ? 'disabled' : ''}>${icon('trash')}삭제</button>`;
+    <button type="button" class="btn btn-danger" id="deleteBtn" ${state.busy || c.phase ? 'disabled' : ''}>${icon('trash')}삭제</button>`;
 };
 
 /* ===== 렌더: 폼 ===== */
@@ -1019,7 +994,7 @@ const buildForm = () => {
         ${FIELDS[d.protocol].map((f) => fieldHtml(`cfg.${f.key}`, f)).join('')}
       </div>
     </section>`;
-  fs.disabled = isReadOnly() || state.busy;
+  fs.disabled = state.busy;
   activeKeys().forEach(renderFieldError);
 };
 
@@ -1105,13 +1080,12 @@ const renderFlow = () => {
 /* ===== 렌더: 하단 저장 바 ===== */
 const renderFoot = () => {
   const host = document.getElementById('editorFoot');
-  const ro = isReadOnly();
   if (state.mode === 'create') {
     host.innerHTML = `
       <div class="dirty"><span class="dirty-count">새 연결 작성 중</span><span class="foot-note">만들면 바로 연결을 시도합니다 · 다른 연결은 영향 없음</span></div>
       <div class="foot-actions">
         <button type="button" class="btn" data-foot="cancel" ${state.busy ? 'disabled' : ''}>취소</button>
-        <button type="button" class="btn btn-primary" data-foot="save" ${ro || state.busy ? 'disabled' : ''}>${state.busy ? '만드는 중…' : '연결 만들기'}</button>
+        <button type="button" class="btn btn-primary" data-foot="save" ${state.busy ? 'disabled' : ''}>${state.busy ? '만드는 중…' : '연결 만들기'}</button>
       </div>`;
     return;
   }
@@ -1123,26 +1097,12 @@ const renderFoot = () => {
   host.innerHTML = `
     <div class="dirty"><span class="dirty-count" data-dirty="${n > 0}">${summary}</span><span class="foot-note od-truncate">${esc(which)}</span></div>
     <div class="foot-actions">
-      ${ro ? `<span class="foot-note" style="align-self:center">${icon('lock')} ADMIN만 저장할 수 있습니다</span>` : ''}
-      <button type="button" class="btn" data-foot="revert" ${!n || ro || state.busy ? 'disabled' : ''}>되돌리기</button>
-      <button type="button" class="btn btn-primary" data-foot="save" ${!n || ro || state.busy ? 'disabled' : ''}>${state.flow && (state.flow.phase === 'saving') ? '저장 중…' : state.busy ? '재연결 중…' : '저장'}</button>
+      <button type="button" class="btn" data-foot="revert" ${!n || state.busy ? 'disabled' : ''}>되돌리기</button>
+      <button type="button" class="btn btn-primary" data-foot="save" ${!n || state.busy ? 'disabled' : ''}>${state.flow && (state.flow.phase === 'saving') ? '저장 중…' : state.busy ? '재연결 중…' : '저장'}</button>
     </div>`;
 };
 
-/* ===== 렌더: 역할 ===== */
-const renderRole = () => {
-  const info = ROLE_INFO[state.role];
-  document.getElementById('userName').textContent = info.name;
-  document.getElementById('userAvatar').textContent = info.name.slice(0, 1);
-  document.getElementById('userRole').textContent = `${state.role} · ${info.label}`;
-  const note = document.getElementById('readonlyNote');
-  note.hidden = !isReadOnly();
-  note.innerHTML = isReadOnly() ? `${icon('lock', 16)}<span><strong>읽기 전용</strong> · 연결 설정은 ADMIN만 바꿀 수 있습니다. 현재 역할 ${state.role}(${info.label})로는 내용을 볼 수만 있습니다.</span>` : '';
-  document.getElementById('newBtn').disabled = isReadOnly();
-};
-
 const renderAll = () => {
-  renderRole();
   renderList();
   renderHead();
   renderFlow();
@@ -1154,7 +1114,7 @@ const refreshChrome = () => {
   renderHead();
   renderFlow();
   renderFoot();
-  document.getElementById('formFs').disabled = isReadOnly() || state.busy;
+  document.getElementById('formFs').disabled = state.busy;
 };
 
 /* ===== 확인 대화상자 ===== */
@@ -1198,7 +1158,7 @@ const hasUnsaved = () => {
   return !!state.draft.name.trim() || Object.keys(cfg).some((k) => String(cfg[k]) !== String(defaults[k]));
 };
 const guardUnsaved = (proceed) => {
-  if (!hasUnsaved() || isReadOnly()) { proceed(); return; }
+  if (!hasUnsaved()) { proceed(); return; }
   openConfirm({
     title: '저장하지 않은 변경 사항이 있습니다',
     body: '<p>지금 이동하면 편집한 내용이 사라집니다. 저장하려면 취소를 누르고 저장하세요.</p>',
@@ -1229,7 +1189,7 @@ const selectConnection = (id) => {
   });
 };
 const startCreate = () => {
-  if (isReadOnly() || state.busy) return;
+  if (state.busy) return;
   guardUnsaved(() => {
     state.prevSelectedId = state.selectedId;
     state.mode = 'create';
@@ -1247,7 +1207,7 @@ const cancelCreate = () => {
 };
 
 /* ===== 저장 ===== */
-const nowName = () => ROLE_INFO[state.role].name;
+const nowName = () => CURRENT_USER;
 const draftToConfig = (d, prev) => {
   const out = {};
   FIELDS[d.protocol].forEach((f) => {
@@ -1267,7 +1227,7 @@ const failReason = (c) => {
 const focusFlowTitle = () => { const t = document.getElementById('flowTitle'); if (t) t.focus(); };
 
 const save = () => {
-  if (isReadOnly() || state.busy) return;
+  if (state.busy) return;
   if (state.mode === 'edit' && !changedKeys().length) return;
   state.busy = true;
   state.flow = { phase: 'saving' };
@@ -1399,7 +1359,7 @@ const startReconnect = (c, { created = false } = {}) => {
 /* ===== enabled 토글 ===== */
 const toggleEnabled = (id) => {
   const c = connById(id);
-  if (!c || isReadOnly() || c.phase) return;
+  if (!c || c.phase) return;
   const wasBase = state.mode === 'edit' && state.selectedId === id && state.draft.baseVersion === c.version;
   c.enabled = !c.enabled;
   c.version += 1;
@@ -1425,7 +1385,7 @@ const toggleEnabled = (id) => {
 /* ===== 삭제 ===== */
 const openDelete = () => {
   const c = selected();
-  if (!c || isReadOnly() || state.busy) return;
+  if (!c || state.busy) return;
   if (c.devices > 0 && !c.enabled) {
     openConfirm({
       title: '삭제할 수 없는 연결입니다',
@@ -1575,21 +1535,7 @@ document.getElementById('demoOutcome').addEventListener('change', (e) => {
   const label = { ok: '정상 → UP', conflict: '버전 충돌 409', fail: '저장 후 연결 실패' }[state.outcome];
   toast(`다음 저장 결과: ${label}`, 'info');
 });
-document.getElementById('demoRole').addEventListener('change', (e) => {
-  if (e.target.name !== 'role') return;
-  state.role = e.target.value;
-  if (isReadOnly() && state.mode === 'create') {
-    doSelect(state.prevSelectedId && connById(state.prevSelectedId) ? state.prevSelectedId : conns[0].id);
-    return;
-  }
-  if (isReadOnly() && state.mode === 'edit') {
-    state.draft = draftFromConn(selected());
-    resetEditorState();
-  }
-  renderAll();
-});
 document.getElementById('demoInvalid').addEventListener('click', () => {
-  if (isReadOnly()) { toast('ADMIN 역할에서만 편집할 수 있습니다. 역할을 ADMIN으로 바꿔 주세요.', 'warn'); return; }
   if (state.busy) return;
   const sample = INVALID_SAMPLE[state.draft.protocol];
   Object.entries(sample).forEach(([k, v]) => { cfgOf(state.draft)[k] = v; });
