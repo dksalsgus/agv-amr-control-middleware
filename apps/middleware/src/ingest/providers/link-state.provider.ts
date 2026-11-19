@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Inject } from "@nestjs/common";
 import { LogsRepository } from "../../history/logs.repository";
 import { LogLevel, LogType } from "../../log/log";
 import { LinkState, LinkStatus } from "../../state/link-state";
@@ -6,18 +6,15 @@ import { LinkStateRepository } from "../../state/link-state.repository";
 import { RemovedEntityRepository } from "../../state/removed-entity.repository";
 import { RevisionRepository } from "../../state/revision.repository";
 import { AppLogger } from "../../logger/app-logger";
+import { linkConfig } from "../../config/link.config";
+import { ConfigType } from "@nestjs/config";
 
 /** 연결 UP/DOWN 판정. 상태가 바뀔 때만 logs에 남긴다. */
 @Injectable()
 export class LinkStateProvider {
-  /** 폴링 연결은 이만큼 연속 실패하면 끊김으로 본다. */
-  private static readonly DOWN_AFTER_FAILURES = 3;
-
-  private static readonly MIN_RETRY_MS = 1000;
-
-  private static readonly MAX_RETRY_MS = 10000;
-
   constructor(
+    @Inject(linkConfig.KEY)
+    private readonly config: ConfigType<typeof linkConfig>,
     private readonly linkStateRepository: LinkStateRepository,
     private readonly logsRepository: LogsRepository,
     private readonly revisionRepository: RevisionRepository,
@@ -73,7 +70,7 @@ export class LinkStateProvider {
 
     if (
       state.status === "DOWN" ||
-      failureCount < LinkStateProvider.DOWN_AFTER_FAILURES
+      failureCount < this.config.downAfterFailures
     ) {
       await this.linkStateRepository.save(connectionId, {
         status: state.status,
@@ -112,11 +109,11 @@ export class LinkStateProvider {
 
     const retries = Math.max(
       0,
-      state.failureCount - LinkStateProvider.DOWN_AFTER_FAILURES,
+      state.failureCount - this.config.downAfterFailures,
     );
     return Math.min(
-      LinkStateProvider.MIN_RETRY_MS * 2 ** retries,
-      LinkStateProvider.MAX_RETRY_MS,
+      this.config.minRetryMs * 2 ** retries,
+      this.config.maxRetryMs,
     );
   }
 
