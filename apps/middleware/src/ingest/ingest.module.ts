@@ -18,6 +18,7 @@ import { IngestScheduler } from "./ingest.scheduler";
 import { IngestService } from "./ingest.service";
 import { PlcIngestService } from "./plc-ingest.service";
 import { IngestConnectionProvider } from "./providers/ingest-connection.provider";
+import { PollScheduleProvider } from "./providers/poll-schedule.provider";
 import { DeviceTransportProvider } from "./providers/device-transport.provider";
 import { HistoryQueueProvider } from "./providers/history-queue.provider";
 import { IngestMetricsProvider } from "./providers/ingest-metrics.provider";
@@ -63,6 +64,7 @@ import { RestClientRepository } from "./repositories/rest-client.repository";
     DeviceTransportProvider,
     LinkStateProvider,
     PlcEventProvider,
+    PollScheduleProvider,
     PlcPointStateProvider,
     RobotStateProvider,
     TelemetryProvider,

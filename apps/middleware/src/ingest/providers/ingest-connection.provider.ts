@@ -56,7 +56,6 @@ export class IngestConnectionProvider {
       id: row.id,
       vendorCode: row.vendors.code,
       protocol: row.protocol as ConnectionProtocol,
-      version: row.version,
       config: row.config,
       robots,
       plcDevices,

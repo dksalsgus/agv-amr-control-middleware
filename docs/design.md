@@ -125,7 +125,7 @@ sequenceDiagram
   API->>DB: version이 같으면 저장, version + 1
   API->>SC: reloadConnection(id) 호출
   SC->>DB: 그 연결 설정 확인
-  SC->>SC: version이 바뀌었으면 그 연결만 내리고 새 설정으로 붙임
+  SC->>SC: 그 연결만 내리고 새 설정으로 붙임
   API-->>W: 200 {version} (다르면 409)
   Note over W: 연결 상태 변화는 WebSocket delta의 links로 옴
   W->>API: POST /alarms/{id}/ack

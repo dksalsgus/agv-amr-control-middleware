@@ -156,7 +156,7 @@ export class ConnectionsService {
       `${entry.row.name} 연결 삭제 · ${user.username}`,
       user.sub,
     );
-    await this.connectionReloadService.reloadConnection(id);
+    await this.connectionReloadService.removeConnection(id);
   }
 
   /** 이력에 남길 바뀐 항목. 예: ["REST→MQTT", "접속 정보"] */

@@ -17,13 +17,26 @@ export class ConnectionReloadService {
     private readonly plcIngestService: PlcIngestService,
   ) {}
 
+  /** 추가하거나 고친 연결을 새 설정으로 다시 붙인다. 꺼졌으면 뗀다. */
   async reloadConnection(id: string): Promise<void> {
-    const queue = this.queues.get(id) ?? new SerialQueue();
-    this.queues.set(id, queue);
-
-    await queue.run(async () => {
+    await this.findQueue(id).run(async () => {
       await this.ingestService.reloadConnection(id);
       await this.plcIngestService.reloadConnection(id);
     });
+  }
+
+  /** 지운 연결을 뗀다. */
+  async removeConnection(id: string): Promise<void> {
+    await this.findQueue(id).run(async () => {
+      await this.ingestService.removeConnection(id);
+      await this.plcIngestService.removeConnection(id);
+    });
+    this.queues.delete(id);
+  }
+
+  private findQueue(id: string): SerialQueue {
+    const queue = this.queues.get(id) ?? new SerialQueue();
+    this.queues.set(id, queue);
+    return queue;
   }
 }
