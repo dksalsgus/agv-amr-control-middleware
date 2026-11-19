@@ -15,3 +15,7 @@ export const VENDOR_C_STEP_INTERVAL_MS = 1000;
 /** 차량 n의 레지스터 블록 시작 주소 = 100 + 16n (설계 문서 4장) */
 export const VENDOR_C_BASE_ADDRESS = 100;
 export const VENDOR_C_BLOCK_SIZE = 16;
+
+export const PLC_PORT = Number(process.env.PLC_PORT ?? 5021);
+export const PLC_STEP_INTERVAL_MS = 500;
+export const PLC_POINT_COUNT = 16;
