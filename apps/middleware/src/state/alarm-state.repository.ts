@@ -30,6 +30,17 @@ export class AlarmStateRepository {
     );
   }
 
+  /** 같은 알람이 아직 열려 있을 때만 바꾼다. 바꿨으면 true */
+  async replace(entry: AlarmEntry): Promise<boolean> {
+    const key = this.toKey(entry.code, entry.targetType, entry.targetId);
+    if (this.entries.get(key)?.id !== entry.id) {
+      return false;
+    }
+
+    this.entries.set(key, entry);
+    return true;
+  }
+
   async remove(entry: AlarmEntry): Promise<void> {
     this.entries.delete(
       this.toKey(entry.code, entry.targetType, entry.targetId),
