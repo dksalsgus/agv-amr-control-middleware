@@ -547,7 +547,7 @@ span.alarm-target { color: var(--text-1); cursor: default; text-decoration: none
       <a class="gnb-tab" href="monitor.html" aria-current="page">관제</a>
       <a class="gnb-tab" href="logs.html">이력</a>
       <a class="gnb-tab" href="connections.html">연결 설정</a>
-      <button type="button" class="gnb-tab" data-nav="faults">장애 주입</button>
+      <a class="gnb-tab" href="faults.html">장애 주입</a>
     </nav>
     <div class="gnb-end">
       <span class="live-pill" id="livePill" role="status"><span class="dot"></span><span id="livePillText">접속 중</span></span>
@@ -1687,8 +1687,7 @@ document.getElementById('alarmList').addEventListener('click', (e) => {
 });
 
 // 상단 내비게이션
-document.querySelector('[data-nav="faults"]').addEventListener('click', () => toast('‘장애 주입’ 화면은 다음 단계에서 같은 스타일로 만듭니다.', 'info'));
-document.getElementById('logoutBtn').addEventListener('click', () => toast('로그아웃하면 로그인 화면으로 이동합니다 (데모).', 'info'));
+document.getElementById('logoutBtn').addEventListener('click', () => { window.location.href = 'login.html'; });
 
 // 데모 컨트롤
 document.getElementById('demoMode').addEventListener('change', (e) => {
