@@ -12,7 +12,8 @@ export class Robot {
   private static readonly DRIVE_SPEED_M_S = 1;
   private static readonly BATTERY_DRAIN_PCT_PER_S = 0.05;
   private static readonly BATTERY_CHARGE_PCT_PER_S = 1;
-  private static readonly LOW_BATTERY_PCT = 20;
+  /** 관제의 배터리 부족 알람(20% 미만)보다 높게 두어, 충전소로 가는 동안 알람이 나지 않게 한다. */
+  private static readonly LOW_BATTERY_PCT = 30;
   private static readonly FULL_BATTERY_PCT = 100;
 
   seq = 0;

@@ -40,9 +40,9 @@ describe("Robot", () => {
     });
   });
 
-  it("배터리가 20% 아래로 내려가면 충전소까지 가서 충전한다", () => {
+  it("배터리가 30% 아래로 내려가면 충전소까지 가서 충전한다", () => {
     const robot = new Robot("A-001");
-    robot.batteryPct = 20.01;
+    robot.batteryPct = 30.01;
 
     Array.from({ length: 300 }).some(() => {
       robot.step(1);
@@ -55,6 +55,19 @@ describe("Robot", () => {
     expect(
       chargers.some((node) => node.x === robot.x && node.y === robot.y),
     ).toBe(true);
+  });
+
+  it("충전소에 닿을 때까지 배터리가 20% 아래로 내려가지 않는다", () => {
+    const robot = new Robot("A-001");
+    robot.batteryPct = 30.01;
+
+    Array.from({ length: 300 }).some(() => {
+      robot.step(1);
+      expect(robot.batteryPct).toBeGreaterThanOrEqual(20);
+      return robot.mode === "CHARGING";
+    });
+
+    expect(robot.mode).toBe("CHARGING");
   });
 
   it("충전이 끝나면 IDLE이 된다", () => {
