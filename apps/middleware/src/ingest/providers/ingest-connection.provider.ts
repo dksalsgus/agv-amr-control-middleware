@@ -10,7 +10,10 @@ import {
   DeviceRow,
 } from "./connection.types";
 
-/** 수집할 연결 목록을 읽어 로봇과 PLC 장비로 나눈다. */
+/**
+ * 수집할 연결 목록을 읽어 로봇과 PLC 장비로 나눈다.
+ * 한 연결에는 로봇과 PLC 중 한 종류만 붙는다고 본다. 로봇 연결은 IngestService, PLC 연결은 PlcIngestService가 맡는다.
+ */
 @Injectable()
 export class IngestConnectionProvider {
   constructor(
