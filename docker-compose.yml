@@ -28,6 +28,8 @@ services:
       DATABASE_URL: postgresql://middleware:middleware@postgres:5432/middleware
       PORT: "3000"
       JWT_SECRET: ${JWT_SECRET:-demo-secret-change-me}
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
     ports:
       - "3000:3000"
     depends_on:
@@ -35,6 +37,13 @@ services:
         condition: service_healthy
       mosquitto:
         condition: service_started
+      redis:
+        condition: service_started
+
+  redis:
+    image: redis:7.4-alpine
+    ports:
+      - "6379:6379"
 
   emulator:
     build:
