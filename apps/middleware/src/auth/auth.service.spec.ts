@@ -37,3 +37,27 @@ describe("AuthService.login", () => {
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
 });
+
+describe("AuthService.authenticate", () => {
+  const setup = (user: AuthUser | null) => {
+    const authTokenProvider = {
+      verify: jest.fn().mockResolvedValue(user),
+    } as unknown as AuthTokenProvider;
+    return new AuthService({} as AuthUserProvider, authTokenProvider);
+  };
+
+  it("토큰이 없거나 틀리면 401", async () => {
+    await expect(setup(null).authenticate(undefined)).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+    await expect(setup(null).authenticate("bad")).rejects.toBeInstanceOf(
+      UnauthorizedException,
+    );
+  });
+
+  it("맞는 토큰이면 사용자를 돌려준다", async () => {
+    const user: AuthUser = { sub: "u1", username: "viewer", role: "VIEWER" };
+
+    await expect(setup(user).authenticate("good")).resolves.toEqual(user);
+  });
+});

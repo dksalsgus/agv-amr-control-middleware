@@ -2,6 +2,7 @@ import { Inject, Injectable } from "@nestjs/common";
 import { ConfigType } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import { authConfig } from "../../config/auth.config";
+import { ROLE_CODES } from "../role";
 import { AuthUser } from "../auth.types";
 
 @Injectable()
@@ -17,6 +18,23 @@ export class AuthTokenProvider {
       { sub: user.sub, username: user.username, role: user.role },
       { secret: this.config.jwtSecret, expiresIn: this.config.tokenTtlSeconds },
     );
+  }
+
+  /** 서명이 틀렸거나 만료됐으면 null */
+  async verify(token: string): Promise<AuthUser | null> {
+    try {
+      const payload = await this.jwtService.verifyAsync<AuthUser>(token, {
+        secret: this.config.jwtSecret,
+      });
+      const role = ROLE_CODES.find((item) => item === payload.role);
+      if (!role) {
+        return null;
+      }
+
+      return { sub: payload.sub, username: payload.username, role };
+    } catch {
+      return null;
+    }
   }
 
   async getTtlSeconds(): Promise<number> {
