@@ -15,7 +15,12 @@ export class AuthUserProvider {
   ): Promise<AuthUser | null> {
     const row =
       await this.rolesUsersRepository.findByUsernameWithRole(username);
-    if (!row || !(await verify(row.password_hash, password))) {
+    if (!row) {
+      return null;
+    }
+
+    const isValidPassword = await verify(row.password_hash, password);
+    if (!isValidPassword) {
       return null;
     }
 
