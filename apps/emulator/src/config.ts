@@ -16,6 +16,8 @@ export const VENDOR_C_STEP_INTERVAL_MS = 1000;
 export const VENDOR_C_BASE_ADDRESS = 100;
 export const VENDOR_C_BLOCK_SIZE = 16;
 
+export const FAULT_PORT = Number(process.env.FAULT_PORT ?? 8090);
+
 export const PLC_PORT = Number(process.env.PLC_PORT ?? 5021);
 export const PLC_STEP_INTERVAL_MS = 500;
 export const PLC_POINT_COUNT = 16;

@@ -55,6 +55,7 @@ services:
       - "8081:8081"
       - "5020:5020"
       - "5021:5021"
+      - "8090:8090"
     depends_on:
       mosquitto:
         condition: service_started
