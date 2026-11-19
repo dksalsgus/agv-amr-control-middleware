@@ -20,9 +20,10 @@ import {
 import { RobotState } from "../state/robot-state";
 import { RobotStateProvider } from "./providers/robot-state.provider";
 import { SeqJudgeProvider } from "./providers/seq-judge.provider";
+import { TelemetryProvider } from "./providers/telemetry.provider";
 
 /**
- * 수집: 원본 수신 → 어댑터로 공통 모델 변환 → seq 판정 → 메모리 상태 반영.
+ * 수집: 원본 수신 → 어댑터로 공통 모델 변환 → seq 판정 → 메모리 상태 반영 → 이력 기록.
  */
 @Injectable()
 export class IngestService implements OnApplicationBootstrap {
@@ -35,6 +36,7 @@ export class IngestService implements OnApplicationBootstrap {
     private readonly mqttLinkProvider: MqttLinkProvider,
     private readonly robotStateProvider: RobotStateProvider,
     private readonly seqJudgeProvider: SeqJudgeProvider,
+    private readonly telemetryProvider: TelemetryProvider,
   ) {}
 
   async onApplicationBootstrap() {
@@ -42,8 +44,24 @@ export class IngestService implements OnApplicationBootstrap {
 
     for (const connection of connections) {
       this.robotStateProvider.registerDevices(connection.robots);
+    }
+
+    await this.restoreLatestStates();
+
+    for (const connection of connections) {
       this.startConnection(connection);
     }
+  }
+
+  /** 재시작 때 이력의 장비별 마지막 행으로 메모리 상태를 되살린다(설계 문서 5장). */
+  private async restoreLatestStates() {
+    const latestStates = await this.telemetryProvider.findLatestStates();
+
+    for (const latest of latestStates) {
+      this.robotStateProvider.apply(latest.deviceId, latest.state);
+    }
+
+    this.logger.log(`로봇 상태 ${latestStates.length}대 복구`);
   }
 
   private startConnection(connection: IngestConnection) {
@@ -99,10 +117,9 @@ export class IngestService implements OnApplicationBootstrap {
       return;
     }
 
-    this.robotStateProvider.apply(
-      entry.deviceId,
-      this.toState(reading, receivedTs),
-    );
+    const state = this.toState(reading, receivedTs);
+    this.robotStateProvider.apply(entry.deviceId, state);
+    this.telemetryProvider.record(entry.deviceId, state);
   }
 
   private toState(reading: RobotReading, receivedTs: Date): RobotState {
