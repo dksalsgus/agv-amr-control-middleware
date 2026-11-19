@@ -8,10 +8,8 @@ import {
   IsUUID,
   ValidateNested,
 } from "class-validator";
-import {
-  CONNECTION_PROTOCOLS,
-  ConnectionProtocol,
-} from "../../ingest/providers/connection.provider";
+import { CONNECTION_PROTOCOLS } from "../../ingest/providers/connection.constants";
+import { ConnectionProtocol } from "../../ingest/providers/connection.types";
 import {
   ModbusConfigDto,
   MqttConfigDto,

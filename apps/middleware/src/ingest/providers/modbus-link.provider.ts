@@ -1,33 +1,16 @@
 import { Injectable } from "@nestjs/common";
-import {
-  ModbusClientRepository,
-  ModbusTarget,
-} from "../repositories/modbus-client.repository";
-
-/** vendors_connections.config의 MODBUS_TCP 모양 */
-export type ModbusConnectionConfig = {
-  host: string;
-  port: number;
-  unitId: number;
-  pollIntervalMs: number;
-  baseAddress: number;
-  blockSize: number;
-};
-
-/** 한 번 읽은 결과. firstBlock부터 연속된 블록의 레지스터 */
-export type ModbusRawMessage = {
-  firstBlock: number;
-  blockSize: number;
-  registers: number[];
-};
-
-/** Modbus 한 요청의 레지스터 수 상한 */
-const MAX_REGISTERS_PER_READ = 125;
-const READ_TIMEOUT_MS = 800;
+import { ModbusClientRepository } from "../repositories/modbus-client.repository";
+import { ModbusTarget } from "../repositories/modbus-client.types";
+import { ModbusConnectionConfig, ModbusRawMessage } from "./modbus-link.types";
 
 /** 블록 단위로 폴링한다. 블록이 요청 사이에 쪼개지지 않아 차량 값과 seq가 어긋나지 않는다. */
 @Injectable()
 export class ModbusLinkProvider {
+  /** Modbus 한 요청의 레지스터 수 상한 */
+  private static readonly MAX_REGISTERS_PER_READ = 125;
+
+  private static readonly READ_TIMEOUT_MS = 800;
+
   constructor(
     private readonly modbusClientRepository: ModbusClientRepository,
   ) {}
@@ -44,7 +27,9 @@ export class ModbusLinkProvider {
 
     const firstBlock = blockNumbers.reduce((a, b) => Math.min(a, b));
     const lastBlock = blockNumbers.reduce((a, b) => Math.max(a, b));
-    const blocksPerRead = Math.floor(MAX_REGISTERS_PER_READ / config.blockSize);
+    const blocksPerRead = Math.floor(
+      ModbusLinkProvider.MAX_REGISTERS_PER_READ / config.blockSize,
+    );
     const readCount = Math.ceil((lastBlock - firstBlock + 1) / blocksPerRead);
     const starts = Array.from(
       { length: readCount },
@@ -103,7 +88,7 @@ export class ModbusLinkProvider {
       host: config.host,
       port: config.port,
       unitId: config.unitId,
-      timeoutMs: READ_TIMEOUT_MS,
+      timeoutMs: ModbusLinkProvider.READ_TIMEOUT_MS,
     };
   }
 }

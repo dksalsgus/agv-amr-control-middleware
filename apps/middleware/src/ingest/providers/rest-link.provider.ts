@@ -1,16 +1,7 @@
 import { Injectable } from "@nestjs/common";
-import {
-  RestClientRepository,
-  RestRawMessage,
-} from "../repositories/rest-client.repository";
-
-/** vendors_connections.config의 REST 모양 */
-export type RestConnectionConfig = {
-  baseUrl: string;
-  pollIntervalMs: number;
-  mode: "bulk" | "each";
-  timeoutMs: number;
-};
+import { RestClientRepository } from "../repositories/rest-client.repository";
+import { RestRawMessage } from "../repositories/rest-client.types";
+import { RestConnectionConfig } from "./rest-link.types";
 
 /** REST 장비를 한 번 폴링한다. bulk는 전체 목록 1회, each는 차량마다 1회. */
 @Injectable()

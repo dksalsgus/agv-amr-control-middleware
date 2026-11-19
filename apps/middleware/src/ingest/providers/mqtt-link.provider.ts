@@ -1,17 +1,7 @@
 import { Injectable } from "@nestjs/common";
-import {
-  MqttClientRepository,
-  MqttHandlers,
-} from "../repositories/mqtt-client.repository";
-
-/** vendors_connections.config의 MQTT 모양 */
-export type MqttConnectionConfig = {
-  url: string;
-  topicPattern: string;
-  qos: 0 | 1 | 2;
-  username: string | null;
-  password: string | null;
-};
+import { MqttClientRepository } from "../repositories/mqtt-client.repository";
+import { MqttHandlers } from "../repositories/mqtt-client.types";
+import { MqttConnectionConfig } from "./mqtt-link.types";
 
 /** MQTT 연결 설정으로 수신 핸들러를 등록한다. */
 @Injectable()

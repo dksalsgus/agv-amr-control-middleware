@@ -1,11 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { VendorsConnectionsDevicesPlcPointsEventsRepository } from "../../history/vendors-connections-devices-plc-points-events.repository";
-import { PlcPointValue } from "../../state/plc-point-state";
-
-export type PlcPointChange = {
-  pointId: string;
-  current: PlcPointValue;
-};
+import { PlcPointChange } from "./plc-event.types";
 
 /** PLC 점 이벤트 기록과 재시작 복구. 기록 실패는 밖으로 던지지 않는다. */
 @Injectable()

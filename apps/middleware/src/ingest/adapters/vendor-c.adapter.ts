@@ -1,16 +1,8 @@
 import { Injectable } from "@nestjs/common";
 import { toInt16, toUint32, toUint48 } from "../../common/utils/register.util";
 import { RobotOpState } from "../../state/robot-state";
-import { ModbusRawMessage } from "../providers/modbus-link.provider";
+import { ModbusRawMessage } from "../providers/modbus-link.types";
 import { RobotReading, VendorAdapter } from "./vendor-adapter";
-
-const OP_STATE_BY_CODE: RobotOpState[] = [
-  "IDLE",
-  "MOVING",
-  "CHARGING",
-  "PAUSED",
-  "ERROR",
-];
 
 /**
  * 제조사 C: 차량당 레지스터 16개
@@ -19,6 +11,14 @@ const OP_STATE_BY_CODE: RobotOpState[] = [
  */
 @Injectable()
 export class VendorCAdapter implements VendorAdapter<ModbusRawMessage> {
+  private static readonly OP_STATE_BY_CODE: RobotOpState[] = [
+    "IDLE",
+    "MOVING",
+    "CHARGING",
+    "PAUSED",
+    "ERROR",
+  ];
+
   readonly vendorCode = "VENDOR_C";
 
   async toCommon(raw: ModbusRawMessage): Promise<RobotReading[]> {
@@ -50,7 +50,7 @@ export class VendorCAdapter implements VendorAdapter<ModbusRawMessage> {
       theta: block[7] / 10,
       speed: block[8] / 100,
       batteryPct: block[9],
-      opState: OP_STATE_BY_CODE[block[10]] ?? "ERROR",
+      opState: VendorCAdapter.OP_STATE_BY_CODE[block[10]] ?? "ERROR",
       errorCode: errorCode === 0 ? null : String(errorCode),
       loaded: (block[12] & 1) === 1,
     };

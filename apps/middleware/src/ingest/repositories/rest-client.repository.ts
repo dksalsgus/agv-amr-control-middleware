@@ -1,8 +1,5 @@
 import { Injectable } from "@nestjs/common";
-
-export type RestRawMessage = {
-  body: unknown;
-};
+import { RestRawMessage } from "./rest-client.types";
 
 /** REST GET. 제한 시간을 넘기면 예외 */
 @Injectable()
