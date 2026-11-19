@@ -6,14 +6,22 @@ import {
 } from "../config";
 import { FaultSettings } from "../faults/fault-settings";
 import { RobotFleet } from "../simulation/robot-fleet";
-import { VendorAPublisher } from "./vendor-a-publisher";
+import { FleetMqttPublisher } from "../common/mqtt/fleet-mqtt-publisher";
+import { VendorAPayloadBuilder } from "./vendor-a-payload";
 
 export class VendorAEmulator {
   private readonly fleet = new RobotFleet("A", VENDOR_A_ROBOT_COUNT);
-  private readonly publisher: VendorAPublisher;
+  private readonly publisher: FleetMqttPublisher;
 
   constructor(private readonly faults: FaultSettings) {
-    this.publisher = new VendorAPublisher(MQTT_URL, this.fleet, faults);
+    this.publisher = new FleetMqttPublisher(
+      MQTT_URL,
+      "emulator-vendor-a",
+      "A",
+      this.fleet,
+      faults,
+      new VendorAPayloadBuilder(),
+    );
   }
 
   async start() {

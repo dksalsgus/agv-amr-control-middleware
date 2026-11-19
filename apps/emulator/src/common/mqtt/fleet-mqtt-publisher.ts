@@ -1,28 +1,39 @@
 import mqtt, { MqttClient } from "mqtt";
-import { rollPct } from "../common/utils/chance.util";
-import { FaultSettings } from "../faults/fault-settings";
-import { RobotFleet } from "../simulation/robot-fleet";
-import { VendorAPayloadBuilder } from "./vendor-a-payload";
-import { Logger } from "../common/logger/logger";
+import { rollPct } from "../utils/chance.util";
+import { FaultSettings } from "../../faults/fault-settings";
+import { FaultGroup } from "../../faults/fault.types";
+import { Robot } from "../../simulation/robot";
+import { RobotFleet } from "../../simulation/robot-fleet";
+import { Logger } from "../logger/logger";
 
-/** 제조사 A 상태를 MQTT로 발행한다(QoS 1, retain 없음). */
-export class VendorAPublisher {
+/** 로봇 한 대를 MQTT 토픽과 본문으로 만드는 제조사별 형식 */
+export type FleetPayloadBuilder = {
+  topic(robot: Robot): string;
+  build(robot: Robot, now: Date): object;
+};
+
+/** 로봇 묶음의 상태를 MQTT로 발행한다(QoS 1, retain 없음). 장애는 group 설정을 따른다. */
+export class FleetMqttPublisher {
   /** 뒤바뀐 메시지는 다음 주기 발행(1초 뒤)보다 늦게 나가도록 이만큼 더 늦춘다. */
   private static readonly REORDER_EXTRA_DELAY_MS = 1500;
 
-  private readonly logger = new Logger("vendor-a");
-  private readonly payloadBuilder = new VendorAPayloadBuilder();
+  private readonly logger: Logger;
   private client: MqttClient | null = null;
 
   constructor(
     private readonly url: string,
+    private readonly clientId: string,
+    private readonly group: FaultGroup,
     private readonly fleet: RobotFleet,
     private readonly faults: FaultSettings,
-  ) {}
+    private readonly payloadBuilder: FleetPayloadBuilder,
+  ) {
+    this.logger = new Logger(clientId);
+  }
 
   connect() {
     this.client = mqtt.connect(this.url, {
-      clientId: "emulator-vendor-a",
+      clientId: this.clientId,
       reconnectPeriod: 1000,
     });
 
@@ -37,7 +48,7 @@ export class VendorAPublisher {
    */
   async publishAll() {
     const client = this.client;
-    const fault = this.faults.get("A");
+    const fault = this.faults.get(this.group);
     if (!client?.connected || fault.disconnected) {
       return;
     }
@@ -54,7 +65,7 @@ export class VendorAPublisher {
       const isReordered = rollPct(fault.reorderPct);
       const delayMs =
         fault.delayMs +
-        (isReordered ? VendorAPublisher.REORDER_EXTRA_DELAY_MS : 0);
+        (isReordered ? FleetMqttPublisher.REORDER_EXTRA_DELAY_MS : 0);
       publishing.push(this.publish(client, topic, payload, delayMs));
       if (rollPct(fault.duplicatePct)) {
         publishing.push(this.publish(client, topic, payload, delayMs));
