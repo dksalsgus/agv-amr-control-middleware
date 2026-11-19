@@ -47,4 +47,16 @@ export class VendorsConnectionsDevicesTelemetryRepository {
 
     return { rows, total };
   }
+
+  /** received_ts가 cutoff보다 오래된 행을 batchSize개까지 지우고 지운 수를 돌려준다. */
+  async deleteOlderThan(cutoff: Date, batchSize: number): Promise<number> {
+    return await this.prisma.$executeRaw`
+      DELETE FROM vendors_connections_devices_telemetry
+      WHERE id IN (
+        SELECT id FROM vendors_connections_devices_telemetry
+        WHERE received_ts < ${cutoff}
+        LIMIT ${batchSize}
+      )
+    `;
+  }
 }

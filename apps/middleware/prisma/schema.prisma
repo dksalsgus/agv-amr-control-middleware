@@ -73,6 +73,8 @@ model vendors_connections_devices_telemetry {
   vendors_connections_devices vendors_connections_devices @relation(fields: [vendors_connections_devices_id], references: [id])
 
   @@index([vendors_connections_devices_id, source_ts(sort: Desc)])
+  /// 보관 기간이 지난 행을 지울 때 쓴다.
+  @@index([received_ts])
 }
 
 /// PLC 16점의 의미.
@@ -107,6 +109,8 @@ model vendors_connections_devices_plc_points_events {
   vendors_connections_devices_plc_points vendors_connections_devices_plc_points @relation(fields: [vendors_connections_devices_plc_points_id], references: [id])
 
   @@index([vendors_connections_devices_plc_points_id, source_ts(sort: Desc)])
+  /// 보관 기간이 지난 행을 지울 때 쓴다.
+  @@index([received_ts])
 }
 
 /// 연결 기록과 알람을 쌓는 시스템 로그. 추가만 한다.
