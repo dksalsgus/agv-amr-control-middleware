@@ -99,7 +99,8 @@ export class IngestService {
     const now = Date.now();
     for (const [connectionId, receivedAt] of this.lastReceivedAt) {
       const connection = this.connections.get(connectionId);
-      if (connection && now - receivedAt > this.config.pushSilenceMs) {
+      const isPushSilent = now - receivedAt > this.config.pushSilenceMs;
+      if (connection && isPushSilent) {
         await this.linkStateProvider.markDown(
           connectionId,
           this.toLabel(connection),

@@ -48,7 +48,9 @@ export class Robot {
   }
 
   private drive(dtSec: number) {
-    if (this.batteryPct < Robot.LOW_BATTERY_PCT && !this.headingToCharger) {
+    const shouldGoCharge =
+      this.batteryPct < Robot.LOW_BATTERY_PCT && !this.headingToCharger;
+    if (shouldGoCharge) {
       this.routeToCharger();
     }
 

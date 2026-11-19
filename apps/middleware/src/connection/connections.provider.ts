@@ -109,10 +109,10 @@ export class ConnectionsProvider {
   }
 
   private throwIfDuplicateName(error: unknown, name: string | undefined): void {
-    if (
+    const isDuplicateName =
       error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === "P2002"
-    ) {
+      error.code === "P2002";
+    if (isDuplicateName) {
       throw new ConflictException(`이미 있는 연결 이름입니다: ${name}`);
     }
   }
