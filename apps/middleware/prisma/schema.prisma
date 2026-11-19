@@ -100,3 +100,16 @@ model vendors_connections_devices_plc_points_events {
 
   @@index([vendors_connections_devices_plc_points_id, source_ts(sort: Desc)])
 }
+
+/// 연결 기록과 알람을 쌓는 시스템 로그. 추가만 한다.
+model logs {
+  id          BigInt   @id @default(autoincrement())
+  type        String   @db.VarChar(20)
+  level       String   @db.VarChar(10)
+  target_type String   @db.VarChar(20)
+  target_id   String   @db.Uuid
+  message     String
+  created_at  DateTime @default(now()) @db.Timestamptz
+
+  @@index([created_at(sort: Desc)])
+}
