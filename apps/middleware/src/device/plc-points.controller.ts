@@ -1,4 +1,5 @@
 import { Controller, Get, Param, Query } from "@nestjs/common";
+import { ApiResult } from "../common/dto/api-result";
 import {
   GetPlcPointEventsParamDto,
   GetPlcPointEventsQueryDto,
@@ -12,15 +13,17 @@ export class PlcPointsController {
   constructor(private readonly plcPointsService: PlcPointsService) {}
 
   @Get()
-  getPlcPoints(): GetPlcPointsResponseDto {
-    return this.plcPointsService.getPlcPoints();
+  getPlcPoints(): ApiResult<GetPlcPointsResponseDto> {
+    const response = this.plcPointsService.getPlcPoints();
+    return ApiResult.ofSuccess(response);
   }
 
   @Get(":id/events")
-  getPlcPointEvents(
+  async getPlcPointEvents(
     @Param() param: GetPlcPointEventsParamDto,
     @Query() query: GetPlcPointEventsQueryDto,
-  ): Promise<GetPlcPointEventsResponseDto> {
-    return this.plcPointsService.getEvents(param.id, query);
+  ): Promise<ApiResult<GetPlcPointEventsResponseDto>> {
+    const response = await this.plcPointsService.getEvents(param.id, query);
+    return ApiResult.ofSuccess(response);
   }
 }
