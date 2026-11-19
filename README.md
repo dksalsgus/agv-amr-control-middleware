@@ -45,6 +45,9 @@ curl http://localhost:3000/robots/{id}
 curl http://localhost:3000/plc-points
 curl "http://localhost:3000/plc-points/{id}/events?page=1&size=100"
 
+# 연결 목록과 연결 상태(UP, DOWN, UNKNOWN)
+curl http://localhost:3000/connections
+
 # 시스템 로그 (연결 끊김·복구 등, 최신 순, type으로 거를 수 있다)
 curl "http://localhost:3000/logs?type=LINK_DOWN&page=1&size=100"
 
