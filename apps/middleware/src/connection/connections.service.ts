@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import { VENDOR_PROTOCOLS } from "../ingest/providers/connection.constants";
 import { ConnectionsProvider } from "./connections.provider";
 import { ConnectionWithLink } from "./connections.types";
 import { GetConnectionResponseDto } from "./dto/get-connection.response.dto";
@@ -66,14 +67,21 @@ export class ConnectionsService {
       throw new NotFoundException(`연결이 없습니다: ${id}`);
     }
 
-    const config = this.resolveConfig(
-      entry.row.protocol,
-      request,
-      entry.row.config,
-    );
+    const protocol = request.protocol ?? entry.row.protocol;
+    this.checkVendorProtocol(entry.row.vendors, protocol);
+
+    const config = this.resolveConfig(protocol, request, entry.row.config);
+    const isProtocolChanged = protocol !== entry.row.protocol;
+    if (isProtocolChanged && !config) {
+      throw new BadRequestException(
+        `프로토콜을 ${protocol}(으)로 바꾸려면 그 config도 보내야 합니다.`,
+      );
+    }
+
     const updated = await this.connectionsProvider.update(id, request.version, {
       name: request.name,
       enabled: request.enabled,
+      protocol: isProtocolChanged ? protocol : undefined,
       config,
     });
     if (!updated) {
@@ -88,6 +96,9 @@ export class ConnectionsService {
   async postConnection(
     request: PostConnectionRequestDto,
   ): Promise<PostConnectionResponseDto> {
+    const vendor = await this.connectionsProvider.findVendor(request.vendorId);
+    this.checkVendorProtocol(vendor, request.protocol);
+
     const config = this.resolveConfig(request.protocol, request, {});
     if (!config) {
       throw new BadRequestException(
@@ -118,6 +129,21 @@ export class ConnectionsService {
     }
 
     await this.connectionsProvider.delete(id);
+  }
+
+  /** 장비가 보내지 않거나 어댑터가 읽지 못하는 프로토콜이면 400 */
+  private checkVendorProtocol(
+    vendor: { code: string; name: string },
+    protocol: string,
+  ): void {
+    const supported: readonly string[] = VENDOR_PROTOCOLS[vendor.code] ?? [];
+    if (supported.includes(protocol)) {
+      return;
+    }
+
+    throw new BadRequestException(
+      `${vendor.name} 장비는 ${protocol} 연결을 지원하지 않습니다. 지원: ${supported.join(", ") || "없음"}`,
+    );
   }
 
   /** 보낸 config가 protocol과 맞는지 확인하고 저장할 모양으로 만든다. */

@@ -116,10 +116,10 @@ export class IngestService {
       .map((connection) => connection.id);
   }
 
-  /** 한 번 폴링하고 다음 폴링까지 기다릴 ms를 돌려준다. 연결이 없으면 null. */
+  /** 한 번 폴링하고 다음 폴링까지 기다릴 ms를 돌려준다. 연결이 없거나 MQTT로 바뀌었으면 null. */
   async poll(connectionId: string): Promise<number | null> {
     const connection = this.connections.get(connectionId);
-    if (!connection) {
+    if (!connection || connection.protocol === "MQTT") {
       return null;
     }
 
@@ -152,7 +152,6 @@ export class IngestService {
   private async close(connection: IngestConnection): Promise<void> {
     this.connections.delete(connection.id);
     this.queues.delete(connection.id);
-    this.lastReceivedAt.delete(connection.id);
     await this.stopLink(connection);
     await this.robotStateProvider.unregisterDevices(connection.robots);
     await this.linkStateProvider.unregister(connection.id);
@@ -173,6 +172,7 @@ export class IngestService {
 
   private async stopLink(connection: IngestConnection): Promise<void> {
     if (connection.protocol === "MQTT") {
+      this.lastReceivedAt.delete(connection.id);
       await this.mqttLinkProvider.stop(connection.id);
     } else if (connection.protocol === "MODBUS_TCP") {
       await this.modbusLinkProvider.disconnect(connection.id);

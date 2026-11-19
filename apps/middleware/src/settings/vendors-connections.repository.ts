@@ -46,6 +46,7 @@ export class VendorsConnectionsRepository {
       data: {
         name: data.name,
         enabled: data.enabled,
+        protocol: data.protocol,
         config: data.config,
         version: { increment: 1 },
       },
