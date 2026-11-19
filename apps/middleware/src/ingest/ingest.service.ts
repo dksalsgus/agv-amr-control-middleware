@@ -9,7 +9,7 @@ import {
   VENDOR_ADAPTERS,
   VendorAdapter,
 } from "./adapters/vendor-adapter";
-import { ConnectionProvider } from "./providers/connection.provider";
+import { IngestConnectionProvider } from "./providers/ingest-connection.provider";
 import { DeviceTransportProvider } from "./providers/device-transport.provider";
 import { IngestConnection } from "./providers/connection.types";
 import { RobotStateProvider } from "./providers/robot-state.provider";
@@ -33,7 +33,7 @@ export class IngestService {
     private readonly config: ConfigType<typeof ingestConfig>,
     @Inject(VENDOR_ADAPTERS)
     private readonly adapters: VendorAdapter<unknown>[],
-    private readonly connectionProvider: ConnectionProvider,
+    private readonly ingestConnectionProvider: IngestConnectionProvider,
     private readonly deviceTransportProvider: DeviceTransportProvider,
     private readonly robotStateProvider: RobotStateProvider,
     private readonly telemetryProvider: TelemetryProvider,
@@ -129,7 +129,8 @@ export class IngestService {
   }
 
   private async loadConnections(): Promise<IngestConnection[]> {
-    const connections = await this.connectionProvider.findEnabledConnections();
+    const connections =
+      await this.ingestConnectionProvider.findEnabledConnections();
     return connections.filter((connection) => connection.robots.length > 0);
   }
 
