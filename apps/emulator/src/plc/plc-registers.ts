@@ -9,11 +9,10 @@ export class PlcRegisterEncoder {
   encode(plc: PlcSimulator, sampledAt: Date): number[] {
     const ms = sampledAt.getTime();
 
-    return [
-      this.toWord(plc.points),
-      ...toUint32Words(plc.seq),
-      ...toUint48Words(ms),
-    ];
+    return [this.toWord(plc.points)].concat(
+      toUint32Words(plc.seq),
+      toUint48Words(ms),
+    );
   }
 
   private toWord(points: boolean[]): number {
