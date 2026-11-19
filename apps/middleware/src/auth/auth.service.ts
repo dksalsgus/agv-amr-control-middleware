@@ -40,7 +40,7 @@ export class AuthService {
       accessToken: await this.authTokenProvider.sign(user),
       expiresIn: await this.authTokenProvider.getTtlSeconds(),
       username: user.username,
-      role: user.role,
+      roles: user.roles,
     };
   }
 }

@@ -11,7 +11,7 @@ export class AuthApi {
     const session: LoginSession = {
       accessToken: response.accessToken,
       username: response.username,
-      role: response.role,
+      roles: response.roles,
       expiresAt: Date.now() + response.expiresIn * 1000,
     };
     tokenStorage.save(session);

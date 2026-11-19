@@ -17,7 +17,7 @@ describe("AuthService.login", () => {
   };
 
   it("맞는 계정이면 토큰과 역할을 준다", async () => {
-    const service = setup({ sub: "u1", username: "admin", role: "ADMIN" });
+    const service = setup({ sub: "u1", username: "admin", roles: ["ADMIN"] });
 
     await expect(
       service.login({ username: "admin", password: "admin1234" }),
@@ -25,7 +25,7 @@ describe("AuthService.login", () => {
       accessToken: "token",
       expiresIn: 60,
       username: "admin",
-      role: "ADMIN",
+      roles: ["ADMIN"],
     });
   });
 
@@ -56,7 +56,7 @@ describe("AuthService.authenticate", () => {
   });
 
   it("맞는 토큰이면 사용자를 돌려준다", async () => {
-    const user: AuthUser = { sub: "u1", username: "viewer", role: "VIEWER" };
+    const user: AuthUser = { sub: "u1", username: "viewer", roles: ["VIEWER"] };
 
     await expect(setup(user).authenticate("good")).resolves.toEqual(user);
   });

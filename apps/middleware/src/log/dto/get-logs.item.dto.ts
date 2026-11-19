@@ -7,6 +7,6 @@ export class GetLogsItemDto {
   targetId!: string;
   message!: string;
   /** 알람을 확인하거나 연결 설정을 바꾼 사용자. ALARM_ACKED, CONFIG_CHANGED일 때만 */
-  rolesUsersId!: string | null;
+  usersId!: string | null;
   createdAt!: string;
 }

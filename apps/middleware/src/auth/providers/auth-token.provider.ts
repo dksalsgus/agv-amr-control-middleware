@@ -15,7 +15,7 @@ export class AuthTokenProvider {
 
   async sign(user: AuthUser): Promise<string> {
     return await this.jwtService.signAsync(
-      { sub: user.sub, username: user.username, role: user.role },
+      { sub: user.sub, username: user.username, roles: user.roles },
       { secret: this.config.jwtSecret, expiresIn: this.config.tokenTtlSeconds },
     );
   }
@@ -26,12 +26,18 @@ export class AuthTokenProvider {
       const payload = await this.jwtService.verifyAsync<AuthUser>(token, {
         secret: this.config.jwtSecret,
       });
-      const role = ROLE_CODES.find((item) => item === payload.role);
-      if (!role) {
+      const isValidRoles =
+        Array.isArray(payload.roles) &&
+        payload.roles.every((role) => ROLE_CODES.includes(role));
+      if (!isValidRoles) {
         return null;
       }
 
-      return { sub: payload.sub, username: payload.username, role };
+      return {
+        sub: payload.sub,
+        username: payload.username,
+        roles: payload.roles,
+      };
     } catch {
       return null;
     }

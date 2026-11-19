@@ -118,7 +118,7 @@ export class ConnectionsProvider {
   async writeChangeLog(
     connectionId: string,
     message: string,
-    rolesUsersId: string,
+    usersId: string,
   ): Promise<void> {
     this.logger.log(message);
 
@@ -129,7 +129,7 @@ export class ConnectionsProvider {
         target_type: "CONNECTION",
         target_id: connectionId,
         message,
-        roles_users_id: rolesUsersId,
+        users_id: usersId,
       });
     } catch (error) {
       this.logger.warn(`로그 기록 실패: ${String(error)}`);

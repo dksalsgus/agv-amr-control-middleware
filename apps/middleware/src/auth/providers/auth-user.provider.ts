@@ -1,20 +1,19 @@
 import { Injectable } from "@nestjs/common";
 import { verify } from "argon2";
-import { RolesUsersRepository } from "../../settings/roles-users.repository";
+import { UsersRepository } from "../../settings/users.repository";
 import { ROLE_CODES, RoleCode } from "../role";
 import { AuthUser } from "../auth.types";
 
 @Injectable()
 export class AuthUserProvider {
-  constructor(private readonly rolesUsersRepository: RolesUsersRepository) {}
+  constructor(private readonly usersRepository: UsersRepository) {}
 
   /** 아이디가 없거나 비밀번호가 틀리면 null */
   async findByCredentials(
     username: string,
     password: string,
   ): Promise<AuthUser | null> {
-    const row =
-      await this.rolesUsersRepository.findByUsernameWithRole(username);
+    const row = await this.usersRepository.findByUsernameWithRoles(username);
     if (!row) {
       return null;
     }
@@ -27,7 +26,7 @@ export class AuthUserProvider {
     return {
       sub: row.id,
       username: row.username,
-      role: this.toRole(row.roles.code),
+      roles: row.user_roles.map((userRole) => this.toRole(userRole.roles.code)),
     };
   }
 

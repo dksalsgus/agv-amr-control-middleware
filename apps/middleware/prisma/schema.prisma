@@ -13,6 +13,7 @@ model vendors {
   code       String   @unique
   name       String
   created_at DateTime @default(now()) @db.Timestamptz
+  updated_at DateTime @default(now()) @updatedAt @db.Timestamptz
 
   vendors_connections vendors_connections[]
 }
@@ -42,6 +43,7 @@ model vendors_connections_devices {
   name                   String
   enabled                Boolean  @default(true)
   created_at             DateTime @default(now()) @db.Timestamptz
+  updated_at             DateTime @default(now()) @updatedAt @db.Timestamptz
 
   vendors_connections                    vendors_connections                      @relation(fields: [vendors_connections_id], references: [id])
   vendors_connections_devices_telemetry  vendors_connections_devices_telemetry[]
@@ -65,6 +67,8 @@ model vendors_connections_devices_telemetry {
   op_state                       String   @db.VarChar(20)
   error_code                     String?
   loaded                         Boolean
+  created_at                     DateTime @default(now()) @db.Timestamptz
+  updated_at                     DateTime @default(now()) @updatedAt @db.Timestamptz
 
   vendors_connections_devices vendors_connections_devices @relation(fields: [vendors_connections_devices_id], references: [id])
 
@@ -73,13 +77,15 @@ model vendors_connections_devices_telemetry {
 
 /// PLC 16점의 의미.
 model vendors_connections_devices_plc_points {
-  id                             String  @id @default(uuid()) @db.Uuid
-  vendors_connections_devices_id String  @db.Uuid
-  point_no                       Int     @db.SmallInt
+  id                             String   @id @default(uuid()) @db.Uuid
+  vendors_connections_devices_id String   @db.Uuid
+  point_no                       Int      @db.SmallInt
   name                           String
-  type                           String  @db.VarChar(20)
+  type                           String   @db.VarChar(20)
   normal_value                   Boolean
-  alarm_on_abnormal              Boolean @default(false)
+  alarm_on_abnormal              Boolean  @default(false)
+  created_at                     DateTime @default(now()) @db.Timestamptz
+  updated_at                     DateTime @default(now()) @updatedAt @db.Timestamptz
 
   vendors_connections_devices                   vendors_connections_devices                     @relation(fields: [vendors_connections_devices_id], references: [id])
   vendors_connections_devices_plc_points_events vendors_connections_devices_plc_points_events[]
@@ -95,6 +101,8 @@ model vendors_connections_devices_plc_points_events {
   seq                                       BigInt
   source_ts                                 DateTime @db.Timestamptz
   received_ts                               DateTime @db.Timestamptz
+  created_at                                DateTime @default(now()) @db.Timestamptz
+  updated_at                                DateTime @default(now()) @updatedAt @db.Timestamptz
 
   vendors_connections_devices_plc_points vendors_connections_devices_plc_points @relation(fields: [vendors_connections_devices_plc_points_id], references: [id])
 
@@ -103,18 +111,19 @@ model vendors_connections_devices_plc_points_events {
 
 /// 연결 기록과 알람을 쌓는 시스템 로그. 추가만 한다.
 model logs {
-  id             BigInt   @id @default(autoincrement())
-  type           String   @db.VarChar(20)
-  level          String   @db.VarChar(10)
-  alarm_code     String?  @db.VarChar(20)
-  target_type    String   @db.VarChar(20)
-  target_id      String   @db.Uuid
-  message        String
+  id          BigInt   @id @default(autoincrement())
+  type        String   @db.VarChar(20)
+  level       String   @db.VarChar(10)
+  alarm_code  String?  @db.VarChar(20)
+  target_type String   @db.VarChar(20)
+  target_id   String   @db.Uuid
+  message     String
   /// 알람을 확인하거나 연결 설정을 바꾼 사용자. ALARM_ACKED, CONFIG_CHANGED일 때만
-  roles_users_id String?  @db.Uuid
-  created_at     DateTime @default(now()) @db.Timestamptz
+  users_id    String?  @db.Uuid
+  created_at  DateTime @default(now()) @db.Timestamptz
+  updated_at  DateTime @default(now()) @updatedAt @db.Timestamptz
 
-  roles_users roles_users? @relation(fields: [roles_users_id], references: [id])
+  users users? @relation(fields: [users_id], references: [id])
 
   @@index([created_at(sort: Desc)])
   @@index([target_type, target_id, created_at(sort: Desc)])
@@ -126,18 +135,32 @@ model roles {
   code       String   @unique @db.VarChar(20)
   name       String
   created_at DateTime @default(now()) @db.Timestamptz
+  updated_at DateTime @default(now()) @updatedAt @db.Timestamptz
 
-  roles_users roles_users[]
+  user_roles user_roles[]
 }
 
-/// 데모 계정. password_hash는 argon2id
-model roles_users {
+/// 데모 계정. password_hash는 argon2id. 역할은 user_roles로 잇는다.
+model users {
   id            String   @id @default(uuid()) @db.Uuid
-  roles_id      String   @db.Uuid
   username      String   @unique
   password_hash String
   created_at    DateTime @default(now()) @db.Timestamptz
+  updated_at    DateTime @default(now()) @updatedAt @db.Timestamptz
 
-  roles roles  @relation(fields: [roles_id], references: [id])
-  logs  logs[]
+  user_roles user_roles[]
+  logs       logs[]
+}
+
+/// 사용자와 역할의 매핑. 한 사용자가 여러 역할을 가질 수 있다.
+model user_roles {
+  users_id   String   @db.Uuid
+  roles_id   String   @db.Uuid
+  created_at DateTime @default(now()) @db.Timestamptz
+  updated_at DateTime @default(now()) @updatedAt @db.Timestamptz
+
+  users users @relation(fields: [users_id], references: [id])
+  roles roles @relation(fields: [roles_id], references: [id])
+
+  @@id([users_id, roles_id])
 }
