@@ -37,7 +37,7 @@ export class MqttClientRepository implements OnModuleDestroy {
       await this.handleConnect(client, connectionId, options);
     });
     client.on("close", async () => {
-      if (!(await this.isActive(connectionId, client))) {
+      if (!this.isActive(connectionId, client)) {
         return;
       }
 
@@ -76,10 +76,7 @@ export class MqttClientRepository implements OnModuleDestroy {
   }
 
   /** 내려간 클라이언트(앱 종료, 구독 해제, 재시작으로 교체)의 이벤트는 무시한다. */
-  private async isActive(
-    connectionId: string,
-    client: MqttClient,
-  ): Promise<boolean> {
+  private isActive(connectionId: string, client: MqttClient): boolean {
     return !this.stopping && this.clients.get(connectionId) === client;
   }
 
@@ -95,7 +92,7 @@ export class MqttClientRepository implements OnModuleDestroy {
     );
 
     await delay(delayMs);
-    if (await this.isActive(connectionId, client)) {
+    if (this.isActive(connectionId, client)) {
       client.reconnect();
     }
   }

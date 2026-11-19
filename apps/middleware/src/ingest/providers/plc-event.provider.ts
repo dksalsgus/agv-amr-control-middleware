@@ -23,11 +23,11 @@ export class PlcEventProvider {
 
     const failure = results.find((result) => result.status === "rejected");
     if (failure) {
-      await this.markFailed(failure.reason);
+      this.markFailed(failure.reason);
       return;
     }
 
-    await this.markRecovered();
+    this.markRecovered();
   }
 
   async findLatestValues(): Promise<PlcPointChange[]> {
@@ -55,7 +55,7 @@ export class PlcEventProvider {
   }
 
   /** 실패 시작과 회복 때만 로그를 남긴다. */
-  private async markFailed(error: unknown): Promise<void> {
+  private markFailed(error: unknown): void {
     if (!this.failing) {
       this.logger.warn(`PLC 이벤트 기록 실패: ${String(error)}`);
     }
@@ -63,7 +63,7 @@ export class PlcEventProvider {
     this.failing = true;
   }
 
-  private async markRecovered(): Promise<void> {
+  private markRecovered(): void {
     if (this.failing) {
       this.logger.log("PLC 이벤트 기록 회복");
     }

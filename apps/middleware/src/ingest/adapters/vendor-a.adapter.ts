@@ -20,7 +20,7 @@ export class VendorAAdapter implements VendorAdapter<MqttRawMessage> {
   readonly vendorCode = "VENDOR_A";
 
   async toCommon(raw: MqttRawMessage): Promise<RobotReading[]> {
-    const serial = await this.parseSerial(raw.topic);
+    const serial = this.parseSerial(raw.topic);
     const payload = JSON.parse(raw.payload.toString()) as VendorAPayload;
 
     return [
@@ -41,7 +41,7 @@ export class VendorAAdapter implements VendorAdapter<MqttRawMessage> {
   }
 
   /** 토픽 vendorA/amr/{serial}/state 에서 serial을 꺼낸다. */
-  private async parseSerial(topic: string): Promise<string> {
+  private parseSerial(topic: string): string {
     const serial = topic.split("/")[2];
     if (!serial) {
       throw new Error(`제조사 A 토픽 형식이 아니다: ${topic}`);

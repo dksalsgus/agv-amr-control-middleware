@@ -30,15 +30,14 @@ export class RobotTelemetryService {
       take: query.size,
     });
 
-    const items: GetRobotTelemetryItemDto[] = [];
-    for (const row of rows) {
-      items.push(await this.toItem(row));
-    }
+    const items: GetRobotTelemetryItemDto[] = rows.map((row) =>
+      this.toItem(row),
+    );
 
     return { items, page: query.page, size: query.size, total };
   }
 
-  private async toItem(row: TelemetryRow): Promise<GetRobotTelemetryItemDto> {
+  private toItem(row: TelemetryRow): GetRobotTelemetryItemDto {
     return {
       id: row.id.toString(),
       seq: Number(row.seq),

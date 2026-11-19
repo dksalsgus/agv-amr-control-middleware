@@ -53,7 +53,7 @@ export class ModbusLinkProvider {
   ): Promise<ModbusRawMessage> {
     const registers = await this.modbusClientRepository.readInputRegisters(
       connectionId,
-      await this.toTarget(config),
+      this.toTarget(config),
       config.baseAddress,
       config.blockSize,
     );
@@ -73,7 +73,7 @@ export class ModbusLinkProvider {
   ): Promise<ModbusRawMessage> {
     const registers = await this.modbusClientRepository.readHoldingRegisters(
       connectionId,
-      await this.toTarget(config),
+      this.toTarget(config),
       config.baseAddress + firstBlock * config.blockSize,
       count * config.blockSize,
     );
@@ -81,9 +81,7 @@ export class ModbusLinkProvider {
     return { firstBlock, blockSize: config.blockSize, registers };
   }
 
-  private async toTarget(
-    config: ModbusConnectionConfig,
-  ): Promise<ModbusTarget> {
+  private toTarget(config: ModbusConnectionConfig): ModbusTarget {
     return {
       host: config.host,
       port: config.port,

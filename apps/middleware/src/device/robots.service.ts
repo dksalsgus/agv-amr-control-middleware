@@ -56,13 +56,11 @@ export class RobotsService {
         linkStatus,
         now,
       ),
-      state: entry.state ? await this.toState(entry.state) : null,
+      state: entry.state ? this.toState(entry.state) : null,
     };
   }
 
-  private async toState(
-    state: RobotState,
-  ): Promise<GetRobotsStateDto & GetRobotStateDto> {
+  private toState(state: RobotState): GetRobotsStateDto & GetRobotStateDto {
     return {
       seq: state.seq,
       sourceTs: state.sourceTs.toISOString(),

@@ -18,15 +18,12 @@ export class LogsService {
       take: query.size,
     });
 
-    const items: GetLogsItemDto[] = [];
-    for (const row of rows) {
-      items.push(await this.toItem(row));
-    }
+    const items: GetLogsItemDto[] = rows.map((row) => this.toItem(row));
 
     return { items, page: query.page, size: query.size, total };
   }
 
-  private async toItem(row: LogRow): Promise<GetLogsItemDto> {
+  private toItem(row: LogRow): GetLogsItemDto {
     return {
       id: row.id.toString(),
       type: row.type,

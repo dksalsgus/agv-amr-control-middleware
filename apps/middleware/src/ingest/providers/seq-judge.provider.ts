@@ -25,14 +25,14 @@ export class SeqJudgeProvider {
       return { verdict: "DUPLICATE", accept: false, missed: 0 };
     }
 
-    if (await this.isRestart(last, next)) {
+    if (this.isRestart(last, next)) {
       return { verdict: "RESTART", accept: true, missed: 0 };
     }
 
     return { verdict: "OUT_OF_ORDER", accept: false, missed: 0 };
   }
 
-  private async isRestart(last: SeqPoint, next: SeqPoint): Promise<boolean> {
+  private isRestart(last: SeqPoint, next: SeqPoint): boolean {
     const aheadMs = next.sourceTs.getTime() - last.sourceTs.getTime();
     return aheadMs >= SeqJudgeProvider.RESTART_THRESHOLD_MS;
   }

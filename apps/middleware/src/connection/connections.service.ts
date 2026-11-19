@@ -22,10 +22,9 @@ export class ConnectionsService {
   async getConnections(): Promise<GetConnectionsResponseDto> {
     const entries = await this.connectionsProvider.findAll();
 
-    const connections: GetConnectionsItemDto[] = [];
-    for (const entry of entries) {
-      connections.push(await this.toItem(entry));
-    }
+    const connections: GetConnectionsItemDto[] = entries.map((entry) =>
+      this.toItem(entry),
+    );
 
     return { connections };
   }
@@ -36,7 +35,7 @@ export class ConnectionsService {
       throw new NotFoundException(`연결이 없습니다: ${id}`);
     }
 
-    const item = await this.toItem(entry);
+    const item = this.toItem(entry);
     const savedConfig = entry.row.config as Record<string, unknown>;
     const config = Object.fromEntries(
       Object.entries(savedConfig).filter(([key]) => key !== "password"),
@@ -67,7 +66,7 @@ export class ConnectionsService {
       throw new NotFoundException(`연결이 없습니다: ${id}`);
     }
 
-    const config = await this.resolveConfig(
+    const config = this.resolveConfig(
       entry.row.protocol,
       request,
       entry.row.config,
@@ -89,7 +88,7 @@ export class ConnectionsService {
   async postConnection(
     request: PostConnectionRequestDto,
   ): Promise<PostConnectionResponseDto> {
-    const config = await this.resolveConfig(request.protocol, request, {});
+    const config = this.resolveConfig(request.protocol, request, {});
     if (!config) {
       throw new BadRequestException(
         `${request.protocol} 연결의 config가 필요합니다.`,
@@ -123,11 +122,11 @@ export class ConnectionsService {
 
   /** 보낸 config가 protocol과 맞는지 확인하고 저장할 모양으로 만든다. */
   /** 프로토콜에 맞는 config 하나만 받는다. 없으면 undefined */
-  private async resolveConfig(
+  private resolveConfig(
     protocol: string,
     parts: ConfigParts,
     savedConfig: unknown,
-  ): Promise<Record<string, unknown> | undefined> {
+  ): Record<string, unknown> | undefined {
     const providedCount = [parts.mqtt, parts.rest, parts.modbus].filter(
       (part) => part !== undefined,
     ).length;
@@ -135,7 +134,7 @@ export class ConnectionsService {
       return undefined;
     }
 
-    const config = await this.toConfig(protocol, parts, savedConfig);
+    const config = this.toConfig(protocol, parts, savedConfig);
     if (providedCount > 1 || !config) {
       throw new BadRequestException(
         `${protocol} 연결에는 그에 맞는 config 하나만 보낼 수 있습니다.`,
@@ -146,11 +145,11 @@ export class ConnectionsService {
   }
 
   /** MQTT password를 빼고 보내면 저장된 값을 유지한다. */
-  private async toConfig(
+  private toConfig(
     protocol: string,
     parts: ConfigParts,
     savedConfig: unknown,
-  ): Promise<Record<string, unknown> | null> {
+  ): Record<string, unknown> | null {
     if (protocol === "MQTT" && parts.mqtt) {
       const saved = savedConfig as { password?: string | null };
       return {
@@ -185,9 +184,7 @@ export class ConnectionsService {
     return null;
   }
 
-  private async toItem(
-    entry: ConnectionWithLink,
-  ): Promise<GetConnectionsItemDto> {
+  private toItem(entry: ConnectionWithLink): GetConnectionsItemDto {
     const { row, link } = entry;
 
     return {

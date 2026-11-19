@@ -63,23 +63,20 @@ export class IngestScheduler
   private async startPollLoops(): Promise<void> {
     const robotIds = await this.ingestService.findPolledConnectionIds();
     for (const id of robotIds) {
-      await this.startLoop(id, (connectionId) =>
+      this.startLoop(id, (connectionId) =>
         this.ingestService.poll(connectionId),
       );
     }
 
     const plcIds = await this.plcIngestService.findPolledConnectionIds();
     for (const id of plcIds) {
-      await this.startLoop(id, (connectionId) =>
+      this.startLoop(id, (connectionId) =>
         this.plcIngestService.poll(connectionId),
       );
     }
   }
 
-  private async startLoop(
-    connectionId: string,
-    pollOnce: PollOnce,
-  ): Promise<void> {
+  private startLoop(connectionId: string, pollOnce: PollOnce): void {
     if (this.activeLoops.has(connectionId)) {
       return;
     }

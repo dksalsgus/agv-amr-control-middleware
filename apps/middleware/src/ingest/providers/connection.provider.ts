@@ -21,25 +21,22 @@ export class ConnectionProvider {
     const rows =
       await this.vendorsConnectionsRepository.findEnabledWithVendorAndDevices();
 
-    const connections: IngestConnection[] = [];
-    for (const row of rows) {
-      connections.push(await this.toConnection(row));
-    }
+    const connections: IngestConnection[] = rows.map((row) =>
+      this.toConnection(row),
+    );
 
     return connections;
   }
 
-  private async toConnection(
-    row: ConnectionWithDevicesRow,
-  ): Promise<IngestConnection> {
+  private toConnection(row: ConnectionWithDevicesRow): IngestConnection {
     const robots: RobotDevice[] = [];
     const plcDevices: PlcDevice[] = [];
 
     for (const device of row.vendors_connections_devices) {
       if (device.type === "PLC") {
-        plcDevices.push(await this.toPlcDevice(row.id, device));
+        plcDevices.push(this.toPlcDevice(row.id, device));
       } else {
-        robots.push(await this.toRobot(row.id, device));
+        robots.push(this.toRobot(row.id, device));
       }
     }
 
@@ -54,10 +51,7 @@ export class ConnectionProvider {
     };
   }
 
-  private async toRobot(
-    connectionId: string,
-    device: DeviceRow,
-  ): Promise<RobotDevice> {
+  private toRobot(connectionId: string, device: DeviceRow): RobotDevice {
     return {
       deviceId: device.id,
       connectionId,
@@ -67,10 +61,7 @@ export class ConnectionProvider {
     };
   }
 
-  private async toPlcDevice(
-    connectionId: string,
-    device: DeviceRow,
-  ): Promise<PlcDevice> {
+  private toPlcDevice(connectionId: string, device: DeviceRow): PlcDevice {
     return {
       deviceId: device.id,
       externalId: device.external_id,
