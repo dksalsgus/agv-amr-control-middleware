@@ -53,6 +53,12 @@ curl http://localhost:3000/connections/{id}
 curl -X PATCH http://localhost:3000/connections/{id} -H 'content-type: application/json' \
   -d '{"version":1,"rest":{"baseUrl":"http://emulator:8081","pollIntervalMs":1000,"mode":"bulk","timeoutMs":800}}'
 
+# 연결 만들기와 지우기 (장비가 딸린 연결은 지우지 않고 enabled=false로 끈다)
+curl http://localhost:3000/vendors
+curl -X POST http://localhost:3000/connections -H 'content-type: application/json' \
+  -d '{"vendorId":"{vendorId}","name":"새 연결","protocol":"REST","rest":{"baseUrl":"http://emulator:8081","pollIntervalMs":1000,"mode":"bulk","timeoutMs":800}}'
+curl -X DELETE http://localhost:3000/connections/{id}
+
 # 시스템 로그 (연결 끊김·복구 등, 최신 순, type으로 거를 수 있다)
 curl "http://localhost:3000/logs?type=LINK_DOWN&page=1&size=100"
 
