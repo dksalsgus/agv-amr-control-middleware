@@ -6,11 +6,7 @@ type SeqPoint = {
   sourceTs: Date;
 };
 
-/**
- * PLC 점의 현재 값을 담는 메모리 저장소.
- * seq 판정 기준은 점이 아니라 PLC 장비 단위로 따로 든다(16점을 한 번에 읽으므로).
- * 메모리라 실제로는 동기지만 모든 레이어 메서드를 async로 두는 규칙을 따른다.
- */
+/** PLC 점 현재 값(메모리). seq 기준은 16점을 한 번에 읽으므로 장비 단위로 둔다. */
 @Injectable()
 export class PlcPointStateRepository {
   private readonly entries = new Map<string, PlcPointEntry>();

@@ -14,10 +14,7 @@ export type MqttSubscribeOptions = {
   password: string | null;
 };
 
-/**
- * 연결(vendors_connections 행)마다 MQTT 클라이언트 하나를 둔다.
- * 세션은 유지하지 않는다: 재접속 때 지난 위치가 몰려오지 않게 한다(설계 문서 8장).
- */
+/** 연결마다 MQTT 클라이언트 하나. 재접속 때 지난 메시지가 몰리지 않게 세션을 두지 않는다. */
 @Injectable()
 export class MqttClientRepository implements OnModuleDestroy {
   private readonly logger = new Logger(MqttClientRepository.name);

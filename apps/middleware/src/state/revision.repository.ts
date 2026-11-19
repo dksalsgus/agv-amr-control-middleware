@@ -1,8 +1,6 @@
 import { Injectable } from "@nestjs/common";
 
-/**
- * 전역 리비전(rev) 카운터. 엔티티가 바뀔 때마다 1씩 올린다(설계 문서 6장).
- */
+/** 전역 rev. 엔티티가 바뀔 때마다 1 올린다. */
 @Injectable()
 export class RevisionRepository {
   private rev = 0;

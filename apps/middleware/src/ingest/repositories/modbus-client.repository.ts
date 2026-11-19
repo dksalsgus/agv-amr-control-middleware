@@ -8,10 +8,7 @@ export type ModbusTarget = {
   timeoutMs: number;
 };
 
-/**
- * 연결(vendors_connections 행)마다 Modbus TCP 클라이언트 하나를 둔다.
- * 처음 읽을 때 접속하고, 읽기에 실패하면 접속을 닫아 다음 읽기 때 다시 붙는다.
- */
+/** 연결마다 Modbus 클라이언트 하나. 읽기 실패 시 닫고 다음 읽기 때 다시 붙는다. */
 @Injectable()
 export class ModbusClientRepository implements OnModuleDestroy {
   private readonly clients = new Map<string, ModbusRTU>();

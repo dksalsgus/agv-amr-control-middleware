@@ -4,9 +4,7 @@ export type RestRawMessage = {
   body: unknown;
 };
 
-/**
- * REST 장비에 GET 요청을 보낸다. 제한 시간을 넘기면 예외를 던진다.
- */
+/** REST GET. 제한 시간을 넘기면 예외 */
 @Injectable()
 export class RestClientRepository {
   async get(url: string, timeoutMs: number): Promise<RestRawMessage> {
