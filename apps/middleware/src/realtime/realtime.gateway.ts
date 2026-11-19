@@ -110,11 +110,10 @@ export class RealtimeGateway
         }
 
         const delta = deltas.get(sentRev);
-        if (
-          !delta ||
-          client.readyState !== WebSocket.OPEN ||
-          client.bufferedAmount > this.config.maxBufferedBytes
-        ) {
+        const isClientReady =
+          client.readyState === WebSocket.OPEN &&
+          client.bufferedAmount <= this.config.maxBufferedBytes;
+        if (!delta || !isClientReady) {
           continue;
         }
 
