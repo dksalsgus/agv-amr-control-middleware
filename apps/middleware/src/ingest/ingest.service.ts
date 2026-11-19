@@ -1,4 +1,4 @@
-import { Inject, Injectable, Logger } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
 import { RobotState } from "../state/robot-state";
 import {
   RobotReading,
@@ -20,11 +20,11 @@ import { RobotTelemetry } from "./providers/telemetry.types";
 import { LinkStateProvider } from "./providers/link-state.provider";
 import { SerialQueue } from "./serial-queue";
 import { PolledConfig } from "./ingest.types";
+import { AppLogger } from "../logger/app-logger";
 
 /** 로봇 수집: 수신 → 공통 모델 변환 → seq 판정 → 메모리 반영 → 이력 기록 */
 @Injectable()
 export class IngestService {
-  private readonly logger = new Logger(IngestService.name);
   private readonly connections = new Map<string, IngestConnection>();
   private readonly queues = new Map<string, SerialQueue>();
 
@@ -39,7 +39,10 @@ export class IngestService {
     private readonly seqJudgeProvider: SeqJudgeProvider,
     private readonly telemetryProvider: TelemetryProvider,
     private readonly linkStateProvider: LinkStateProvider,
-  ) {}
+    private readonly logger: AppLogger,
+  ) {
+    this.logger.setContext(IngestService.name);
+  }
 
   /** 장비를 등록하고 이력으로 상태를 되살린 뒤 수신을 시작한다. */
   async start(): Promise<void> {

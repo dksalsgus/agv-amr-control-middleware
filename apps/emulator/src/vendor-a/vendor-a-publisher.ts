@@ -1,9 +1,11 @@
 import mqtt, { MqttClient } from "mqtt";
 import { RobotFleet } from "../simulation/robot-fleet";
 import { VendorAPayloadBuilder } from "./vendor-a-payload";
+import { Logger } from "../common/logger/logger";
 
 /** 제조사 A 상태를 MQTT로 발행한다(QoS 1, retain 없음). */
 export class VendorAPublisher {
+  private readonly logger = new Logger("vendor-a");
   private readonly payloadBuilder = new VendorAPayloadBuilder();
   private client: MqttClient | null = null;
 
@@ -18,12 +20,8 @@ export class VendorAPublisher {
       reconnectPeriod: 1000,
     });
 
-    this.client.on("connect", () =>
-      console.log(`[vendor-a] connected ${this.url}`),
-    );
-    this.client.on("error", (error) =>
-      console.error(`[vendor-a] ${error.message}`),
-    );
+    this.client.on("connect", () => this.logger.log(`connected ${this.url}`));
+    this.client.on("error", (error) => this.logger.error(`${error.message}`));
   }
 
   /** 모든 로봇을 발행하고 브로커 응답(PUBACK)까지 기다린다. */
@@ -45,7 +43,7 @@ export class VendorAPublisher {
     const results = await Promise.allSettled(publishing);
     const failure = results.find((result) => result.status === "rejected");
     if (failure) {
-      console.error(`[vendor-a] 발행 실패: ${String(failure.reason)}`);
+      this.logger.error(`발행 실패: ${String(failure.reason)}`);
     }
   }
 }

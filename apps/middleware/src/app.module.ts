@@ -4,10 +4,12 @@ import { DeviceModule } from "./device/device.module";
 import { HealthModule } from "./health/health.module";
 import { IngestModule } from "./ingest/ingest.module";
 import { LogModule } from "./log/log.module";
+import { LoggerModule } from "./logger/logger.module";
 import { PrismaModule } from "./prisma/prisma.module";
 
 @Module({
   imports: [
+    LoggerModule,
     PrismaModule,
     HealthModule,
     IngestModule,
