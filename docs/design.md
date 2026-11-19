@@ -215,19 +215,21 @@ erDiagram
   vendors_connections_devices ||--o{ vendors_connections_devices_telemetry : ""
   vendors_connections_devices ||--o{ vendors_connections_devices_plc_points : ""
   vendors_connections_devices_plc_points ||--o{ vendors_connections_devices_plc_points_events : ""
-  roles ||--o{ roles_users : ""
-  roles_users |o--o{ logs : "알람 확인"
+  users ||--o{ user_roles : ""
+  roles ||--o{ user_roles : ""
+  users |o--o{ logs : "알람 확인, 설정 변경"
 ```
 
-| 묶음 | 테이블                                                                                                                           | 쓰는 시점                                    |
-| ---- | -------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
-| 설정 | `vendors`, `vendors_connections`(config JSONB, version), `vendors_connections_devices`, `..._plc_points`, `roles`, `roles_users` | 시드와 연결 설정 API                         |
-| 이력 | `vendors_connections_devices_telemetry`                                                                                          | 받아들인 로봇 상태마다 한 행 (초당 90행)     |
-| 이력 | `vendors_connections_devices_plc_points_events`                                                                                  | PLC 점의 값이 바뀐 순간에만                  |
-| 이력 | `logs`                                                                                                                           | 연결 UP·DOWN, 알람 발생·해제·확인. 추가만 함 |
+| 묶음 | 테이블                                                                                                                                   | 쓰는 시점                                                    |
+| ---- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| 설정 | `vendors`, `vendors_connections`(config JSONB, version), `vendors_connections_devices`, `..._plc_points`, `roles`, `users`, `user_roles` | 시드와 연결 설정 API                                         |
+| 이력 | `vendors_connections_devices_telemetry`                                                                                                  | 받아들인 로봇 상태마다 한 행 (초당 90행)                     |
+| 이력 | `vendors_connections_devices_plc_points_events`                                                                                          | PLC 점의 값이 바뀐 순간에만                                  |
+| 이력 | `logs`                                                                                                                                   | 연결 UP·DOWN, 알람 발생·해제·확인, 연결 설정 변경. 추가만 함 |
 
 - 현재 상태 테이블은 없습니다. 현재 상태는 메모리에 있고, 재시작하면 장비별 마지막 이력 행으로 되살립니다.
-- 테이블과 외래키 이름은 부모 사슬 전체를 붙이고, 상태 값 컬럼은 enum 대신 varchar입니다([설계 근거 11·12장](design-rationale.md)).
+- 테이블과 외래키 이름은 부모 사슬 전체를 붙이고, 상태 값 컬럼은 enum 대신 varchar입니다([설계 근거 11·12장](design-rationale.md)). 사용자와 역할은 다대다라 `users`와 `roles`를 매핑 테이블 `user_roles`(`users_id`, `roles_id`)로 잇습니다.
+- 모든 테이블에 `created_at`과 `updated_at`(timestamptz)이 있습니다.
 - 보관 정책(설계만, 구현하지 않음): telemetry는 24시간(하루 약 780만 행, 1시간마다 오래된 행 삭제), PLC 이벤트와 logs는 30일. 맵은 공장이 한 곳이라 DB가 아닌 코드 설정, 장애 주입 설정은 에뮬레이터 메모리에만 둡니다.
 
 ## 7. 인터페이스 명세

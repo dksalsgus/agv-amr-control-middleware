@@ -118,12 +118,20 @@ VALUES
   (gen_random_uuid(), 'ADMIN', '관리자')
 ON CONFLICT (code) DO NOTHING;
 
-INSERT INTO roles_users (id, roles_id, username, password_hash)
-SELECT gen_random_uuid(), r.id, u.username, u.password_hash
-FROM (VALUES
-  ('VIEWER', 'viewer', '$argon2id$v=19$m=65536,p=4,t=3$msVivQ5v1U7AZaQ/b5in/w$NtJUy+L/0i4i85VTbRPEeUaflB426Ua93o1l9Y50C8c'),
-  ('OPERATOR', 'operator', '$argon2id$v=19$m=65536,p=4,t=3$NKNvCQVm+WTs0z0H8/fnmw$IWyj/JlV6TmJiXo4N2hFDoyCPfblN0VzWV53YvVI+R0'),
-  ('ADMIN', 'admin', '$argon2id$v=19$m=65536,p=4,t=3$LVq4iZB3ga0EXtiypQ/qHA$43pHwwGOVfseU09lmJAmTT9cFuWWD8BAPmQZkFZdgM0')
-) AS u(roles_code, username, password_hash)
-JOIN roles r ON r.code = u.roles_code
+INSERT INTO users (id, username, password_hash)
+VALUES
+  (gen_random_uuid(), 'viewer', '$argon2id$v=19$m=65536,p=4,t=3$msVivQ5v1U7AZaQ/b5in/w$NtJUy+L/0i4i85VTbRPEeUaflB426Ua93o1l9Y50C8c'),
+  (gen_random_uuid(), 'operator', '$argon2id$v=19$m=65536,p=4,t=3$NKNvCQVm+WTs0z0H8/fnmw$IWyj/JlV6TmJiXo4N2hFDoyCPfblN0VzWV53YvVI+R0'),
+  (gen_random_uuid(), 'admin', '$argon2id$v=19$m=65536,p=4,t=3$LVq4iZB3ga0EXtiypQ/qHA$43pHwwGOVfseU09lmJAmTT9cFuWWD8BAPmQZkFZdgM0')
 ON CONFLICT (username) DO NOTHING;
+
+INSERT INTO user_roles (users_id, roles_id)
+SELECT u.id, r.id
+FROM (VALUES
+  ('viewer', 'VIEWER'),
+  ('operator', 'OPERATOR'),
+  ('admin', 'ADMIN')
+) AS m(username, roles_code)
+JOIN users u ON u.username = m.username
+JOIN roles r ON r.code = m.roles_code
+ON CONFLICT (users_id, roles_id) DO NOTHING;

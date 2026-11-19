@@ -17,7 +17,7 @@ export type LogItem = {
   targetType: LogTargetType;
   targetId: string;
   message: string;
-  rolesUsersId: string | null;
+  usersId: string | null;
   createdAt: string;
 };
 

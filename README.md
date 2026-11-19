@@ -358,7 +358,7 @@ erDiagram
 - 설정 테이블: `vendors`, `vendors_connections`, `vendors_connections_devices`, `vendors_connections_devices_plc_points`
 - 이력 테이블: `..._telemetry`(받아들인 로봇 상태 전부), `..._plc_points_events`(값이 바뀔 때만), `logs`(연결과 알람 기록, 추가만)
 - 현재 상태 테이블은 따로 두지 않습니다. 이력의 마지막 행이 곧 현재 값입니다.
-- 계정 테이블: `roles`(VIEWER, OPERATOR, ADMIN), `roles_users`(데모 계정, 비밀번호는 argon2id 해시). `logs.roles_users_id`는 알람을 확인한 사용자입니다.
+- 계정 테이블: `users`(데모 계정, 비밀번호는 argon2id 해시), `roles`(VIEWER, OPERATOR, ADMIN), 매핑 테이블 `user_roles`. `logs.users_id`는 알람을 확인하거나 연결 설정을 바꾼 사용자입니다.
 
 ## 과제 요구 사항과 구현
 

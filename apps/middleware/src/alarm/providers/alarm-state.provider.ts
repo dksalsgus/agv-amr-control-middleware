@@ -47,7 +47,7 @@ export class AlarmStateProvider {
   }
 
   /** 이미 확인한 알람은 그대로 돌려준다. 그사이 풀렸으면 null */
-  async ack(id: string, rolesUsersId: string): Promise<AlarmEntry | null> {
+  async ack(id: string, usersId: string): Promise<AlarmEntry | null> {
     const open = await this.alarmStateRepository.findById(id);
     if (!open) {
       return null;
@@ -77,7 +77,7 @@ export class AlarmStateProvider {
       "INFO",
       acked,
       `${acked.message} 확인`,
-      rolesUsersId,
+      usersId,
     );
     return acked;
   }
@@ -119,7 +119,7 @@ export class AlarmStateProvider {
     level: LogLevel,
     entry: AlarmEntry,
     message: string,
-    rolesUsersId: string | null = null,
+    usersId: string | null = null,
   ): Promise<void> {
     this.logger.log(message);
 
@@ -131,7 +131,7 @@ export class AlarmStateProvider {
         target_type: entry.targetType,
         target_id: entry.targetId,
         message,
-        roles_users_id: rolesUsersId,
+        users_id: usersId,
       });
     } catch (error) {
       this.logger.warn(`알람 로그 기록 실패: ${String(error)}`);
