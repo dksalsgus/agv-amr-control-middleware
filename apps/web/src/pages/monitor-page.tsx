@@ -27,6 +27,8 @@ import { RobotDetail } from "../monitor/robot-detail";
 import { RobotMap } from "../monitor/robot-map";
 import { SummaryBar } from "../monitor/summary-bar";
 import { useMonitorToasts } from "../monitor/use-monitor-toasts";
+import { plcPointsApi } from "../monitor/plc-points.api";
+import { PlcPoint } from "../realtime/realtime.types";
 import { useRealtime } from "../realtime/use-realtime";
 import "../styles/monitor.css";
 
@@ -45,6 +47,7 @@ export const MonitorPage = () => {
   const [connections, setConnections] = useState<ConnectionItem[]>([]);
   const connectionStats = useConnectionStats();
   const [selectedPlcId, setSelectedPlcId] = useState<string | null>(null);
+  const [writingPlcId, setWritingPlcId] = useState<string | null>(null);
   const [selectedRobotId, setSelectedRobotId] = useState<string | null>(null);
   const [vendors, setVendors] = useState<ReadonlySet<VendorKey>>(
     () => new Set(VENDOR_KEYS),
@@ -156,6 +159,23 @@ export const MonitorPage = () => {
     }
   };
 
+  /** 인터록 제어. 값은 다음 폴링 뒤 delta로 타일에 반영된다. */
+  const writePlc = async (point: PlcPoint, value: boolean) => {
+    setWritingPlcId(point.id);
+    try {
+      await plcPointsApi.writeValue(point.id, value);
+      push(`${point.name}에 ${value ? "ON을" : "OFF를"} 썼습니다.`, "ok");
+    } catch (error) {
+      console.warn("PLC 쓰기 실패", error);
+      push(
+        `${point.name}에 쓰지 못했습니다. PLC 연결 상태를 확인하세요.`,
+        "danger",
+      );
+    } finally {
+      setWritingPlcId(null);
+    }
+  };
+
   const streaming = mode === "live" || mode === "linkDown";
   const frozen = mode === "disconnected" || mode === "reconnecting";
   const pill =
@@ -218,7 +238,9 @@ export const MonitorPage = () => {
             <PlcPanel
               points={plcPoints}
               selectedId={selectedPlcId}
+              writingId={writingPlcId}
               onSelect={setSelectedPlcId}
+              onWrite={(point, value) => void writePlc(point, value)}
             />
           </div>
         </div>
