@@ -72,7 +72,7 @@ export class IngestService {
     const latest = await this.loadConnections();
     const latestIds = new Set(latest.map((connection) => connection.id));
 
-    for (const current of [...this.connections.values()]) {
+    for (const current of Array.from(this.connections.values())) {
       if (!latestIds.has(current.id)) {
         await this.close(current);
       }
@@ -91,7 +91,7 @@ export class IngestService {
 
   /** 폴링 연결(REST, Modbus)의 id 목록 */
   async findPolledConnectionIds(): Promise<string[]> {
-    return [...this.connections.values()]
+    return Array.from(this.connections.values())
       .filter((connection) => connection.protocol !== "MQTT")
       .map((connection) => connection.id);
   }

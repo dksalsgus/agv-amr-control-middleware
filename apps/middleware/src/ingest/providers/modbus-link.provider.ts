@@ -42,8 +42,8 @@ export class ModbusLinkProvider {
       return [];
     }
 
-    const firstBlock = Math.min(...blockNumbers);
-    const lastBlock = Math.max(...blockNumbers);
+    const firstBlock = blockNumbers.reduce((a, b) => Math.min(a, b));
+    const lastBlock = blockNumbers.reduce((a, b) => Math.max(a, b));
     const blocksPerRead = Math.floor(MAX_REGISTERS_PER_READ / config.blockSize);
     const readCount = Math.ceil((lastBlock - firstBlock + 1) / blocksPerRead);
     const starts = Array.from(

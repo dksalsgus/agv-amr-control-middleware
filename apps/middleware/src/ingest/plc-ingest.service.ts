@@ -48,7 +48,7 @@ export class PlcIngestService {
     const latest = await this.loadConnections();
     const latestIds = new Set(latest.map((connection) => connection.id));
 
-    for (const current of [...this.connections.values()]) {
+    for (const current of Array.from(this.connections.values())) {
       if (!latestIds.has(current.id)) {
         await this.close(current);
       }
@@ -67,7 +67,7 @@ export class PlcIngestService {
   }
 
   async findPolledConnectionIds(): Promise<string[]> {
-    return [...this.connections.keys()];
+    return Array.from(this.connections.keys());
   }
 
   /** 한 번 폴링하고 다음 폴링까지 기다릴 ms를 돌려준다. 연결이 없으면 null. */

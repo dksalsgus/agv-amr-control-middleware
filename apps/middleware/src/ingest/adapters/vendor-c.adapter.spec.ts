@@ -50,7 +50,7 @@ describe("VendorCAdapter", () => {
   });
 
   it("이어 붙은 블록을 firstBlock부터 차례로 나눈다", async () => {
-    const registers = [...block(), ...block(), ...block()];
+    const registers = block().concat(block(), block());
 
     const readings = await adapter.toCommon({
       firstBlock: 7,

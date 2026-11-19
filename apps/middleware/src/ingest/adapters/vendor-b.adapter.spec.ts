@@ -1,17 +1,19 @@
 import { VendorBAdapter } from "./vendor-b.adapter";
 
-const vehicle = {
-  vehicleId: "B-003",
+const toVehicle = (vehicleId: string, status: string, errorCode: string) => ({
+  vehicleId,
   sequence: 21,
   timestamp: 1_700_000_000_000,
   position: { xMm: 12345, yMm: 6789 },
   headingDeg: 370,
   speedMmS: 750,
   batteryLevel: 64,
-  status: "RUN",
-  errorCode: "",
+  status,
+  errorCode,
   hasLoad: true,
-};
+});
+
+const vehicle = toVehicle("B-003", "RUN", "");
 
 describe("VendorBAdapter", () => {
   const adapter = new VendorBAdapter();
@@ -36,7 +38,7 @@ describe("VendorBAdapter", () => {
 
   it("전체 목록 응답은 차량마다 하나씩 바꾼다", async () => {
     const body = {
-      vehicles: [vehicle, { ...vehicle, vehicleId: "B-004" }],
+      vehicles: [vehicle, toVehicle("B-004", "RUN", "")],
     };
 
     const readings = await adapter.toCommon({ body });
@@ -48,7 +50,7 @@ describe("VendorBAdapter", () => {
   });
 
   it("ERR와 오류 코드를 ERROR와 코드로 바꾼다", async () => {
-    const body = { ...vehicle, status: "ERR", errorCode: "B-E07" };
+    const body = toVehicle("B-003", "ERR", "B-E07");
 
     const [reading] = await adapter.toCommon({ body });
 

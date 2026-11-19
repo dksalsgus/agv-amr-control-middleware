@@ -85,7 +85,7 @@ export class MqttClientRepository implements OnModuleDestroy {
   async onModuleDestroy() {
     this.stopping = true;
 
-    const closing = [...this.clients.values()].map((client) =>
+    const closing = Array.from(this.clients.values()).map((client) =>
       client.endAsync(),
     );
     await Promise.all(closing);
