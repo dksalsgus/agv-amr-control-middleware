@@ -1,12 +1,11 @@
 import { Inject, UseFilters, UsePipes, ValidationPipe } from "@nestjs/common";
 import { ConfigType } from "@nestjs/config";
-import { SchedulerRegistry } from "@nestjs/schedule";
+import { Interval } from "@nestjs/schedule";
 import {
   ConnectedSocket,
   MessageBody,
   OnGatewayConnection,
   OnGatewayDisconnect,
-  OnGatewayInit,
   SubscribeMessage,
   WebSocketGateway,
   WsException,
@@ -15,7 +14,11 @@ import {
 import { WebSocket } from "ws";
 import { AuthService } from "../auth/auth.service";
 import { WsExceptionsFilter } from "../common/filters/ws-exceptions.filter";
-import { realtimeConfig } from "../config/realtime.config";
+import {
+  REALTIME_DELTA_INTERVAL_MS,
+  REALTIME_PING_INTERVAL_MS,
+  realtimeConfig,
+} from "../config/realtime.config";
 import { DeltaMessageDto } from "./dto/delta.message.dto";
 import { HelloMessageDto } from "./dto/hello.message.dto";
 import { PingMessageDto } from "./dto/ping.message.dto";
@@ -28,11 +31,8 @@ import { RealtimeReply } from "./realtime.types";
 @UsePipes(new ValidationPipe({ whitelist: true }))
 @UseFilters(new WsExceptionsFilter())
 export class RealtimeGateway
-  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
+  implements OnGatewayConnection, OnGatewayDisconnect
 {
-  private static readonly DELTA_JOB = "realtime-delta";
-  private static readonly PING_JOB = "realtime-ping";
-
   /** 토큰을 확인한 hello를 보낸 화면과 그 화면에 마지막으로 보낸 rev */
   private readonly sentRevs = new Map<WebSocket, number>();
   /** 화면별 마지막 pong 시각(ms) */
@@ -42,24 +42,9 @@ export class RealtimeGateway
   constructor(
     @Inject(realtimeConfig.KEY)
     private readonly config: ConfigType<typeof realtimeConfig>,
-    private readonly schedulerRegistry: SchedulerRegistry,
     private readonly realtimeService: RealtimeService,
     private readonly authService: AuthService,
   ) {}
-
-  afterInit(): void {
-    const interval = setInterval(
-      () => void this.pushDeltas(),
-      this.config.deltaIntervalMs,
-    );
-    this.schedulerRegistry.addInterval(RealtimeGateway.DELTA_JOB, interval);
-
-    const heartbeat = setInterval(
-      () => this.pingClients(),
-      this.config.pingIntervalMs,
-    );
-    this.schedulerRegistry.addInterval(RealtimeGateway.PING_JOB, heartbeat);
-  }
 
   handleConnection(client: WebSocket): void {
     this.lastPongAts.set(client, Date.now());
@@ -110,7 +95,8 @@ export class RealtimeGateway
   }
 
   /** 같은 rev에서 출발하는 화면들은 delta 하나를 함께 쓴다. */
-  private async pushDeltas(): Promise<void> {
+  @Interval(REALTIME_DELTA_INTERVAL_MS)
+  async pushDeltas(): Promise<void> {
     if (this.pushing) {
       return;
     }
@@ -141,9 +127,10 @@ export class RealtimeGateway
   }
 
   /** pong이 maxMissedPongs번 연속 없으면 끊는다. close가 오면 handleDisconnect가 정리한다. */
-  private pingClients(): void {
+  @Interval(REALTIME_PING_INTERVAL_MS)
+  pingClients(): void {
     const now = Date.now();
-    const timeoutMs = this.config.pingIntervalMs * this.config.maxMissedPongs;
+    const timeoutMs = REALTIME_PING_INTERVAL_MS * this.config.maxMissedPongs;
 
     for (const [client, lastPongAt] of this.lastPongAts) {
       if (now - lastPongAt > timeoutMs) {
