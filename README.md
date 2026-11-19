@@ -38,31 +38,32 @@ PostgreSQL, Redis, MQTT 브로커, 에뮬레이터, 미들웨어 다섯 컨테�
 curl http://localhost:3000/health
 # {"success":true,"data":{"status":"ok"},"error":null}
 
-# 데모 계정 로그인 (viewer/viewer1234, operator/operator1234, admin/admin1234). accessToken이 온다
-# 역할별 기능 차이는 두지 않는다 (docs/design-rationale.md 16장). 토큰 검증은 아직 적용 전이라 다른 API는 토큰 없이 부른다
-curl -X POST http://localhost:3000/auth/login -H 'content-type: application/json' \
-  -d '{"username":"admin","password":"admin1234"}'
+# 데모 계정 로그인 (viewer/viewer1234, operator/operator1234, admin/admin1234)
+# health와 login 말고는 모두 토큰이 필요하다 (없거나 틀리면 401). 역할별 기능 차이는 두지 않는다 (docs/design-rationale.md 16장)
+TOKEN=$(curl -s -X POST http://localhost:3000/auth/login -H 'content-type: application/json' \
+  -d '{"username":"operator","password":"operator1234"}' | sed 's/.*"accessToken":"\([^"]*\)".*/\1/')
+AUTH="authorization: Bearer $TOKEN"
 
 # 로봇 90대의 최신 상태 (A 40 + B 30 + C 20). stale=true면 데이터가 끊긴 장비
-curl http://localhost:3000/robots
-curl http://localhost:3000/robots/{id}
+curl -H "$AUTH" http://localhost:3000/robots
+curl -H "$AUTH" http://localhost:3000/robots/{id}
 
 # 로봇 이력 (최신 순, from/to는 ISO 8601, page는 1부터, size는 최대 1000)
-curl "http://localhost:3000/robots/{id}/telemetry?from=2026-11-19T00:00:00Z&page=1&size=100"
+curl -H "$AUTH" "http://localhost:3000/robots/{id}/telemetry?from=2026-11-19T00:00:00Z&page=1&size=100"
 
 # PLC 16점의 현재 값과 값이 바뀐 이력
-curl http://localhost:3000/plc-points
-curl "http://localhost:3000/plc-points/{id}/events?page=1&size=100"
+curl -H "$AUTH" http://localhost:3000/plc-points
+curl -H "$AUTH" "http://localhost:3000/plc-points/{id}/events?page=1&size=100"
 
 # 연결 목록과 연결 상태 (UP, DOWN, UNKNOWN)
-curl http://localhost:3000/connections
+curl -H "$AUTH" http://localhost:3000/connections
 
 # 시스템 로그 (연결 끊김·복구 등, 최신 순, type으로 거를 수 있다)
-curl "http://localhost:3000/logs?type=LINK_DOWN&page=1&size=100"
+curl -H "$AUTH" "http://localhost:3000/logs?type=LINK_DOWN&page=1&size=100"
 
 # 지금 열린 알람(최근 순)과 알람 확인 (이미 풀린 알람이면 404)
-curl http://localhost:3000/alarms
-curl -X POST http://localhost:3000/alarms/{id}/ack
+curl -H "$AUTH" http://localhost:3000/alarms
+curl -H "$AUTH" -X POST http://localhost:3000/alarms/{id}/ack
 
 # 에뮬레이터 원본 데이터 확인
 docker compose exec mosquitto mosquitto_sub -t 'vendorA/amr/+/state' -v
@@ -73,15 +74,15 @@ curl http://localhost:8081/api/vehicles
 
 ```bash
 # 연결 하나의 설정 보기와 바꾸기 (version이 다르면 409, 잘못된 config는 400)
-curl http://localhost:3000/connections/{id}
-curl -X PATCH http://localhost:3000/connections/{id} -H 'content-type: application/json' \
+curl -H "$AUTH" http://localhost:3000/connections/{id}
+curl -H "$AUTH" -X PATCH http://localhost:3000/connections/{id} -H 'content-type: application/json' \
   -d '{"version":1,"rest":{"baseUrl":"http://emulator:8081","pollIntervalMs":1000,"mode":"bulk","timeoutMs":800}}'
 
 # 연결 만들기와 지우기 (장비가 딸린 연결은 지우지 않고 enabled=false로 끈다)
-curl http://localhost:3000/vendors
-curl -X POST http://localhost:3000/connections -H 'content-type: application/json' \
+curl -H "$AUTH" http://localhost:3000/vendors
+curl -H "$AUTH" -X POST http://localhost:3000/connections -H 'content-type: application/json' \
   -d '{"vendorId":"{vendorId}","name":"새 연결","protocol":"REST","rest":{"baseUrl":"http://emulator:8081","pollIntervalMs":1000,"mode":"bulk","timeoutMs":800}}'
-curl -X DELETE http://localhost:3000/connections/{id}
+curl -H "$AUTH" -X DELETE http://localhost:3000/connections/{id}
 ```
 
 미들웨어는 2초마다 DB의 연결 설정을 확인해서, `version`이 바뀐 연결만 내렸다가 새 설정으로 다시 붙입니다.
@@ -96,11 +97,11 @@ docker compose restart middleware  # 이력의 마지막 행으로 로봇 90대�
 
 ### 실시간 (WebSocket)
 
-메시지는 `{ "event", "data" }` JSON입니다. `hello`를 보내면 전체 상태(robots, plcPoints, links, alarms)가 오고, 이후 100ms마다 바뀐 것만 옵니다. 풀린 알람은 delta의 `removed`에 kind `ALARM`으로 실립니다.
+메시지는 `{ "event", "data" }` JSON입니다. `hello`에 로그인 토큰을 실어 보내면 전체 상태(robots, plcPoints, links, alarms)가 오고, 이후 100ms마다 바뀐 것만 옵니다. 풀린 알람은 delta의 `removed`에 kind `ALARM`으로 실립니다.
 
 ```bash
 npx wscat -c ws://localhost:3000/ws
-> {"event":"hello","data":{}}
+> {"event":"hello","data":{"token":"<accessToken>"}}
 ```
 
 ## 전체 구조
