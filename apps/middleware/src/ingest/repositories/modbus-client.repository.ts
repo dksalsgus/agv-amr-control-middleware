@@ -16,6 +16,7 @@ export type ModbusTarget = {
 export class ModbusClientRepository implements OnModuleDestroy {
   private readonly clients = new Map<string, ModbusRTU>();
 
+  /** 홀딩 레지스터(FC3) */
   async readHoldingRegisters(
     connectionId: string,
     target: ModbusTarget,
@@ -25,6 +26,23 @@ export class ModbusClientRepository implements OnModuleDestroy {
     try {
       const client = await this.getClient(connectionId, target);
       const result = await client.readHoldingRegisters(address, length);
+      return result.data;
+    } catch (error) {
+      this.close(connectionId);
+      throw error;
+    }
+  }
+
+  /** 입력 레지스터(FC4) */
+  async readInputRegisters(
+    connectionId: string,
+    target: ModbusTarget,
+    address: number,
+    length: number,
+  ): Promise<number[]> {
+    try {
+      const client = await this.getClient(connectionId, target);
+      const result = await client.readInputRegisters(address, length);
       return result.data;
     } catch (error) {
       this.close(connectionId);

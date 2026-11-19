@@ -10,7 +10,10 @@ export class VendorsConnectionsRepository {
       where: { enabled: true },
       include: {
         vendors: true,
-        vendors_connections_devices: { where: { enabled: true } },
+        vendors_connections_devices: {
+          where: { enabled: true },
+          include: { vendors_connections_devices_plc_points: true },
+        },
       },
     });
   }
