@@ -1,4 +1,5 @@
 import { pad2 } from "../common/utils/format.util";
+import { TARGET_TYPES } from "./logs.constants";
 import { LogFilter, LogQuery, TargetOption } from "./logs.types";
 import { Robot, PlcPoint } from "../realtime/realtime.types";
 import { ConnectionItem } from "../connections/connections.types";
@@ -7,6 +8,18 @@ export const ALL_FILTER: LogFilter = {
   type: "ALL",
   targetType: "ALL",
   targetId: "ALL",
+};
+
+/** 관제 화면에서 넘어온 `?targetType=DEVICE&targetId=…`가 있으면 그 대상으로 좁혀 연다. */
+export const toInitialFilter = (params: URLSearchParams): LogFilter => {
+  const targetType = TARGET_TYPES.find(
+    (type) => type === params.get("targetType"),
+  );
+  const targetId = params.get("targetId");
+  if (!targetType || !targetId) {
+    return ALL_FILTER;
+  }
+  return { type: "ALL", targetType, targetId };
 };
 
 export const hasFilter = (filter: LogFilter): boolean =>
