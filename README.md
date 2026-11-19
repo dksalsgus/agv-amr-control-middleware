@@ -28,6 +28,9 @@ docker compose up --build
 ```bash
 curl http://localhost:3000/health
 # {"status":"ok"}
+
+# 제조사 A 로봇 40대의 MQTT 메시지 (1초마다 seq가 오른다)
+docker compose exec mosquitto mosquitto_sub -t 'vendorA/amr/+/state' -v
 ```
 
 ## 로컬 개발
