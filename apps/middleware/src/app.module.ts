@@ -13,6 +13,7 @@ import { IngestModule } from "./ingest/ingest.module";
 import { LogModule } from "./log/log.module";
 import { LoggerModule } from "./logger/logger.module";
 import { PrismaModule } from "./prisma/prisma.module";
+import { RealtimeModule } from "./realtime/realtime.module";
 
 @Module({
   imports: [
@@ -28,6 +29,7 @@ import { PrismaModule } from "./prisma/prisma.module";
     DeviceModule,
     LogModule,
     ConnectionModule,
+    RealtimeModule,
   ],
 })
 export class AppModule {}

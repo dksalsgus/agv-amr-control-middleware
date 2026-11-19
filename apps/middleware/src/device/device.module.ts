@@ -25,5 +25,6 @@ import { TelemetryQueryProvider } from "./telemetry-query.provider";
     PlcEventsQueryProvider,
     StaleJudgeProvider,
   ],
+  exports: [StaleJudgeProvider],
 })
 export class DeviceModule {}
