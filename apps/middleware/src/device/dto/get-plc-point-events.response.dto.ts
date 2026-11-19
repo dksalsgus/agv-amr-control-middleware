@@ -1,10 +1,4 @@
-export class GetPlcPointEventsItemDto {
-  id!: string;
-  value!: boolean;
-  seq!: number;
-  sourceTs!: string;
-  receivedTs!: string;
-}
+import { GetPlcPointEventsItemDto } from "./get-plc-point-events.item.dto";
 
 export class GetPlcPointEventsResponseDto {
   items!: GetPlcPointEventsItemDto[];

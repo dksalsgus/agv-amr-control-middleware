@@ -1,15 +1,11 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { PlcPointEventRow } from "../history/vendors-connections-devices-plc-points-events.types";
 import { PlcPointEntry } from "../state/plc-point-state";
-import { GetPlcPointEventsQueryDto } from "./dto/get-plc-point-events.request.dto";
-import {
-  GetPlcPointEventsItemDto,
-  GetPlcPointEventsResponseDto,
-} from "./dto/get-plc-point-events.response.dto";
-import {
-  GetPlcPointsItemDto,
-  GetPlcPointsResponseDto,
-} from "./dto/get-plc-points.response.dto";
+import { GetPlcPointEventsQueryDto } from "./dto/get-plc-point-events.query.dto";
+import { GetPlcPointEventsResponseDto } from "./dto/get-plc-point-events.response.dto";
+import { GetPlcPointEventsItemDto } from "./dto/get-plc-point-events.item.dto";
+import { GetPlcPointsResponseDto } from "./dto/get-plc-points.response.dto";
+import { GetPlcPointsItemDto } from "./dto/get-plc-points.item.dto";
 import { PlcEventsQueryProvider } from "./plc-events-query.provider";
 import { PlcPointsProvider } from "./plc-points.provider";
 import { StaleJudgeProvider } from "./stale-judge.provider";

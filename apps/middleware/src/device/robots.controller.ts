@@ -1,10 +1,8 @@
 import { Controller, Get, Param, Query } from "@nestjs/common";
 import { ApiResult } from "../common/dto/api-result";
 import { GetRobotParamDto } from "./dto/get-robot.request.dto";
-import {
-  GetRobotTelemetryParamDto,
-  GetRobotTelemetryQueryDto,
-} from "./dto/get-robot-telemetry.request.dto";
+import { GetRobotTelemetryQueryDto } from "./dto/get-robot-telemetry.query.dto";
+import { GetRobotTelemetryParamDto } from "./dto/get-robot-telemetry.param.dto";
 import { GetRobotTelemetryResponseDto } from "./dto/get-robot-telemetry.response.dto";
 import { GetRobotResponseDto } from "./dto/get-robot.response.dto";
 import { GetRobotsResponseDto } from "./dto/get-robots.response.dto";

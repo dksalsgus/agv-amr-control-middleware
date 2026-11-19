@@ -1,17 +1,4 @@
-export class GetPlcPointsItemDto {
-  id!: string;
-  deviceId!: string;
-  pointNo!: number;
-  name!: string;
-  type!: string;
-  normalValue!: boolean;
-  alarmOnAbnormal!: boolean;
-  value!: boolean | null;
-  abnormal!: boolean;
-  changedAt!: string | null;
-  stale!: boolean;
-  rev!: number;
-}
+import { GetPlcPointsItemDto } from "./get-plc-points.item.dto";
 
 export class GetPlcPointsResponseDto {
   plcPoints!: GetPlcPointsItemDto[];

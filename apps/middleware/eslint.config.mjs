@@ -16,6 +16,7 @@ export default tseslint.config(
     },
     rules: {
       "func-style": ["error", "expression"],
+      "max-classes-per-file": ["error", 1],
       "@typescript-eslint/no-floating-promises": "error",
       "no-restricted-syntax": [
         "error",

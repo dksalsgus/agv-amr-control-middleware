@@ -1,9 +1,7 @@
 import { Controller, Get, Param, Query } from "@nestjs/common";
 import { ApiResult } from "../common/dto/api-result";
-import {
-  GetPlcPointEventsParamDto,
-  GetPlcPointEventsQueryDto,
-} from "./dto/get-plc-point-events.request.dto";
+import { GetPlcPointEventsQueryDto } from "./dto/get-plc-point-events.query.dto";
+import { GetPlcPointEventsParamDto } from "./dto/get-plc-point-events.param.dto";
 import { GetPlcPointEventsResponseDto } from "./dto/get-plc-point-events.response.dto";
 import { GetPlcPointsResponseDto } from "./dto/get-plc-points.response.dto";
 import { PlcPointsService } from "./plc-points.service";

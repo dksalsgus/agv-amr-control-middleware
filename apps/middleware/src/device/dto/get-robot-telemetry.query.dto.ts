@@ -1,13 +1,8 @@
 import { Type } from "class-transformer";
-import { IsDate, IsOptional, IsUUID } from "class-validator";
+import { IsDate, IsOptional } from "class-validator";
 import { PageRequestDto } from "../../common/dto/page.request.dto";
 
-export class GetPlcPointEventsParamDto {
-  @IsUUID()
-  id!: string;
-}
-
-export class GetPlcPointEventsQueryDto extends PageRequestDto {
+export class GetRobotTelemetryQueryDto extends PageRequestDto {
   @IsOptional()
   @Type(() => Date)
   @IsDate()

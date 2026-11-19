@@ -1,10 +1,8 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { TelemetryRow } from "../history/vendors-connections-devices-telemetry.types";
-import { GetRobotTelemetryQueryDto } from "./dto/get-robot-telemetry.request.dto";
-import {
-  GetRobotTelemetryItemDto,
-  GetRobotTelemetryResponseDto,
-} from "./dto/get-robot-telemetry.response.dto";
+import { GetRobotTelemetryQueryDto } from "./dto/get-robot-telemetry.query.dto";
+import { GetRobotTelemetryResponseDto } from "./dto/get-robot-telemetry.response.dto";
+import { GetRobotTelemetryItemDto } from "./dto/get-robot-telemetry.item.dto";
 import { RobotsProvider } from "./robots.provider";
 import { TelemetryQueryProvider } from "./telemetry-query.provider";
 

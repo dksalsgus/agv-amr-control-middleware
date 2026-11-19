@@ -5,20 +5,12 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
-  IsUUID,
   Min,
   ValidateNested,
 } from "class-validator";
-import {
-  ModbusConfigDto,
-  MqttConfigDto,
-  RestConfigDto,
-} from "./connection-config.dto";
-
-export class PatchConnectionParamDto {
-  @IsUUID()
-  id!: string;
-}
+import { ModbusConfigDto } from "./modbus-config.dto";
+import { RestConfigDto } from "./rest-config.dto";
+import { MqttConfigDto } from "./mqtt-config.dto";
 
 /** config는 연결의 protocol에 맞는 것 하나만 보낸다. version이 다르면 409 */
 export class PatchConnectionRequestDto {

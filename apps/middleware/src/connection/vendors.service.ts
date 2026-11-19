@@ -1,8 +1,6 @@
 import { Injectable } from "@nestjs/common";
-import {
-  GetVendorsItemDto,
-  GetVendorsResponseDto,
-} from "./dto/get-vendors.response.dto";
+import { GetVendorsResponseDto } from "./dto/get-vendors.response.dto";
+import { GetVendorsItemDto } from "./dto/get-vendors.item.dto";
 import { VendorsProvider } from "./vendors.provider";
 
 @Injectable()

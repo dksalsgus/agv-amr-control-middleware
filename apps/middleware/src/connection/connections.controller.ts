@@ -13,10 +13,8 @@ import { DeleteConnectionParamDto } from "./dto/delete-connection.request.dto";
 import { GetConnectionParamDto } from "./dto/get-connection.request.dto";
 import { GetConnectionResponseDto } from "./dto/get-connection.response.dto";
 import { GetConnectionsResponseDto } from "./dto/get-connections.response.dto";
-import {
-  PatchConnectionParamDto,
-  PatchConnectionRequestDto,
-} from "./dto/patch-connection.request.dto";
+import { PatchConnectionRequestDto } from "./dto/patch-connection.request.dto";
+import { PatchConnectionParamDto } from "./dto/patch-connection.param.dto";
 import { PatchConnectionResponseDto } from "./dto/patch-connection.response.dto";
 import { PostConnectionRequestDto } from "./dto/post-connection.request.dto";
 import { PostConnectionResponseDto } from "./dto/post-connection.response.dto";
