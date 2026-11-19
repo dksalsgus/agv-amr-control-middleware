@@ -1,0 +1,1745 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>관제 · AGV·AMR 통합 관제</title>
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+/* OD-LAYOUT-PRIMITIVES v1 — structure only: display, flex/grid, overflow, wrapping, ratio, geometry.
+   Put this @layer first; product CSS outside the layer wins ordinary layout rules.
+   Native hidden and closed-dialog states take precedence over component display rules. */
+@layer od-layout {
+  [hidden]:not([hidden="until-found" i]) { display: none !important; }
+  dialog:not([open]) { display: none !important; }
+
+  :where(.od-stack,.od-row,.od-row-top,.od-cluster,.od-grid,.od-field,.od-stat,.od-cell,.od-tile) > :where(*) { min-width: 0; }
+
+  /* containers */
+  .od-stack   { display: flex; flex-direction: column; gap: var(--od-gap, 8px); }
+  .od-row     { display: flex; align-items: center; gap: var(--od-gap, 8px); }
+  .od-row-top { display: flex; align-items: flex-start; gap: var(--od-gap, 8px); }
+  .od-cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--od-gap, 8px); }
+  .od-fill    { flex: 1 1 0; min-width: 0; }
+  .od-fixed   { flex: none; }
+  .od-grid    { display: grid; gap: var(--od-gap, 12px); grid-template-columns: repeat(var(--od-cols, 3), minmax(0, 1fr)); }
+
+  /* stacked information: each piece is its own line — never sibling inline spans */
+  .od-stat, .od-field, .od-cell { display: grid; gap: var(--od-gap, 2px); }
+  :where(.od-stat,.od-field,.od-cell) > :where(*) { display: block; }
+  .od-tile { display: grid; grid-template-rows: auto 1fr; }
+  :where(.od-tile) > :where(*) { display: block; }
+
+  .od-media { display: block; width: 100%; height: auto; aspect-ratio: var(--od-ratio, auto); }
+  .od-media-cover { object-fit: cover; }
+
+  /* functional inline SVG icons opt into bounded geometry; content SVGs keep their own */
+  .od-icon { display: inline-block; inline-size: var(--od-icon-size, 1em); block-size: var(--od-icon-size, 1em); flex: none; }
+
+  /* data text only — authored copy is rewritten to its budget instead */
+  .od-truncate { display: block; max-width: 100%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .od-clamp-2, .od-clamp-3 { display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
+  .od-clamp-2 { -webkit-line-clamp: 2; }
+  .od-clamp-3 { -webkit-line-clamp: 3; }
+  .od-lines-2 { min-height: calc(2 * 1.4em); }
+  .od-nowrap  { white-space: nowrap; }
+  .od-keep    { word-break: keep-all; overflow-wrap: anywhere; }
+
+  .od-screen { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; height: 100%; }
+  .od-scroll { overflow-y: auto; overscroll-behavior: contain; min-height: 0; }
+
+  .od-rail { display: flex; gap: var(--od-gap, 8px); overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none;
+             padding-inline: var(--od-rail-pad, 16px); scroll-padding-inline: var(--od-rail-pad, 16px); }
+  .od-rail::-webkit-scrollbar { display: none; }
+  :where(.od-rail) > :where(*) { flex: none; scroll-snap-align: start; }
+  :where(.od-rail) > :where(:last-child) { margin-inline-end: var(--od-rail-pad, 16px); }
+
+  .od-spacer { flex: none; visibility: hidden; pointer-events: none; }
+  .od-touch  { min-width: 44px; min-height: 44px; }
+}
+:root [hidden]:where(:not([hidden="until-found" i])) { display: none; }
+/* /OD-LAYOUT-PRIMITIVES v1 */
+
+/* =====================================================================
+   공통 디자인 토큰 — 관제 / 연결 설정 / 장애 주입 / 로그인 화면이 함께 씁니다.
+   색·글자·간격·모서리·모션 값은 여기에서만 바꿉니다.
+   ===================================================================== */
+:root {
+  color-scheme: dark;
+
+  /* 글꼴 */
+  --font-sans: "Pretendard Variable", Pretendard, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+
+  /* 글자 크기 단계 */
+  --fs-xs: 12px;
+  --fs-sm: 13px;
+  --fs-md: 14px;
+  --fs-lg: 16px;
+  --fs-xl: 20px;
+  --fs-2xl: 26px;
+  --lh-tight: 1.25;
+  --lh-body: 1.5;
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+
+  /* 간격 (4의 배수) */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+
+  /* 모서리 */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+
+  /* 바탕과 면 */
+  --bg: #0B0F13;
+  --surface-0: #0F141A;
+  --surface-1: #141A21;
+  --surface-2: #1B222B;
+  --surface-3: #232C37;
+  --line: #253039;
+  --line-strong: #364350;
+
+  /* 텍스트 */
+  --text-1: #E7ECF1;
+  --text-2: #A8B3BF;
+  --text-3: #8591A0;
+  --text-inverse: #0B0F13;
+
+  /* 강조(선택·주요 동작) */
+  --accent: #4CB4E6;
+  --accent-strong: #2B7FB0;
+  --accent-strong-hover: #236C97;
+  --accent-soft: rgba(76, 180, 230, 0.14);
+  --focus: #8FD3FF;
+
+  /* 운행 상태 */
+  --st-idle: #A3B4C6;
+  --st-moving: #3FCF8E;
+  --st-charging: #5AA8FF;
+  --st-paused: #F0BE3C;
+  --st-error: #FF5B61;
+  --st-stale: #6E7A87;
+
+  /* 알람 등급 */
+  --sev-info: #5AA8FF;
+  --sev-warn: #F0BE3C;
+  --sev-critical: #FF5B61;
+
+  /* 연결 상태 */
+  --link-up: #3FCF8E;
+  --link-down: #FF5B61;
+  --link-unknown: #95A1AE;
+
+  /* 상태 바탕(옅은 색) */
+  --ok-soft: rgba(63, 207, 142, 0.12);
+  --info-soft: rgba(90, 168, 255, 0.12);
+  --warn-soft: rgba(240, 190, 60, 0.12);
+  --danger-soft: rgba(255, 91, 97, 0.13);
+
+  /* 맵 */
+  --map-floor: #10161C;
+  --map-grid: #18202A;
+  --map-rack: #1A232C;
+  --map-rack-line: #2A3542;
+  --map-aisle: #2A3541;
+  --map-wall: #4A5867;
+  --map-label: #7F8B98;
+  --map-marker-line: #E7ECF1;
+
+  /* 크기 */
+  --gnb-h: 52px;
+  --control-h: 32px;
+  --control-h-sm: 28px;
+
+  /* 모션 */
+  --dur-fast: 150ms;
+  --dur-base: 220ms;
+  --dur-slow: 360ms;
+  --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --ease-in: cubic-bezier(0.5, 0, 0.8, 0.4);
+
+  --shadow-pop: 0 12px 32px rgba(0, 0, 0, 0.45);
+}
+
+/* ===== 기본 ===== */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text-1);
+  font-family: var(--font-sans);
+  font-size: var(--fs-md);
+  line-height: var(--lh-body);
+  -webkit-font-smoothing: antialiased;
+}
+button, input, select { font: inherit; color: inherit; }
+h1, h2, h3, p, ul, ol, dl, dd { margin: 0; }
+ul, ol { padding: 0; list-style: none; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.muted { color: var(--text-2); }
+.faint { color: var(--text-3); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ===== 공통 컴포넌트: 버튼 ===== */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--sp-1);
+  height: var(--control-h); padding: 0 var(--sp-3);
+  border-radius: var(--radius-md); border: 1px solid var(--line-strong);
+  background: var(--surface-2); color: var(--text-1);
+  font-size: var(--fs-sm); font-weight: var(--fw-semibold); white-space: nowrap; cursor: pointer;
+  transition: background-color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+}
+.btn:hover { background: var(--surface-3); border-color: var(--text-3); }
+.btn:disabled { cursor: not-allowed; background: var(--surface-1); color: var(--text-3); border-color: var(--line); }
+.btn-primary { background: var(--accent-strong); border-color: var(--accent-strong); color: #FFFFFF; }
+.btn-primary:hover { background: var(--accent-strong-hover); border-color: var(--accent-strong-hover); color: #FFFFFF; }
+.btn-primary:disabled { background: var(--surface-1); border-color: var(--line); color: var(--text-3); }
+.btn-ghost { background: transparent; border-color: transparent; color: var(--text-2); }
+.btn-ghost:hover { background: var(--surface-2); border-color: var(--line); color: var(--text-1); }
+.btn-sm { height: var(--control-h-sm); padding: 0 var(--sp-2); font-size: var(--fs-xs); }
+.btn-icon { width: var(--control-h); padding: 0; }
+
+/* 칩(필터) */
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: var(--control-h-sm); padding: 0 var(--sp-2);
+  border-radius: var(--radius-sm); border: 1px solid var(--line-strong);
+  background: transparent; color: var(--text-3);
+  font-size: var(--fs-xs); font-weight: var(--fw-semibold); cursor: pointer; white-space: nowrap;
+  transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.chip:hover { color: var(--text-1); border-color: var(--text-3); }
+.chip[aria-pressed="true"] { background: var(--surface-3); color: var(--text-1); border-color: var(--text-3); }
+.chip .swatch { opacity: 0.4; }
+.chip[aria-pressed="true"] .swatch { opacity: 1; }
+
+/* 상태 배지 */
+.badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  height: 22px; padding: 0 var(--sp-2); border-radius: var(--radius-sm);
+  font-size: var(--fs-xs); font-weight: var(--fw-semibold); white-space: nowrap;
+  background: var(--surface-3); color: var(--text-1);
+}
+.badge[data-tone="ok"] { background: var(--ok-soft); color: var(--link-up); }
+.badge[data-tone="info"] { background: var(--info-soft); color: var(--sev-info); }
+.badge[data-tone="warn"] { background: var(--warn-soft); color: var(--sev-warn); }
+.badge[data-tone="danger"] { background: var(--danger-soft); color: var(--sev-critical); }
+.badge[data-tone="neutral"] { background: var(--surface-3); color: var(--text-2); }
+.badge[data-tone="stale"] { background: transparent; color: var(--text-2); border: 1px dashed var(--st-stale); }
+
+.dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none; }
+
+/* =====================================================================
+   공통 상단 내비게이션 — 모든 화면에서 같은 자리, 같은 구조로 씁니다.
+   ===================================================================== */
+.gnb {
+  display: flex; align-items: center; gap: var(--sp-5);
+  height: var(--gnb-h); padding: 0 var(--sp-4) 0 var(--sp-5);
+  background: var(--surface-0); border-bottom: 1px solid var(--line);
+}
+.gnb-brand { display: flex; align-items: center; gap: var(--sp-2); flex: none; }
+.gnb-brand svg { display: block; }
+.gnb-title { font-size: var(--fs-lg); font-weight: var(--fw-bold); letter-spacing: -0.01em; white-space: nowrap; }
+.gnb-site { font-size: var(--fs-xs); color: var(--text-3); white-space: nowrap; }
+.gnb-tabs { display: flex; align-self: stretch; }
+.gnb-tab {
+  display: flex; align-items: center; padding: 0 var(--sp-4);
+  background: none; border: 0; border-bottom: 2px solid transparent;
+  color: var(--text-2); font-size: var(--fs-md); font-weight: var(--fw-semibold); cursor: pointer; white-space: nowrap;
+  transition: color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
+}
+.gnb-tab:hover { color: var(--text-1); background: var(--surface-1); }
+.gnb-tab[aria-current="page"] { color: var(--text-1); border-bottom-color: var(--accent); }
+.gnb-tab:focus-visible { outline-offset: -2px; }
+a.gnb-tab { text-decoration: none; }
+.gnb-end { display: flex; align-items: center; gap: var(--sp-3); margin-left: auto; }
+.gnb-clock { font-size: var(--fs-sm); color: var(--text-2); }
+.live-pill {
+  display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 var(--sp-2);
+  border-radius: 13px; font-size: var(--fs-xs); font-weight: var(--fw-semibold); white-space: nowrap;
+  background: var(--ok-soft); color: var(--link-up);
+}
+.live-pill[data-tone="info"] { background: var(--info-soft); color: var(--sev-info); }
+.live-pill[data-tone="warn"] { background: var(--warn-soft); color: var(--sev-warn); }
+.live-pill[data-tone="danger"] { background: var(--danger-soft); color: var(--sev-critical); }
+.live-pill[data-pulse="true"] .dot { animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: 0.35; } }
+.gnb-divider { width: 1px; height: 24px; background: var(--line); }
+.gnb-user { display: flex; align-items: center; gap: var(--sp-2); }
+.avatar {
+  display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%;
+  background: var(--surface-3); color: var(--text-1); font-size: var(--fs-xs); font-weight: var(--fw-bold);
+}
+.gnb-user-name { font-size: var(--fs-sm); font-weight: var(--fw-semibold); line-height: var(--lh-tight); white-space: nowrap; }
+
+/* ===== 화면 뼈대 ===== */
+.app { display: grid; grid-template-rows: auto auto auto minmax(0, 1fr) auto; height: 100vh; }
+
+/* 서버 연결 상태 띠 */
+.conn-banner {
+  display: flex; align-items: center; gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-5); font-size: var(--fs-sm); font-weight: var(--fw-medium);
+  border-bottom: 1px solid var(--line);
+}
+.conn-banner[data-tone="danger"] { background: #3A1518; color: #FFD9DA; border-bottom-color: #6B2328; }
+.conn-banner[data-tone="warn"] { background: #33290F; color: #FCE7B0; border-bottom-color: #5E4A17; }
+.conn-banner[data-tone="info"] { background: #11253A; color: #CFE5FF; border-bottom-color: #1E3F63; }
+.conn-banner strong { font-weight: var(--fw-bold); }
+.conn-banner .btn { margin-left: auto; }
+.progress { position: relative; width: 120px; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.15); overflow: hidden; flex: none; }
+.progress > span { position: absolute; inset: 0; background: currentColor; transform-origin: left; transform: scaleX(var(--p, 0)); transition: transform 100ms linear; }
+
+/* 상단 요약 */
+.summary {
+  display: flex; align-items: stretch; gap: var(--sp-1);
+  padding: var(--sp-2) var(--sp-5); background: var(--surface-0); border-bottom: 1px solid var(--line);
+  overflow-x: auto;
+}
+.stat {
+  display: grid; gap: 2px; align-content: center; min-width: 88px; padding: var(--sp-1) var(--sp-3);
+  background: transparent; border: 1px solid transparent; border-radius: var(--radius-md); text-align: left;
+}
+button.stat { cursor: pointer; transition: background-color var(--dur-fast) var(--ease-out); }
+button.stat:hover { background: var(--surface-1); border-color: var(--line); }
+button.stat[aria-pressed="true"] { background: var(--surface-2); border-color: var(--line-strong); }
+.stat-label { display: flex; align-items: center; gap: 6px; font-size: var(--fs-xs); color: var(--text-2); white-space: nowrap; }
+.stat-value { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: var(--fs-xl); font-weight: var(--fw-semibold); line-height: var(--lh-tight); white-space: nowrap; }
+.stat-value small { font-size: var(--fs-sm); color: var(--text-3); font-weight: var(--fw-medium); margin-left: 2px; }
+.stat-sep { width: 1px; margin: var(--sp-1) var(--sp-2); background: var(--line); flex: none; }
+.stat[data-alert="true"] .stat-value { color: var(--sev-critical); }
+.stat[data-warn="true"] .stat-value { color: var(--sev-warn); }
+.summary-end { margin-left: auto; display: flex; align-items: center; gap: var(--sp-2); padding-left: var(--sp-3); }
+
+/* 작업 영역 3단 */
+.workspace {
+  display: grid; grid-template-columns: 336px minmax(0, 1fr) 384px; gap: 1px;
+  min-height: 0; background: var(--line);
+  transition: opacity var(--dur-slow) var(--ease-out), filter var(--dur-slow) var(--ease-out);
+}
+.workspace.is-frozen { opacity: 0.5; filter: grayscale(0.7); }
+.col { display: grid; min-height: 0; background: var(--surface-1); }
+.col-left { grid-template-rows: auto minmax(0, 1fr); }
+.col-right { grid-template-rows: auto minmax(0, 1fr); }
+.col-scroll { overflow-y: auto; overscroll-behavior: contain; min-height: 0; }
+
+.panel { padding: var(--sp-4); border-bottom: 1px solid var(--line); }
+.panel:last-child { border-bottom: 0; }
+.panel-head { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-3); }
+.panel-title { font-size: var(--fs-md); font-weight: var(--fw-bold); white-space: nowrap; }
+.panel-meta { font-size: var(--fs-xs); color: var(--text-3); white-space: nowrap; }
+.panel-head .end { margin-left: auto; }
+
+/* 스켈레톤(접속 중) */
+.skel { display: none; }
+.app[data-mode="connecting"] .skel { display: grid; gap: var(--sp-2); }
+.app[data-mode="connecting"] .data-only { display: none !important; }
+.skel i { display: block; height: 14px; border-radius: var(--radius-sm); background: linear-gradient(90deg, var(--surface-2) 0%, var(--surface-3) 50%, var(--surface-2) 100%); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
+.skel i.tall { height: 44px; }
+.skel i.short { width: 60%; }
+@keyframes shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+
+/* 연결 상태 목록 */
+.conn-list { display: grid; gap: var(--sp-2); }
+.conn-item { padding: var(--sp-2) var(--sp-3); border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface-0); }
+.conn-item[data-status="DOWN"] { border-color: #6B2328; background: #1E1215; }
+.conn-name { font-size: var(--fs-md); font-weight: var(--fw-semibold); }
+.conn-sub { font-size: var(--fs-xs); color: var(--text-2); }
+.conn-meta { display: flex; gap: var(--sp-3); margin-top: 6px; font-size: var(--fs-xs); color: var(--text-3); }
+.conn-meta dd { color: var(--text-2); font-family: var(--font-mono); }
+.conn-meta div { display: flex; gap: 4px; white-space: nowrap; }
+.link-badge[data-status="UP"] { background: var(--ok-soft); color: var(--link-up); }
+.link-badge[data-status="DOWN"] { background: var(--danger-soft); color: var(--link-down); }
+.link-badge[data-status="UNKNOWN"] { background: var(--surface-3); color: var(--link-unknown); }
+
+/* PLC 신호 */
+.plc-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.plc-tile {
+  display: grid; gap: 2px; padding: 6px var(--sp-2); text-align: left;
+  border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface-0); cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
+}
+.plc-tile:hover { border-color: var(--line-strong); background: var(--surface-2); }
+.plc-tile[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.plc-tile[data-abnormal="true"] { border-color: var(--sev-critical); background: #231417; }
+.plc-tile[data-stale="true"] { border-style: dashed; }
+.plc-top { display: flex; align-items: center; gap: 6px; }
+.plc-no { font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--text-3); }
+.plc-flag { display: inline-flex; align-items: center; gap: 2px; font-size: 11px; font-weight: var(--fw-bold); color: var(--sev-critical); white-space: nowrap; }
+.plc-flag.is-stale { color: var(--text-2); }
+.plc-val { margin-left: auto; font-family: var(--font-mono); font-size: 11px; font-weight: var(--fw-semibold); padding: 0 6px; border-radius: 3px; background: var(--surface-3); color: var(--text-2); }
+.plc-val[data-on="true"] { background: var(--text-1); color: var(--text-inverse); }
+.plc-name { font-size: var(--fs-sm); color: var(--text-1); }
+.plc-detail { margin-top: var(--sp-3); padding: var(--sp-3); border-radius: var(--radius-md); background: var(--surface-0); border: 1px solid var(--line); }
+.plc-detail-title { font-size: var(--fs-sm); font-weight: var(--fw-semibold); margin-bottom: var(--sp-2); }
+
+/* 공통 필드(라벨 + 값) */
+.kv { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-2) var(--sp-3); }
+.kv .od-field dt, .kv-label { font-size: var(--fs-xs); color: var(--text-3); }
+.kv .od-field dd { font-size: var(--fs-md); color: var(--text-1); }
+.kv .span-2 { grid-column: span 2; }
+
+/* 맵 */
+.col-center { grid-template-rows: auto minmax(0, 1fr) auto; }
+.map-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-4); padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--line); }
+.filter-group { display: flex; align-items: center; gap: 6px; }
+.filter-label { font-size: var(--fs-xs); color: var(--text-3); margin-right: 2px; white-space: nowrap; }
+.map-search { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+.map-search label { font-size: var(--fs-xs); color: var(--text-3); white-space: nowrap; }
+.input {
+  height: var(--control-h-sm); width: 148px; padding: 0 var(--sp-2);
+  border: 1px solid var(--line-strong); border-radius: var(--radius-sm); background: var(--surface-0); color: var(--text-1);
+  font-size: var(--fs-sm);
+}
+.input::placeholder { color: var(--text-3); }
+.map-stage { position: relative; min-height: 0; background: var(--map-floor); }
+.map-stage canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
+.map-stage canvas.is-hover { cursor: pointer; }
+.map-stage canvas:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.map-overlay {
+  position: absolute; top: var(--sp-3); left: var(--sp-3);
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px var(--sp-2);
+  border-radius: var(--radius-sm); background: rgba(11,15,19,0.85); border: 1px solid var(--line-strong);
+  font-size: var(--fs-xs); color: var(--text-2); pointer-events: none;
+}
+.map-waiting {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  display: grid; justify-items: center; gap: var(--sp-3); padding: var(--sp-5) var(--sp-6);
+  border-radius: var(--radius-lg); background: rgba(11,15,19,0.9); border: 1px solid var(--line-strong);
+  text-align: center;
+}
+.map-waiting strong { font-size: var(--fs-lg); }
+.map-waiting .progress { width: 180px; color: var(--accent); }
+.map-waiting .progress > span { animation: indet 1.2s var(--ease-out) infinite; transform: none; width: 40%; }
+@keyframes indet { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
+.map-foot { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-4); padding: var(--sp-2) var(--sp-4); border-top: 1px solid var(--line); font-size: var(--fs-xs); color: var(--text-2); }
+.legend-item { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.legend-sep { width: 1px; height: 16px; background: var(--line); }
+.map-count { margin-left: auto; color: var(--text-3); white-space: nowrap; }
+.map-hint { color: var(--text-3); white-space: nowrap; }
+kbd { font-family: var(--font-mono); font-size: 11px; padding: 0 4px; border: 1px solid var(--line-strong); border-radius: 3px; color: var(--text-2); }
+
+/* 선택한 로봇 상세 */
+.detail-head { display: flex; align-items: flex-start; gap: var(--sp-3); margin-bottom: var(--sp-3); }
+.detail-name { font-family: var(--font-mono); font-size: var(--fs-xl); font-weight: var(--fw-semibold); line-height: var(--lh-tight); }
+.detail-sub { font-size: var(--fs-sm); color: var(--text-2); }
+.detail-badges { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; margin-left: auto; }
+.battery { display: grid; gap: 4px; margin-bottom: var(--sp-3); }
+.battery-row { display: flex; align-items: baseline; justify-content: space-between; }
+.battery-val { font-family: var(--font-mono); font-size: var(--fs-lg); font-weight: var(--fw-semibold); }
+.bar { height: 6px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
+.bar > span { display: block; height: 100%; background: var(--st-moving); transform-origin: left; transform: scaleX(var(--v, 0)); transition: transform var(--dur-base) var(--ease-out); }
+.bar[data-level="low"] > span { background: var(--sev-warn); }
+.bar[data-level="critical"] > span { background: var(--sev-critical); }
+.theta { display: inline-flex; align-items: center; gap: 6px; }
+.theta svg { transition: transform 100ms linear; }
+.err-code[data-has="true"] { color: var(--sev-critical); font-weight: var(--fw-semibold); }
+.stale-yes { color: var(--sev-warn); font-weight: var(--fw-semibold); }
+.empty { display: grid; justify-items: center; gap: var(--sp-2); padding: var(--sp-5) var(--sp-3); text-align: center; color: var(--text-2); font-size: var(--fs-sm); }
+.empty strong { color: var(--text-1); font-size: var(--fs-md); }
+
+/* 열린 알람 */
+.alarm-list { display: grid; gap: var(--sp-2); }
+.alarm {
+  display: grid; gap: 4px; padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--line); border-left-width: 1px; border-radius: var(--radius-md); background: var(--surface-0);
+}
+.alarm:focus-visible { outline-offset: 0; }
+.alarm[data-sev="CRITICAL"]:not([data-acked="true"]) { border-color: #6B2328; background: #1E1215; }
+.alarm[data-acked="true"] { opacity: 0.78; }
+.alarm-head { display: flex; align-items: center; gap: var(--sp-2); }
+.alarm-type { font-size: var(--fs-sm); font-weight: var(--fw-semibold); white-space: nowrap; }
+.alarm-time { margin-left: auto; font-family: var(--font-mono); font-size: var(--fs-xs); color: var(--text-3); white-space: nowrap; }
+.alarm-target { justify-self: start; padding: 0; border: 0; background: none; font-family: var(--font-mono); font-size: var(--fs-sm); color: var(--accent); cursor: pointer; text-decoration: underline; text-decoration-color: transparent; text-underline-offset: 3px; }
+.alarm-target:hover { text-decoration-color: currentColor; }
+span.alarm-target { color: var(--text-1); cursor: default; text-decoration: none; }
+.alarm-msg { font-size: var(--fs-sm); color: var(--text-2); }
+.alarm-foot { display: flex; align-items: center; gap: var(--sp-2); min-height: var(--control-h-sm); }
+.ack-state { font-size: var(--fs-xs); color: var(--text-3); }
+.ack-state.is-acked { color: var(--link-up); }
+.alarm-foot .btn { margin-left: auto; }
+.perm-note { display: flex; align-items: center; gap: 6px; padding: 6px var(--sp-2); margin-bottom: var(--sp-2); border-radius: var(--radius-sm); background: var(--surface-0); border: 1px solid var(--line); font-size: var(--fs-xs); color: var(--text-2); }
+
+.sev { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: var(--fw-bold); font-family: var(--font-mono); white-space: nowrap; }
+.sev[data-sev="INFO"] { color: var(--sev-info); }
+.sev[data-sev="WARN"] { color: var(--sev-warn); }
+.sev[data-sev="CRITICAL"] { color: var(--sev-critical); }
+
+/* 토스트 */
+.toasts { position: fixed; right: var(--sp-5); bottom: 64px; z-index: 20; display: grid; gap: var(--sp-2); pointer-events: none; }
+.toast {
+  display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); min-width: 260px; max-width: 420px;
+  border-radius: var(--radius-md); background: var(--surface-3); border: 1px solid var(--line-strong); box-shadow: var(--shadow-pop);
+  font-size: var(--fs-sm); animation: toast-in var(--dur-base) var(--ease-out);
+}
+.toast[data-tone="ok"] { border-left: 3px solid var(--link-up); }
+.toast[data-tone="warn"] { border-left: 3px solid var(--sev-warn); }
+.toast[data-tone="danger"] { border-left: 3px solid var(--sev-critical); }
+.toast[data-tone="info"] { border-left: 3px solid var(--sev-info); }
+@keyframes toast-in { from { transform: translateY(8px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* 데모 컨트롤 — 실제 제품 화면에는 없는 영역 */
+.demo-bar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-5);
+  padding: var(--sp-2) var(--sp-5);
+  background: repeating-linear-gradient(-45deg, #161B10, #161B10 10px, #191F12 10px, #191F12 20px);
+  border-top: 1px dashed #5C6B2E; color: #DCE7B5; font-size: var(--fs-xs);
+}
+.demo-tag { font-weight: var(--fw-bold); letter-spacing: 0.02em; white-space: nowrap; }
+.demo-group { display: flex; align-items: center; gap: 4px; border: 0; padding: 0; margin: 0; }
+.demo-group legend { float: left; margin-right: 6px; color: #B9C58F; }
+.demo-opt { position: relative; }
+.demo-opt input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.demo-opt span { display: inline-flex; align-items: center; height: 26px; padding: 0 var(--sp-2); border-radius: var(--radius-sm); border: 1px solid #4B5726; white-space: nowrap; cursor: pointer; }
+.demo-opt:hover span { background: #232B16; }
+.demo-opt input:checked + span { background: #DCE7B5; color: #12160B; border-color: #DCE7B5; font-weight: var(--fw-semibold); }
+.demo-opt input:focus-visible + span { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+/* 좁은 창: 세로로 쌓기 */
+@media (max-width: 1279px) {
+  .app { height: auto; min-height: 100vh; }
+  .workspace { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .col-center { grid-column: 1 / -1; grid-row: 1; }
+  .map-stage { height: 62vh; min-height: 420px; }
+  .col-scroll { overflow: visible; }
+}
+@media (max-width: 767px) {
+  .workspace { grid-template-columns: minmax(0, 1fr); }
+  .gnb { gap: var(--sp-3); overflow-x: auto; }
+  .gnb-site, .gnb-clock { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
+}
+</style>
+</head>
+<body>
+<div class="app" id="app" data-mode="connecting">
+
+  <!-- ===== 공통 상단 내비게이션 ===== -->
+  <header class="gnb">
+    <div class="gnb-brand">
+      <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true">
+        <rect x="1" y="1" width="24" height="24" rx="5" fill="none" stroke="#4CB4E6" stroke-width="2"/>
+        <path d="M6 18 L11 8 L15 14 L20 7" fill="none" stroke="#E7ECF1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="20" cy="7" r="2" fill="#4CB4E6"/>
+      </svg>
+      <div class="od-stack" style="--od-gap:0">
+        <span class="gnb-title">AGV·AMR 통합 관제</span>
+        <span class="gnb-site">1공장 · 로봇 90대 · PLC 16점</span>
+      </div>
+    </div>
+    <nav class="gnb-tabs" aria-label="주 메뉴">
+      <a class="gnb-tab" href="monitor.html" aria-current="page">관제</a>
+      <a class="gnb-tab" href="logs.html">이력</a>
+      <a class="gnb-tab" href="connections.html">연결 설정</a>
+      <button type="button" class="gnb-tab" data-nav="faults">장애 주입</button>
+    </nav>
+    <div class="gnb-end">
+      <span class="live-pill" id="livePill" role="status"><span class="dot"></span><span id="livePillText">접속 중</span></span>
+      <span class="gnb-clock mono" id="clock">--:--:--</span>
+      <span class="gnb-divider" aria-hidden="true"></span>
+      <div class="gnb-user">
+        <span class="avatar" aria-hidden="true">김</span>
+        <span class="gnb-user-name">김도윤</span>
+      </div>
+      <button type="button" class="btn btn-ghost btn-sm" id="logoutBtn">
+        <svg class="od-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3"/><path d="M10 17l-5-5 5-5"/><path d="M5 12h11"/></svg>
+        로그아웃
+      </button>
+    </div>
+  </header>
+
+  <!-- 서버 연결 상태 띠 -->
+  <div class="conn-banner" id="connBanner" hidden></div>
+
+  <!-- 상단 요약 -->
+  <section class="summary" aria-label="상단 요약" id="summary">
+    <div class="skel" style="grid-auto-flow:column;grid-auto-columns:88px;width:100%"><i class="tall"></i><i class="tall"></i><i class="tall"></i><i class="tall"></i><i class="tall"></i><i class="tall"></i><i class="tall"></i></div>
+    <div class="data-only" id="summaryInner" style="display:contents"></div>
+  </section>
+
+  <!-- 작업 영역 -->
+  <main class="workspace" id="workspace">
+
+    <!-- 왼쪽: 연결 + PLC -->
+    <div class="col col-left" style="grid-template-rows:minmax(0,1fr)">
+      <div class="col-scroll">
+        <section class="panel" aria-labelledby="connTitle">
+          <div class="panel-head">
+            <h2 class="panel-title" id="connTitle">연결 상태</h2>
+            <span class="panel-meta end" id="connMeta"></span>
+          </div>
+          <div class="skel"><i class="tall"></i><i class="tall"></i><i class="tall"></i><i class="tall"></i></div>
+          <ul class="conn-list data-only" id="connList"></ul>
+        </section>
+        <section class="panel" aria-labelledby="plcTitle">
+          <div class="panel-head">
+            <h2 class="panel-title" id="plcTitle">PLC 신호</h2>
+            <span class="panel-meta" id="plcCount">16점</span>
+            <span class="end" id="plcAbnormalBadge"></span>
+          </div>
+          <div class="skel"><i class="tall"></i><i class="tall"></i><i class="tall"></i><i class="tall"></i><i class="tall"></i></div>
+          <div class="data-only">
+            <div class="plc-grid" id="plcGrid" role="group" aria-label="PLC 신호 16점"></div>
+            <div class="plc-detail" id="plcDetail" aria-live="polite"></div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <!-- 가운데: 맵 -->
+    <div class="col col-center">
+      <div class="map-toolbar">
+        <div class="filter-group" role="group" aria-label="제조사 필터">
+          <span class="filter-label">제조사</span>
+          <button type="button" class="chip" data-vendor="A" aria-pressed="true"><svg class="swatch" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="4.2" fill="#E7ECF1"/></svg>A · AMR</button>
+          <button type="button" class="chip" data-vendor="B" aria-pressed="true"><svg class="swatch" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><rect x="1" y="1" width="8" height="8" fill="#E7ECF1"/></svg>B · AGV</button>
+          <button type="button" class="chip" data-vendor="C" aria-pressed="true"><svg class="swatch" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><path d="M5 0.3 L9.7 5 L5 9.7 L0.3 5 Z" fill="#E7ECF1"/></svg>C · AGV</button>
+        </div>
+        <div class="filter-group" role="group" aria-label="상태 필터" id="stateFilters"></div>
+        <button type="button" class="btn btn-ghost btn-sm" id="filterReset">필터 초기화</button>
+        <div class="map-search">
+          <label for="robotSearch">로봇 찾기</label>
+          <input class="input mono" id="robotSearch" list="robotNames" placeholder="예: B-AGV-07" autocomplete="off">
+          <datalist id="robotNames"></datalist>
+        </div>
+      </div>
+      <div class="map-stage" id="mapStage">
+        <canvas id="map" tabindex="0" role="img" aria-label="공장 맵 50m × 30m. 로봇을 클릭하거나 좌우 화살표 키로 선택합니다."></canvas>
+        <div class="map-overlay" id="mapFrozen" hidden></div>
+        <div class="map-waiting" id="mapWaiting" hidden>
+          <strong>첫 스냅샷 대기 중</strong>
+          <span class="muted">서버에 접속했습니다. 로봇 90대와 PLC 16점의 현재 상태를 받아오는 중입니다.</span>
+          <span class="progress" aria-hidden="true"><span></span></span>
+        </div>
+      </div>
+      <div class="map-foot" id="mapLegend">
+        <span class="legend-item"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5" fill="none" stroke="#A8B3BF" stroke-width="1.5"/></svg>A 원</span>
+        <span class="legend-item"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><rect x="1.5" y="1.5" width="9" height="9" fill="none" stroke="#A8B3BF" stroke-width="1.5"/></svg>B 사각</span>
+        <span class="legend-item"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M6 0.8 L11.2 6 L6 11.2 L0.8 6 Z" fill="none" stroke="#A8B3BF" stroke-width="1.5"/></svg>C 마름모</span>
+        <span class="legend-sep" aria-hidden="true"></span>
+        <span class="legend-item"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5" fill="#A3B4C6"/><circle cx="6" cy="6" r="2" fill="#10161C"/></svg>가운데 점 = 적재</span>
+        <span class="legend-item"><svg width="16" height="12" viewBox="0 0 16 12" aria-hidden="true"><circle cx="5" cy="6" r="4" fill="#A3B4C6"/><path d="M9 6 H15" stroke="#E7ECF1" stroke-width="1.5"/></svg>바늘 = 방향</span>
+        <span class="legend-item"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="4.6" fill="#6E7A87" fill-opacity="0.5" stroke="#A8B3BF" stroke-width="1.2" stroke-dasharray="2 2"/></svg>점선 = STALE</span>
+        <span class="legend-item"><svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="3" fill="#FF5B61"/><circle cx="6" cy="6" r="5.2" fill="none" stroke="#FF5B61" stroke-width="1.2"/></svg>고리 = 오류</span>
+        <span class="map-hint">맵 선택 후 <kbd>←</kbd><kbd>→</kbd> 이동 · <kbd>Esc</kbd> 해제</span>
+        <span class="map-count mono" id="mapCount"></span>
+      </div>
+    </div>
+
+    <!-- 오른쪽: 상세 + 알람 -->
+    <div class="col col-right">
+      <section class="panel" aria-labelledby="detailTitle">
+        <div class="panel-head">
+          <h2 class="panel-title" id="detailTitle">선택한 로봇</h2>
+          <span class="panel-meta end mono" id="detailRecv"></span>
+        </div>
+        <div class="skel"><i class="tall"></i><i></i><i class="short"></i><i></i><i class="short"></i><i></i></div>
+        <div class="data-only" id="detailBody"></div>
+      </section>
+      <section class="panel" aria-labelledby="alarmTitle" style="display:grid;grid-template-rows:auto auto minmax(0,1fr);min-height:0;padding-bottom:0">
+        <div class="panel-head">
+          <h2 class="panel-title" id="alarmTitle" tabindex="-1">열린 알람</h2>
+          <span class="badge end" data-tone="danger" id="alarmUnackedBadge"></span>
+        </div>
+        <div id="permNote"></div>
+        <div class="col-scroll" style="padding-bottom:var(--sp-4)">
+          <div class="skel"><i class="tall"></i><i class="tall"></i><i class="tall"></i></div>
+          <ul class="alarm-list data-only" id="alarmList" aria-labelledby="alarmTitle"></ul>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- 데모 컨트롤: 실제 제품 화면에는 없는 영역입니다 -->
+  <footer class="demo-bar" aria-label="데모 컨트롤">
+    <span class="demo-tag">데모 컨트롤 · 실제 화면에는 없음</span>
+    <fieldset class="demo-group" id="demoMode">
+      <legend>화면 상태</legend>
+      <label class="demo-opt"><input type="radio" name="mode" value="connecting" checked><span>접속 중</span></label>
+      <label class="demo-opt"><input type="radio" name="mode" value="live"><span>실시간 수신</span></label>
+      <label class="demo-opt"><input type="radio" name="mode" value="disconnected"><span>서버 연결 끊김</span></label>
+      <label class="demo-opt"><input type="radio" name="mode" value="reconnecting"><span>재접속 → 복구</span></label>
+      <label class="demo-opt"><input type="radio" name="mode" value="linkDown"><span>연결 1개 DOWN</span></label>
+    </fieldset>
+  </footer>
+</div>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script>
+'use strict';
+
+/* ===== 상수 ===== */
+const STALE_MS = 3000;
+const TICK_MS = 100;
+const MAP_W = 50;
+const MAP_H = 30;
+const RECONNECT_MS = 3000;
+
+const VENDORS = {
+  A: { label: '제조사 A', type: 'AMR', connId: 'conn-a', count: 40, vmin: 0.8, vmax: 1.5, lat: 45, latJitter: 22 },
+  B: { label: '제조사 B', type: 'AGV', connId: 'conn-b', count: 30, vmin: 0.6, vmax: 1.0, lat: 190, latJitter: 70 },
+  C: { label: '제조사 C', type: 'AGV', connId: 'conn-c', count: 20, vmin: 0.6, vmax: 1.0, lat: 95, latJitter: 35 },
+};
+const OP_STATES = ['MOVING', 'IDLE', 'CHARGING', 'PAUSED', 'ERROR'];
+const OP_LABEL = { IDLE: '대기', MOVING: '주행', CHARGING: '충전', PAUSED: '일시정지', ERROR: '오류', STALE: '끊김' };
+const FILTER_STATES = ['MOVING', 'IDLE', 'CHARGING', 'PAUSED', 'ERROR', 'STALE'];
+const ALARM_LABEL = { ROBOT_ERROR: '로봇 오류', DEVICE_STALE: '데이터 끊김', PLC_ABNORMAL: 'PLC 비정상', LOW_BATTERY: '배터리 부족' };
+const SEV_RANK = { CRITICAL: 3, WARN: 2, INFO: 1 };
+const CURRENT_USER = '김도윤';
+const ERROR_CODES = {
+  'E-214': '경로 장애물 감지로 정지',
+  'E-031': '구동 모터 과전류',
+  'E-118': '안전 범퍼 접촉',
+  'E-402': '위치 추정 실패',
+  'E-077': '리프트 동작 시간 초과',
+};
+
+/* ===== 결정적 난수 ===== */
+let seed = 20261119;
+const rand = () => {
+  seed = (seed + 0x6D2B79F5) | 0;
+  let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+};
+const randIn = (a, b) => a + rand() * (b - a);
+const pick = (arr) => arr[Math.floor(rand() * arr.length)];
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const normDeg = (d) => ((d % 360) + 360) % 360;
+const pad2 = (n) => String(n).padStart(2, '0');
+
+/* ===== 포맷 ===== */
+const fmtTime = (ts) => { const d = new Date(ts); return `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`; };
+const fmtTimeMs = (ts) => `${fmtTime(ts)}.${String(new Date(ts).getMilliseconds()).padStart(3, '0')}`;
+const fmtAgo = (ms) => {
+  if (ms < 1000) return '방금';
+  if (ms < 60000) return `${(ms / 1000).toFixed(ms < 10000 ? 1 : 0)}초 전`;
+  if (ms < 3600000) return `${Math.floor(ms / 60000)}분 전`;
+  return `${Math.floor(ms / 3600000)}시간 전`;
+};
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+/* ===== 아이콘(한 가지 선 아이콘 체계) ===== */
+const ICON_PATHS = {
+  info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><path d="M12 7.5v.5"/>',
+  warn: '<path d="M12 3.5 2.8 19.5h18.4z"/><path d="M12 10v4.5"/><path d="M12 17.2v.3"/>',
+  critical: '<path d="M8.2 3h7.6L21 8.2v7.6L15.8 21H8.2L3 15.8V8.2z"/><path d="M12 8v5"/><path d="M12 16v.3"/>',
+  check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  x: '<path d="M7 7l10 10M17 7 7 17"/>',
+  question: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7"/><path d="M12 16.8v.3"/>',
+  unplug: '<path d="M4 20l4-4"/><path d="M20 4l-4 4"/><path d="M7 13l4 4"/><path d="M13 7l4 4"/><path d="M3 3l18 18"/>',
+  lock: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+  arrow: '<path d="M4 12h15"/><path d="M14 7l5 5-5 5"/>',
+};
+const icon = (name, size) => `<svg class="od-icon"${size ? ` style="--od-icon-size:${size}px"` : ''} viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON_PATHS[name]}</svg>`;
+const SEV_ICON = { INFO: 'info', WARN: 'warn', CRITICAL: 'critical' };
+const sevHtml = (sev) => `<span class="sev" data-sev="${sev}">${icon(SEV_ICON[sev])}${sev}</span>`;
+
+/* ===== 공장 배치(미터, 원점 왼쪽 아래, y 위쪽) ===== */
+const AX = [3, 12, 21, 30, 39, 47];
+const AY = [3, 10, 17, 24, 27.5];
+const CHARGERS = Array.from({ length: 8 }, (_, k) => ({ x: 33 + k * 1.6, y: 1.1 }));
+const neighbors = (i, j) => [[i + 1, j], [i - 1, j], [i, j + 1], [i, j - 1]]
+  .filter(([a, b]) => a >= 0 && a < AX.length && b >= 0 && b < AY.length);
+
+/* ===== 상태 ===== */
+const state = {
+  mode: 'connecting',
+  selectedId: null,
+  hoverId: null,
+  selectedPlc: 9,
+  vendors: new Set(['A', 'B', 'C']),
+  states: new Set(FILTER_STATES),
+  linkDown: false,
+  linkDownAt: 0,
+  reconnectStart: 0,
+  userTouchedMode: false,
+};
+let frozenAt = Date.now();
+const dataNow = () => frozenAt ?? Date.now();
+const isFrozen = () => frozenAt !== null;
+const isStreaming = () => state.mode === 'live' || state.mode === 'linkDown';
+
+/* ===== 가짜 데이터: 연결 ===== */
+const BOOT = Date.now();
+const connections = [
+  { id: 'conn-a', name: '제조사 A MQTT', vendor: '제조사 A', protocol: 'MQTT', status: 'UP', changedAt: BOOT - 3 * 3600e3 - 1220e3, devices: 40, enabled: true },
+  { id: 'conn-b', name: '제조사 B REST', vendor: '제조사 B', protocol: 'REST', status: 'UP', changedAt: BOOT - 2 * 3600e3 - 410e3, devices: 30, enabled: true },
+  { id: 'conn-c', name: '제조사 C Modbus', vendor: '제조사 C', protocol: 'Modbus TCP', status: 'UP', changedAt: BOOT - 47 * 60e3, devices: 20, enabled: true },
+  { id: 'conn-plc', name: 'PLC Modbus', vendor: '공장 PLC', protocol: 'Modbus TCP', status: 'UP', changedAt: BOOT - 5 * 3600e3 - 900e3, devices: 16, enabled: true },
+];
+const connById = (id) => connections.find((c) => c.id === id);
+
+/* ===== 가짜 데이터: PLC 16점 ===== */
+const PLC_DEFS = [
+  ['도어 1 열림', 'DOOR', false, { x: 0, y: 6.5 }],
+  ['도어 2 열림', 'DOOR', false, { x: 0, y: 20.5 }],
+  ['도어 3 열림', 'DOOR', false, { x: 50, y: 6.5 }],
+  ['도어 4 열림', 'DOOR', false, { x: 50, y: 20.5 }],
+  ['교차로 1 점유', 'INTERSECTION', false, { x: 12, y: 10 }],
+  ['교차로 2 점유', 'INTERSECTION', false, { x: 21, y: 17 }],
+  ['교차로 3 점유', 'INTERSECTION', false, { x: 30, y: 10 }],
+  ['교차로 4 점유', 'INTERSECTION', false, { x: 39, y: 17 }],
+  ['비상정지 1', 'ESTOP', false, { x: 7.5, y: 29.2 }],
+  ['비상정지 2', 'ESTOP', false, { x: 25.5, y: 29.2 }],
+  ['비상정지 3', 'ESTOP', false, { x: 43, y: 29.2 }],
+  ['비상정지 4', 'ESTOP', false, { x: 25.5, y: 0.8 }],
+  ['컨베이어 1 가동', 'GENERIC', true, null],
+  ['충전소 전원', 'GENERIC', true, null],
+  ['경광등 점등', 'GENERIC', false, null],
+  ['공기압 정상', 'GENERIC', true, null],
+];
+const plcPoints = PLC_DEFS.map(([name, type, normal, pos], no) => ({
+  no, name, type, normal, value: normal, pos,
+  changedAt: BOOT - Math.round(randIn(8, 170)) * 60e3,
+  lastRecv: BOOT,
+  feedAlive: true,
+}));
+plcPoints[2].value = true; plcPoints[2].changedAt = BOOT - 6 * 60e3 - 12e3;   // 도어 3 열림 비정상
+plcPoints[9].value = true; plcPoints[9].changedAt = BOOT - 2 * 60e3 - 41e3;   // 비상정지 2 눌림
+plcPoints[5].changedAt = BOOT - 14e3;
+plcPoints[15].feedAlive = false; plcPoints[15].lastRecv = BOOT - 38e3;        // 공기압 센서 응답 없음
+const isPlcAbnormal = (p) => p.value !== p.normal;
+const isPlcStale = (p) => dataNow() - p.lastRecv > STALE_MS;
+const plcLabel = (p) => `${p.name} (점 ${pad2(p.no)})`;
+
+/* ===== 가짜 데이터: 로봇 90대 ===== */
+const SPECIAL = {
+  'B-AGV-07': { opState: 'ERROR', errorCode: 'E-214' },
+  'C-AGV-12': { opState: 'ERROR', errorCode: 'E-031' },
+  'A-AMR-17': { opState: 'MOVING', battery: 14 },
+  'A-AMR-33': { opState: 'IDLE', battery: 19 },
+  'A-AMR-29': { opState: 'MOVING', stale: true },
+};
+const CHARGING_SET = ['A-AMR-36', 'A-AMR-37', 'A-AMR-38', 'B-AGV-28', 'B-AGV-29', 'B-AGV-30', 'C-AGV-19', 'C-AGV-20'];
+const PAUSED_SET = ['A-AMR-08', 'A-AMR-21', 'B-AGV-11', 'B-AGV-15', 'C-AGV-04', 'C-AGV-09'];
+
+const placeOnEdge = (r) => {
+  const i = Math.floor(rand() * AX.length);
+  const j = Math.floor(rand() * AY.length);
+  const [ni, nj] = pick(neighbors(i, j));
+  const f = rand();
+  r.x = AX[i] + (AX[ni] - AX[i]) * f;
+  r.y = AY[j] + (AY[nj] - AY[j]) * f;
+  r.pi = i; r.pj = j; r.ti = ni; r.tj = nj;
+  r.theta = normDeg(Math.atan2(AY[nj] - AY[j], AX[ni] - AX[i]) * 180 / Math.PI);
+};
+
+const robots = [];
+let chargerIdx = 0;
+for (const v of ['A', 'B', 'C']) {
+  const spec = VENDORS[v];
+  for (let n = 1; n <= spec.count; n++) {
+    const name = `${v}-${spec.type}-${pad2(n)}`;
+    const sp = SPECIAL[name] || {};
+    let opState = sp.opState || (rand() < 0.26 ? 'IDLE' : 'MOVING');
+    if (CHARGING_SET.includes(name)) opState = 'CHARGING';
+    if (PAUSED_SET.includes(name)) opState = 'PAUSED';
+    const r = {
+      id: name, name, vendor: v, type: spec.type, connId: spec.connId, opState,
+      battery: sp.battery ?? Math.round(randIn(32, 97)),
+      speed: 0, x: 0, y: 0, theta: 0, loaded: false,
+      errorCode: sp.errorCode || null,
+      seq: Math.round(randIn(12000, 88000)),
+      baseLat: spec.lat + randIn(-10, 10), latJitter: spec.latJitter,
+      latency: spec.lat, sourceTs: BOOT, lastRecv: BOOT,
+      feedAlive: !sp.stale, vmin: spec.vmin, vmax: spec.vmax,
+      pi: 0, pj: 0, ti: 0, tj: 0,
+    };
+    if (opState === 'CHARGING') {
+      const c = CHARGERS[chargerIdx++ % CHARGERS.length];
+      r.x = c.x; r.y = c.y; r.theta = 270; r.battery = Math.round(randIn(22, 70));
+    } else {
+      placeOnEdge(r);
+    }
+    r.loaded = opState === 'MOVING' ? rand() < 0.55 : rand() < 0.3;
+    if (opState === 'MOVING') r.speed = randIn(spec.vmin, spec.vmax);
+    if (sp.stale) { r.lastRecv = BOOT - 252e3; r.sourceTs = BOOT - 252e3 - 60; r.speed = 0.9; }
+    robots.push(r);
+  }
+}
+const robotById = (id) => robots.find((r) => r.id === id);
+const isStale = (r) => dataNow() - r.lastRecv > STALE_MS;
+const filterKey = (r) => (isStale(r) ? 'STALE' : r.opState);
+const isVisible = (r) => state.vendors.has(r.vendor) && state.states.has(filterKey(r));
+
+/* ===== 가짜 데이터: 알람 ===== */
+let alarmSeq = 1;
+const alarms = [];
+const raiseAlarm = ({ type, severity, targetKind, targetId, target, message, raisedAt = Date.now(), autoClearAt = null }) => {
+  const a = { id: alarmSeq++, type, severity, targetKind, targetId, target, message, raisedAt, acked: false, ackedBy: null, ackedAt: null, autoClearAt };
+  alarms.push(a);
+  return a;
+};
+const clearAlarm = (a, reason) => {
+  const i = alarms.indexOf(a);
+  if (i < 0) return;
+  alarms.splice(i, 1);
+};
+
+const seedHistory = () => {
+  // 현재 열린 알람
+  raiseAlarm({ type: 'PLC_ABNORMAL', severity: 'CRITICAL', targetKind: 'plc', targetId: 9, target: plcLabel(plcPoints[9]), message: '비상정지 2 눌림 — 정상 OFF, 현재 ON', raisedAt: plcPoints[9].changedAt });
+  raiseAlarm({ type: 'ROBOT_ERROR', severity: 'CRITICAL', targetKind: 'robot', targetId: 'B-AGV-07', target: 'B-AGV-07', message: `E-214 ${ERROR_CODES['E-214']}`, raisedAt: BOOT - 4 * 60e3 - 5e3 });
+  raiseAlarm({ type: 'ROBOT_ERROR', severity: 'WARN', targetKind: 'robot', targetId: 'C-AGV-12', target: 'C-AGV-12', message: `E-031 ${ERROR_CODES['E-031']}`, raisedAt: BOOT - 9 * 60e3 - 30e3 });
+  raiseAlarm({ type: 'PLC_ABNORMAL', severity: 'WARN', targetKind: 'plc', targetId: 2, target: plcLabel(plcPoints[2]), message: '도어 3 열림 — 정상 OFF, 현재 ON', raisedAt: plcPoints[2].changedAt });
+  raiseAlarm({ type: 'LOW_BATTERY', severity: 'WARN', targetKind: 'robot', targetId: 'A-AMR-17', target: 'A-AMR-17', message: '배터리 14% — 충전 필요', raisedAt: BOOT - 11 * 60e3 });
+  raiseAlarm({ type: 'LOW_BATTERY', severity: 'INFO', targetKind: 'robot', targetId: 'A-AMR-33', target: 'A-AMR-33', message: '배터리 19%', raisedAt: BOOT - 16 * 60e3 });
+  const stale = raiseAlarm({ type: 'DEVICE_STALE', severity: 'WARN', targetKind: 'robot', targetId: 'A-AMR-29', target: 'A-AMR-29', message: '3초 넘게 데이터 없음 — 마지막 위치 유지', raisedAt: BOOT - 252e3 + 3000 });
+  raiseAlarm({ type: 'DEVICE_STALE', severity: 'INFO', targetKind: 'plc', targetId: 15, target: plcLabel(plcPoints[15]), message: '공기압 센서 값 갱신 없음', raisedAt: BOOT - 35e3 });
+  stale.acked = true; stale.ackedBy = '박서연'; stale.ackedAt = BOOT - 190e3;
+};
+seedHistory();
+
+/* ===== 시뮬레이션 ===== */
+const stepRobot = (r, dt) => {
+  const tx = AX[r.ti];
+  const ty = AY[r.tj];
+  const dx = tx - r.x;
+  const dy = ty - r.y;
+  const d = Math.hypot(dx, dy);
+  const s = r.speed * dt;
+  if (d <= s) {
+    r.x = tx; r.y = ty;
+    const opts = neighbors(r.ti, r.tj).filter(([a, b]) => !(a === r.pi && b === r.pj));
+    const [ni, nj] = pick(opts.length ? opts : neighbors(r.ti, r.tj));
+    r.pi = r.ti; r.pj = r.tj; r.ti = ni; r.tj = nj;
+    if (rand() < 0.15) r.loaded = !r.loaded;
+  } else {
+    r.x += (dx / d) * s;
+    r.y += (dy / d) * s;
+  }
+  const jitter = r.vendor === 'A' ? randIn(-2, 2) : 0;
+  r.theta = normDeg(Math.atan2(AY[r.tj] - r.y, AX[r.ti] - r.x) * 180 / Math.PI + jitter);
+};
+
+let tickCount = 0;
+const simulate = () => {
+  const now = Date.now();
+  for (const r of robots) {
+    if (!r.feedAlive) continue;
+    if (r.vendor === 'B' && tickCount % 5 !== 0) continue; // REST 폴링 500ms
+    const dt = r.vendor === 'B' ? 0.5 : 0.1;
+    if (r.opState === 'MOVING') {
+      r.speed = clamp(r.speed + randIn(-0.06, 0.06), r.vmin, r.vmax);
+      stepRobot(r, dt);
+      r.battery = Math.max(3, r.battery - 0.004 * dt);
+    } else {
+      r.speed = 0;
+    }
+    if (r.opState === 'CHARGING') r.battery = Math.min(100, r.battery + 0.05 * dt);
+    r.seq += 1;
+    r.latency = Math.max(8, Math.round(r.baseLat + randIn(-1, 1) * r.latJitter));
+    r.sourceTs = now - r.latency;
+    r.lastRecv = now;
+  }
+  for (const p of plcPoints) if (p.feedAlive) p.lastRecv = now;
+};
+
+const randomStateChange = () => {
+  const pool = robots.filter((r) => r.feedAlive && (r.opState === 'MOVING' || r.opState === 'IDLE' || r.opState === 'PAUSED') && !SPECIAL[r.name]);
+  for (let k = 0; k < 3; k++) {
+    const r = pick(pool);
+    if (r.opState === 'MOVING') { r.opState = rand() < 0.75 ? 'IDLE' : 'PAUSED'; r.speed = 0; }
+    else { r.opState = 'MOVING'; r.speed = r.vmin; }
+  }
+};
+
+const raiseRandomError = () => {
+  const open = alarms.filter((a) => a.type === 'ROBOT_ERROR').length;
+  if (open >= 4) return;
+  const pool = robots.filter((r) => r.feedAlive && r.opState === 'MOVING' && !SPECIAL[r.name]);
+  const r = pick(pool);
+  const code = pick(['E-118', 'E-402', 'E-077']);
+  r.opState = 'ERROR'; r.errorCode = code; r.speed = 0;
+  raiseAlarm({ type: 'ROBOT_ERROR', severity: 'WARN', targetKind: 'robot', targetId: r.id, target: r.name, message: `${code} ${ERROR_CODES[code]}`, autoClearAt: Date.now() + 30000 });
+  toast(`새 알람 · ${r.name} ${code} ${ERROR_CODES[code]}`, 'warn');
+  renderAlarms();
+};
+
+const processAutoClear = () => {
+  const now = Date.now();
+  let changed = false;
+  for (const a of [...alarms]) {
+    if (a.autoClearAt && now >= a.autoClearAt) {
+      const r = robotById(a.targetId);
+      if (r) { r.opState = 'IDLE'; r.errorCode = null; }
+      clearAlarm(a, '오류 해제 — 대기 전환');
+      changed = true;
+    }
+  }
+  if (changed) renderAlarms();
+};
+
+/* ===== 연결 DOWN 시나리오 ===== */
+const dropLink = () => {
+  const c = connById('conn-b');
+  const now = Date.now();
+  c.status = 'DOWN'; c.changedAt = now;
+  state.linkDown = true; state.linkDownAt = now;
+  for (const r of robots) if (r.connId === 'conn-b') { r.feedAlive = false; r.lastRecv = Math.min(r.lastRecv, now - 2200); }
+  raiseAlarm({ type: 'DEVICE_STALE', severity: 'CRITICAL', targetKind: 'conn', targetId: c.id, target: c.name, message: '연결 DOWN — 소속 로봇 30대 데이터 끊김' });
+  toast('제조사 B REST 연결 DOWN — 소속 로봇 30대 데이터 끊김', 'danger');
+};
+const restoreLink = () => {
+  const c = connById('conn-b');
+  const now = Date.now();
+  c.status = 'UP'; c.changedAt = now;
+  state.linkDown = false;
+  for (const r of robots) if (r.connId === 'conn-b') { r.feedAlive = true; r.lastRecv = now; }
+  const a = alarms.find((x) => x.targetKind === 'conn' && x.targetId === c.id);
+  if (a) clearAlarm(a, '연결 복구 — 데이터 수신 재개');
+};
+
+/* ===== 화면 상태 전환 ===== */
+let reconnectTimer = null;
+const setMode = (next) => {
+  const prev = state.mode;
+  if (prev === next) return;
+  clearTimeout(reconnectTimer);
+  const frozenNext = next === 'connecting' || next === 'disconnected' || next === 'reconnecting';
+  if (frozenNext && frozenAt === null) frozenAt = Date.now();
+  if (!frozenNext && frozenAt !== null) {
+    const now = Date.now();
+    for (const r of robots) if (r.feedAlive) r.lastRecv = now;
+    for (const p of plcPoints) if (p.feedAlive) p.lastRecv = now;
+    frozenAt = null;
+  }
+  if (next === 'live' && state.linkDown) restoreLink();
+  if (next === 'linkDown' && !state.linkDown) dropLink();
+  state.mode = next;
+  if (next === 'disconnected' && prev !== 'reconnecting') toast('서버 연결이 끊겼습니다. 마지막 상태를 표시합니다.', 'danger');
+  if (next === 'reconnecting') {
+    state.reconnectStart = Date.now();
+    reconnectTimer = setTimeout(() => {
+      setMode('live');
+      toast('서버 연결 복구 — 실시간 수신을 재개했습니다.', 'ok');
+    }, RECONNECT_MS);
+  }
+  syncDemoRadio();
+  renderAll();
+};
+const syncDemoRadio = () => {
+  const input = document.querySelector(`#demoMode input[value="${state.mode}"]`);
+  if (input) input.checked = true;
+};
+
+/* ===== 토스트 ===== */
+const toast = (text, tone = 'info') => {
+  const host = document.getElementById('toasts');
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.dataset.tone = tone;
+  el.textContent = text;
+  host.appendChild(el);
+  setTimeout(() => el.remove(), 4200);
+  while (host.children.length > 3) host.firstElementChild.remove();
+};
+
+/* ===== 렌더: 상단 내비게이션·배너 ===== */
+const renderStatus = () => {
+  const app = document.getElementById('app');
+  app.dataset.mode = state.mode;
+  const pill = document.getElementById('livePill');
+  const pillText = document.getElementById('livePillText');
+  const map = {
+    connecting: ['info', '접속 중', false],
+    live: ['ok', '실시간 수신', true],
+    disconnected: ['danger', '서버 연결 끊김', false],
+    reconnecting: ['warn', '재접속 중', false],
+    linkDown: ['warn', '실시간 수신 · 연결 1개 DOWN', true],
+  };
+  const [tone, text, pulse] = map[state.mode];
+  pill.dataset.tone = tone;
+  pill.dataset.pulse = String(pulse);
+  pillText.textContent = text;
+
+  document.getElementById('workspace').classList.toggle('is-frozen', state.mode === 'disconnected' || state.mode === 'reconnecting');
+  document.getElementById('mapWaiting').hidden = state.mode !== 'connecting';
+  renderBanner();
+  renderFrozenOverlay();
+};
+
+const renderBanner = () => {
+  const el = document.getElementById('connBanner');
+  const m = state.mode;
+  if (m === 'live') { el.hidden = true; el.innerHTML = ''; return; }
+  el.hidden = false;
+  if (m === 'connecting') {
+    el.dataset.tone = 'info';
+    el.setAttribute('role', 'status');
+    el.innerHTML = `${icon('info', 16)}<span><strong>서버에 접속 중</strong> — 첫 스냅샷을 기다리고 있습니다.</span>`;
+  } else if (m === 'disconnected') {
+    el.dataset.tone = 'danger';
+    el.setAttribute('role', 'alert');
+    el.innerHTML = `${icon('unplug', 16)}<span><strong>서버 연결 끊김</strong> · 마지막 수신 <span class="mono">${fmtTime(frozenAt)}</span> (<span class="mono" data-k="ago">${fmtAgo(Date.now() - frozenAt)}</span>). 화면은 마지막 상태를 흐리게 보여 주며 갱신되지 않습니다.</span><button type="button" class="btn btn-sm" id="reconnectNow">지금 재접속</button>`;
+    el.querySelector('#reconnectNow').addEventListener('click', () => { state.userTouchedMode = true; setMode('reconnecting'); });
+  } else if (m === 'reconnecting') {
+    el.dataset.tone = 'warn';
+    el.setAttribute('role', 'status');
+    el.innerHTML = `${icon('warn', 16)}<span><strong>재접속 중</strong> · 마지막 수신 <span class="mono">${fmtTime(frozenAt)}</span> · <span data-k="remain">곧 다시 연결합니다</span></span><span class="progress" aria-hidden="true"><span data-k="bar"></span></span>`;
+  } else if (m === 'linkDown') {
+    el.dataset.tone = 'warn';
+    el.setAttribute('role', 'alert');
+    el.innerHTML = `${icon('unplug', 16)}<span><strong>제조사 B REST 연결 DOWN</strong> · <span class="mono">${fmtTime(state.linkDownAt)}</span>부터 · 소속 로봇 30대가 마지막 위치에 STALE로 표시됩니다.</span>`;
+  }
+};
+const tickBanner = () => {
+  const el = document.getElementById('connBanner');
+  if (state.mode === 'disconnected') {
+    const ago = el.querySelector('[data-k="ago"]');
+    if (ago) ago.textContent = fmtAgo(Date.now() - frozenAt);
+  }
+  if (state.mode === 'reconnecting') {
+    const elapsed = Date.now() - state.reconnectStart;
+    const remain = el.querySelector('[data-k="remain"]');
+    const bar = el.querySelector('[data-k="bar"]');
+    if (remain) remain.textContent = `시도 1회차 · ${Math.max(0, (RECONNECT_MS - elapsed) / 1000).toFixed(1)}초 후 응답 확인`;
+    if (bar) bar.parentElement.style.setProperty('--p', String(clamp(elapsed / RECONNECT_MS, 0, 1)));
+  }
+};
+const renderFrozenOverlay = () => {
+  const el = document.getElementById('mapFrozen');
+  if (state.mode === 'disconnected' || state.mode === 'reconnecting') {
+    el.hidden = false;
+    el.innerHTML = `${icon('lock', 14)}마지막 상태 · <span class="mono">${fmtTime(frozenAt)}</span> 기준`;
+  } else {
+    el.hidden = true;
+  }
+};
+
+/* ===== 렌더: 상단 요약 ===== */
+const SUMMARY_KEYS = ['MOVING', 'IDLE', 'CHARGING', 'PAUSED', 'ERROR', 'STALE'];
+const stateColorVar = (k) => `var(--st-${k.toLowerCase()})`;
+const buildSummary = () => {
+  const host = document.getElementById('summaryInner');
+  const tiles = SUMMARY_KEYS.map((k) => `
+    <button type="button" class="stat" data-stat="${k}" aria-pressed="false">
+      <span class="stat-label"><span class="dot" style="color:${stateColorVar(k)}"></span>${OP_LABEL[k]}${k === 'STALE' ? ' (STALE)' : ''}</span>
+      <span class="stat-value" data-k="${k}">0</span>
+    </button>`).join('');
+  host.innerHTML = `
+    <button type="button" class="stat" data-stat="ALL" aria-pressed="false">
+      <span class="stat-label">전체 로봇</span>
+      <span class="stat-value"><span data-k="total">90</span><small>대</small></span>
+    </button>
+    <span class="stat-sep" aria-hidden="true"></span>
+    ${tiles}
+    <span class="stat-sep" aria-hidden="true"></span>
+    <div class="stat" data-k-wrap="alarm">
+      <span class="stat-label">열린 알람</span>
+      <span class="stat-value"><span data-k="alarms">0</span><small data-k="unacked"></small></span>
+    </div>
+    <div class="stat" data-k-wrap="p50">
+      <span class="stat-label">종단 지연 p50</span>
+      <span class="stat-value"><span data-k="p50">0</span><small>ms</small></span>
+    </div>
+    <div class="stat" data-k-wrap="p95">
+      <span class="stat-label">종단 지연 p95</span>
+      <span class="stat-value"><span data-k="p95">0</span><small>ms</small></span>
+    </div>`;
+  host.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-stat]');
+    if (!btn) return;
+    const k = btn.dataset.stat;
+    state.states = k === 'ALL' ? new Set(FILTER_STATES) : new Set([k]);
+    renderFilters();
+    renderSummary();
+    drawMap();
+  });
+};
+const percentile = (sorted, p) => (sorted.length ? sorted[Math.min(sorted.length - 1, Math.floor((p / 100) * sorted.length))] : 0);
+const renderSummary = () => {
+  const host = document.getElementById('summaryInner');
+  const counts = { MOVING: 0, IDLE: 0, CHARGING: 0, PAUSED: 0, ERROR: 0, STALE: 0 };
+  const lats = [];
+  for (const r of robots) {
+    counts[r.opState] += 1;
+    if (isStale(r)) counts.STALE += 1; else lats.push(r.latency);
+  }
+  lats.sort((a, b) => a - b);
+  for (const k of SUMMARY_KEYS) host.querySelector(`[data-k="${k}"]`).textContent = counts[k];
+  const unacked = alarms.filter((a) => !a.acked).length;
+  host.querySelector('[data-k="alarms"]').textContent = alarms.length;
+  host.querySelector('[data-k="unacked"]').textContent = ` · 미확인 ${unacked}`;
+  host.querySelector('[data-k-wrap="alarm"]').dataset.alert = String(alarms.some((a) => !a.acked && a.severity === 'CRITICAL'));
+  const p50 = percentile(lats, 50);
+  const p95 = percentile(lats, 95);
+  host.querySelector('[data-k="p50"]').textContent = p50;
+  host.querySelector('[data-k="p95"]').textContent = p95;
+  host.querySelector('[data-k-wrap="p95"]').dataset.warn = String(p95 > 300);
+  host.querySelector('[data-stat="ERROR"]').dataset.alert = String(counts.ERROR > 0);
+  host.querySelector('[data-stat="STALE"]').dataset.warn = String(counts.STALE > 0);
+  const all = state.states.size === FILTER_STATES.length;
+  host.querySelectorAll('[data-stat]').forEach((b) => {
+    const k = b.dataset.stat;
+    b.setAttribute('aria-pressed', String(k === 'ALL' ? all : !all && state.states.size === 1 && state.states.has(k)));
+  });
+};
+
+/* ===== 렌더: 연결 상태 ===== */
+const LINK_ICON = { UP: 'check', DOWN: 'x', UNKNOWN: 'question' };
+const renderConnections = () => {
+  const up = connections.filter((c) => c.status === 'UP').length;
+  document.getElementById('connMeta').textContent = `UP ${up} / ${connections.length}`;
+  document.getElementById('connList').innerHTML = connections.map((c) => `
+    <li class="conn-item" data-status="${c.status}">
+      <div class="od-row">
+        <div class="od-field od-fill">
+          <span class="conn-name od-truncate">${esc(c.name)}</span>
+          <span class="conn-sub od-truncate">${esc(c.vendor)} · ${esc(c.protocol)}</span>
+        </div>
+        <span class="badge link-badge od-fixed" data-status="${c.status}">${icon(LINK_ICON[c.status])}${c.status}</span>
+      </div>
+      <dl class="conn-meta">
+        <div><dt>변경</dt><dd>${fmtTime(c.changedAt)}</dd></div>
+        <div><dt>장비</dt><dd>${c.devices}</dd></div>
+        <div><dt>사용</dt><dd>${c.enabled ? 'enabled' : 'disabled'}</dd></div>
+      </dl>
+    </li>`).join('');
+};
+
+/* ===== 렌더: PLC ===== */
+const renderPlc = () => {
+  const abn = plcPoints.filter(isPlcAbnormal).length;
+  document.getElementById('plcAbnormalBadge').innerHTML = abn
+    ? `<span class="badge" data-tone="danger">${icon('warn')}비정상 ${abn}</span>`
+    : '<span class="badge" data-tone="ok">모두 정상</span>';
+  document.getElementById('plcGrid').innerHTML = plcPoints.map((p) => {
+    const abnormal = isPlcAbnormal(p);
+    const stale = isPlcStale(p);
+    const flag = abnormal
+      ? `<span class="plc-flag">${icon('warn')}비정상</span>`
+      : stale ? '<span class="plc-flag is-stale">STALE</span>' : '';
+    return `
+      <button type="button" class="plc-tile" data-plc="${p.no}" data-abnormal="${abnormal}" data-stale="${stale}" aria-pressed="${state.selectedPlc === p.no}"
+        aria-label="점 ${p.no} ${esc(p.name)}, 현재 ${p.value ? 'ON' : 'OFF'}${abnormal ? ', 비정상' : ''}${stale ? ', STALE' : ''}">
+        <span class="plc-top"><span class="plc-no">${pad2(p.no)}</span>${flag}<span class="plc-val" data-on="${p.value}">${p.value ? 'ON' : 'OFF'}</span></span>
+        <span class="plc-name od-truncate">${esc(p.name)}</span>
+      </button>`;
+  }).join('');
+  renderPlcDetail();
+};
+const renderPlcDetail = () => {
+  const p = plcPoints[state.selectedPlc];
+  const host = document.getElementById('plcDetail');
+  if (!p) { host.innerHTML = '<p class="muted">신호를 고르면 상세 값을 보여 줍니다.</p>'; return; }
+  const abnormal = isPlcAbnormal(p);
+  const stale = isPlcStale(p);
+  host.innerHTML = `
+    <p class="plc-detail-title">점 ${pad2(p.no)} · ${esc(p.name)}</p>
+    <dl class="kv">
+      <div class="od-field"><dt>유형</dt><dd class="mono">${p.type}</dd></div>
+      <div class="od-field"><dt>비정상 여부</dt><dd>${abnormal ? '<span class="badge" data-tone="danger">비정상</span>' : '<span class="badge" data-tone="ok">정상</span>'}</dd></div>
+      <div class="od-field"><dt>현재 값</dt><dd class="mono">${p.value ? 'ON' : 'OFF'}</dd></div>
+      <div class="od-field"><dt>정상 값</dt><dd class="mono">${p.normal ? 'ON' : 'OFF'}</dd></div>
+      <div class="od-field"><dt>마지막 변경</dt><dd class="mono">${fmtTime(p.changedAt)}</dd></div>
+      <div class="od-field"><dt>STALE</dt><dd>${stale ? `<span class="stale-yes">예 · ${fmtAgo(dataNow() - p.lastRecv)} 수신</span>` : '아니요'}</dd></div>
+    </dl>`;
+};
+
+/* ===== 렌더: 필터 ===== */
+const buildFilters = () => {
+  document.getElementById('stateFilters').innerHTML = '<span class="filter-label">상태</span>' + FILTER_STATES.map((k) => `
+    <button type="button" class="chip" data-state="${k}" aria-pressed="true">
+      <svg class="swatch" width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><circle cx="5" cy="5" r="4" style="fill:${k === 'STALE' ? 'none' : `var(--st-${k.toLowerCase()})`};stroke:var(--st-${k.toLowerCase()});stroke-width:${k === 'STALE' ? 1.6 : 0}" ${k === 'STALE' ? 'stroke-dasharray="2 1.5"' : ''}/></svg>${OP_LABEL[k]}
+    </button>`).join('');
+};
+const renderFilters = () => {
+  document.querySelectorAll('[data-vendor]').forEach((b) => b.setAttribute('aria-pressed', String(state.vendors.has(b.dataset.vendor))));
+  document.querySelectorAll('[data-state]').forEach((b) => b.setAttribute('aria-pressed', String(state.states.has(b.dataset.state))));
+};
+
+/* ===== 렌더: 로봇 상세 ===== */
+const OP_TONE = { MOVING: 'ok', IDLE: 'neutral', CHARGING: 'info', PAUSED: 'warn', ERROR: 'danger' };
+const buildDetail = () => {
+  const host = document.getElementById('detailBody');
+  const r = robotById(state.selectedId);
+  if (!r) {
+    host.innerHTML = '<div class="empty"><strong>선택한 로봇이 없습니다</strong><span>맵에서 마커를 클릭하거나 ‘로봇 찾기’에 이름을 입력하세요.</span></div>';
+    document.getElementById('detailRecv').textContent = '';
+    return;
+  }
+  host.innerHTML = `
+    <div class="detail-head">
+      <div class="od-field">
+        <span class="detail-name">${esc(r.name)}</span>
+        <span class="detail-sub">${VENDORS[r.vendor].label} · ${r.type} · ${esc(connById(r.connId).name)}</span>
+      </div>
+      <div class="detail-badges" data-k="badges"></div>
+    </div>
+    <div class="battery">
+      <div class="battery-row"><span class="kv-label">배터리</span><span class="battery-val"><span data-k="battery"></span>%</span></div>
+      <div class="bar" data-k="batteryBar"><span></span></div>
+    </div>
+    <dl class="kv">
+      <div class="od-field"><dt>제조사</dt><dd>${VENDORS[r.vendor].label}</dd></div>
+      <div class="od-field"><dt>유형</dt><dd class="mono">${r.type}</dd></div>
+      <div class="od-field span-2"><dt>연결 이름</dt><dd>${esc(connById(r.connId).name)}</dd></div>
+      <div class="od-field"><dt>운행 상태</dt><dd data-k="op"></dd></div>
+      <div class="od-field"><dt>속도</dt><dd class="mono od-nowrap"><span data-k="speed"></span> m/s</dd></div>
+      <div class="od-field"><dt>위치 (x, y)</dt><dd class="mono od-nowrap" data-k="pos"></dd></div>
+      <div class="od-field"><dt>방향</dt><dd class="theta mono"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" data-k="thetaIcon"><circle cx="8" cy="8" r="7" fill="none" stroke="var(--line-strong)"/><path d="M8 8 L14 8 M11.5 5.5 L14 8 L11.5 10.5" fill="none" stroke="var(--text-1)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-k="theta"></span></dd></div>
+      <div class="od-field"><dt>적재</dt><dd data-k="loaded"></dd></div>
+      <div class="od-field"><dt>오류 코드</dt><dd class="err-code mono" data-k="err"></dd></div>
+      <div class="od-field"><dt>마지막 seq</dt><dd class="mono" data-k="seq"></dd></div>
+      <div class="od-field"><dt>종단 지연</dt><dd class="mono od-nowrap"><span data-k="lat"></span> ms</dd></div>
+      <div class="od-field span-2"><dt>데이터 시각 (sourceTs)</dt><dd class="mono" data-k="ts"></dd></div>
+      <div class="od-field span-2"><dt>STALE 여부</dt><dd data-k="stale"></dd></div>
+    </dl>`;
+  updateDetail();
+};
+const setK = (host, k, v) => { const el = host.querySelector(`[data-k="${k}"]`); if (el && el.textContent !== v) el.textContent = v; };
+const updateDetail = () => {
+  const r = robotById(state.selectedId);
+  const host = document.getElementById('detailBody');
+  if (!r || !host.querySelector('[data-k="battery"]')) return;
+  const stale = isStale(r);
+  const since = dataNow() - r.lastRecv;
+  const badges = host.querySelector('[data-k="badges"]');
+  const badgeHtml = `<span class="badge" data-tone="${OP_TONE[r.opState]}">${OP_LABEL[r.opState]}</span>${stale ? `<span class="badge" data-tone="stale">${icon('unplug')}STALE</span>` : ''}`;
+  if (badges.innerHTML !== badgeHtml) badges.innerHTML = badgeHtml;
+  setK(host, 'battery', String(Math.round(r.battery)));
+  const bar = host.querySelector('[data-k="batteryBar"]');
+  bar.style.setProperty('--v', String(r.battery / 100));
+  bar.dataset.level = r.battery < 10 ? 'critical' : r.battery < 20 ? 'low' : 'ok';
+  setK(host, 'op', `${OP_LABEL[r.opState]} (${r.opState})`);
+  setK(host, 'speed', r.speed.toFixed(2));
+  setK(host, 'pos', `${r.x.toFixed(2)}, ${r.y.toFixed(2)} m`);
+  setK(host, 'theta', `${r.theta.toFixed(1)}°`);
+  host.querySelector('[data-k="thetaIcon"]').style.transform = `rotate(${-r.theta}deg)`;
+  setK(host, 'loaded', r.loaded ? '적재' : '빈 상태');
+  const err = host.querySelector('[data-k="err"]');
+  err.dataset.has = String(!!r.errorCode);
+  setK(host, 'err', r.errorCode ? `${r.errorCode} ${ERROR_CODES[r.errorCode] || ''}` : '없음');
+  setK(host, 'seq', r.seq.toLocaleString('ko-KR'));
+  setK(host, 'lat', String(r.latency));
+  setK(host, 'ts', fmtTimeMs(r.sourceTs));
+  const staleEl = host.querySelector('[data-k="stale"]');
+  staleEl.className = stale ? 'stale-yes' : '';
+  setK(host, 'stale', stale ? `예 · ${fmtAgo(since).replace(' 전', '')} 동안 수신 없음` : `아니요 · ${fmtAgo(since)} 수신`);
+  document.getElementById('detailRecv').textContent = `seq ${r.seq}`;
+};
+const selectRobot = (id, { reveal = false } = {}) => {
+  state.selectedId = id;
+  const r = robotById(id);
+  if (r && reveal && !isVisible(r)) {
+    state.vendors = new Set(['A', 'B', 'C']);
+    state.states = new Set(FILTER_STATES);
+    renderFilters();
+    renderSummary();
+  }
+  buildDetail();
+  drawMap();
+};
+
+/* ===== 렌더: 알람 ===== */
+const sortedAlarms = () => [...alarms].sort((a, b) =>
+  (a.acked - b.acked) || (SEV_RANK[b.severity] - SEV_RANK[a.severity]) || (b.raisedAt - a.raisedAt));
+const renderAlarms = () => {
+  const unacked = alarms.filter((a) => !a.acked).length;
+  document.getElementById('alarmUnackedBadge').textContent = `미확인 ${unacked}`;
+  document.getElementById('alarmUnackedBadge').hidden = unacked === 0;
+  const connected = isStreaming();
+  document.getElementById('permNote').innerHTML = !connected && state.mode !== 'connecting'
+    ? `<p class="perm-note">${icon('unplug')}서버 연결이 복구되면 알람을 확인할 수 있습니다.</p>`
+    : '';
+  const list = document.getElementById('alarmList');
+  if (!alarms.length) {
+    list.innerHTML = '<li class="empty"><strong>열린 알람이 없습니다</strong><span>새 알람이 생기면 여기에 바로 표시됩니다.</span></li>';
+    return;
+  }
+  list.innerHTML = sortedAlarms().map((a) => {
+    const target = a.targetKind === 'conn'
+      ? `<span class="alarm-target">${esc(a.target)}</span>`
+      : `<button type="button" class="alarm-target" data-goto="${a.targetKind}:${a.targetId}">${esc(a.target)}</button>`;
+    const ackState = a.acked
+      ? `<span class="ack-state is-acked">${icon('check')} 확인됨 · ${esc(a.ackedBy)} ${fmtTime(a.ackedAt)}</span>`
+      : '<span class="ack-state">미확인</span>';
+    const btn = a.acked ? '' : `<button type="button" class="btn btn-primary btn-sm" data-ack="${a.id}" ${connected ? '' : 'disabled'}>확인</button>`;
+    return `
+      <li class="alarm" data-id="${a.id}" data-sev="${a.severity}" data-acked="${a.acked}" tabindex="-1">
+        <div class="alarm-head">${sevHtml(a.severity)}<span class="alarm-type">${ALARM_LABEL[a.type]}</span><time class="alarm-time" datetime="${new Date(a.raisedAt).toISOString()}">${fmtTime(a.raisedAt)}</time></div>
+        ${target}
+        <p class="alarm-msg">${esc(a.message)}</p>
+        <div class="alarm-foot">${ackState}${btn}</div>
+      </li>`;
+  }).join('');
+};
+const ackAlarm = (id) => {
+  const a = alarms.find((x) => x.id === id);
+  if (!a || a.acked || !isStreaming()) return;
+  a.acked = true;
+  a.ackedBy = CURRENT_USER;
+  a.ackedAt = Date.now();
+  renderAlarms();
+  renderSummary();
+  const row = document.querySelector(`#alarmList [data-id="${id}"]`);
+  (row || document.getElementById('alarmTitle')).focus();
+};
+
+/* ===== 맵(Canvas 2D) ===== */
+const canvas = document.getElementById('map');
+const ctx = canvas.getContext('2d');
+const COL = {};
+const readColors = () => {
+  const cs = getComputedStyle(document.documentElement);
+  const v = (n) => cs.getPropertyValue(n).trim();
+  Object.assign(COL, {
+    floor: v('--map-floor'), grid: v('--map-grid'), rack: v('--map-rack'), rackLine: v('--map-rack-line'),
+    aisle: v('--map-aisle'), wall: v('--map-wall'), label: v('--map-label'), marker: v('--map-marker-line'),
+    text1: v('--text-1'), text2: v('--text-2'), bg: v('--bg'), accent: v('--accent'),
+    MOVING: v('--st-moving'), IDLE: v('--st-idle'), CHARGING: v('--st-charging'), PAUSED: v('--st-paused'), ERROR: v('--st-error'), STALE: v('--st-stale'),
+    critical: v('--sev-critical'), warn: v('--sev-warn'), surface: v('--surface-2'), lineStrong: v('--line-strong'),
+    sans: v('--font-sans'), mono: v('--font-mono'),
+  });
+};
+const view = { w: 0, h: 0, scale: 1, ox: 0, oy: 0, dpr: 1 };
+const PAD = { l: 36, r: 16, t: 16, b: 28 };
+const resizeMap = () => {
+  const rect = canvas.parentElement.getBoundingClientRect();
+  view.dpr = window.devicePixelRatio || 1;
+  view.w = rect.width; view.h = rect.height;
+  canvas.width = Math.round(rect.width * view.dpr);
+  canvas.height = Math.round(rect.height * view.dpr);
+  view.scale = Math.min((view.w - PAD.l - PAD.r) / MAP_W, (view.h - PAD.t - PAD.b) / MAP_H);
+  view.ox = PAD.l + ((view.w - PAD.l - PAD.r) - MAP_W * view.scale) / 2;
+  view.oy = PAD.t + ((view.h - PAD.t - PAD.b) - MAP_H * view.scale) / 2;
+  drawMap();
+};
+const sx = (x) => view.ox + x * view.scale;
+const sy = (y) => view.oy + (MAP_H - y) * view.scale;
+const markerR = () => clamp(view.scale * 0.36, 4.5, 9);
+const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+const drawFloor = () => {
+  const s = view.scale;
+  ctx.fillStyle = COL.floor;
+  ctx.fillRect(0, 0, view.w, view.h);
+  // 5m 격자
+  ctx.strokeStyle = COL.grid; ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let x = 0; x <= MAP_W; x += 5) { ctx.moveTo(Math.round(sx(x)) + 0.5, sy(0)); ctx.lineTo(Math.round(sx(x)) + 0.5, sy(MAP_H)); }
+  for (let y = 0; y <= MAP_H; y += 5) { ctx.moveTo(sx(0), Math.round(sy(y)) + 0.5); ctx.lineTo(sx(MAP_W), Math.round(sy(y)) + 0.5); }
+  ctx.stroke();
+  // 랙: 통로 사이 블록
+  ctx.fillStyle = COL.rack; ctx.strokeStyle = COL.rackLine;
+  for (let i = 0; i < AX.length - 1; i++) {
+    for (let j = 0; j < 3; j++) {
+      const x0 = AX[i] + 1.3; const x1 = AX[i + 1] - 1.3;
+      const y0 = AY[j] + 1.3; const y1 = AY[j + 1] - 1.3;
+      const mid = (y0 + y1) / 2;
+      [[y0, mid - 0.3], [mid + 0.3, y1]].forEach(([a, b]) => {
+        ctx.fillRect(sx(x0), sy(b), (x1 - x0) * s, (b - a) * s);
+        ctx.strokeRect(Math.round(sx(x0)) + 0.5, Math.round(sy(b)) + 0.5, Math.round((x1 - x0) * s), Math.round((b - a) * s));
+      });
+    }
+  }
+  // 통로
+  ctx.strokeStyle = COL.aisle; ctx.lineWidth = Math.max(1, s * 0.12); ctx.setLineDash([s * 0.6, s * 0.4]);
+  ctx.beginPath();
+  AX.forEach((x) => { ctx.moveTo(sx(x), sy(AY[0])); ctx.lineTo(sx(x), sy(AY[AY.length - 1])); });
+  AY.forEach((y) => { ctx.moveTo(sx(AX[0]), sy(y)); ctx.lineTo(sx(AX[AX.length - 1]), sy(y)); });
+  ctx.stroke(); ctx.setLineDash([]);
+  // 충전 구역
+  ctx.strokeStyle = COL.CHARGING; ctx.globalAlpha = 0.5; ctx.lineWidth = 1;
+  CHARGERS.forEach((c) => ctx.strokeRect(sx(c.x - 0.6), sy(c.y + 0.6), 1.2 * s, 1.2 * s));
+  ctx.globalAlpha = 1;
+  // 외벽
+  ctx.strokeStyle = COL.wall; ctx.lineWidth = 2;
+  ctx.strokeRect(sx(0), sy(MAP_H), MAP_W * s, MAP_H * s);
+  // 구역 이름
+  ctx.fillStyle = COL.label; ctx.font = `600 11px ${COL.sans}`; ctx.textBaseline = 'middle';
+  ctx.fillText('출하장', sx(0.8), sy(29.2));
+  ctx.fillText('충전 구역', sx(33), sy(2.4) - 2);
+  // 눈금
+  ctx.font = `10px ${COL.mono}`; ctx.fillStyle = COL.label; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+  for (let x = 0; x <= MAP_W; x += 5) ctx.fillText(String(x), sx(x), sy(0) + 6);
+  ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+  for (let y = 0; y <= MAP_H; y += 5) ctx.fillText(String(y), sx(0) - 6, sy(y));
+  ctx.textAlign = 'left'; ctx.textBaseline = 'top';
+  ctx.fillText('m', sx(MAP_W) + 4, sy(0) + 6);
+};
+
+const PLC_TAG = { DOOR: 'D', INTERSECTION: 'X', ESTOP: 'E' };
+const drawPlcMarks = (t) => {
+  const s = view.scale;
+  const counters = { DOOR: 0, INTERSECTION: 0, ESTOP: 0 };
+  ctx.font = `600 10px ${COL.mono}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (const p of plcPoints) {
+    if (!p.pos) continue;
+    counters[p.type] += 1;
+    const abnormal = isPlcAbnormal(p);
+    const x = sx(p.pos.x); const y = sy(p.pos.y);
+    const color = abnormal ? COL.critical : COL.label;
+    ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = abnormal ? 2 : 1.2;
+    if (p.type === 'DOOR') {
+      ctx.lineWidth = abnormal ? 4 : 3;
+      ctx.beginPath(); ctx.moveTo(x, y - s * 1.2); ctx.lineTo(x, y + s * 1.2); ctx.stroke();
+      ctx.fillText(`${PLC_TAG.DOOR}${counters.DOOR}`, x + (p.pos.x === 0 ? 12 : -12), y);
+    } else if (p.type === 'INTERSECTION') {
+      const k = s * 0.9;
+      ctx.beginPath(); ctx.rect(x - k, y - k, 2 * k, 2 * k);
+      ctx.setLineDash([3, 3]); ctx.stroke(); ctx.setLineDash([]);
+      ctx.fillText(`${PLC_TAG.INTERSECTION}${counters.INTERSECTION}`, x + k + 8, y - k - 2);
+    } else {
+      ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI * 2);
+      if (abnormal) ctx.fill(); else ctx.stroke();
+      ctx.fillText(`${PLC_TAG.ESTOP}${counters.ESTOP}`, x + 14, y);
+    }
+    if (abnormal) {
+      const pulse = reducedMotion.matches ? 0.6 : 0.35 + 0.35 * Math.sin(t / 220);
+      ctx.globalAlpha = pulse; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(x, y, 12, 0, Math.PI * 2); ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+  }
+};
+
+const shapePath = (vendor, R) => {
+  ctx.beginPath();
+  if (vendor === 'A') ctx.arc(0, 0, R, 0, Math.PI * 2);
+  else if (vendor === 'B') ctx.rect(-R * 0.88, -R * 0.88, R * 1.76, R * 1.76);
+  else { const k = R * 1.18; ctx.moveTo(0, -k); ctx.lineTo(k, 0); ctx.lineTo(0, k); ctx.lineTo(-k, 0); ctx.closePath(); }
+};
+
+const drawRobot = (r, t) => {
+  const R = markerR();
+  const stale = isStale(r);
+  const visible = isVisible(r);
+  const selected = r.id === state.selectedId;
+  const hover = r.id === state.hoverId;
+  ctx.save();
+  ctx.translate(sx(r.x), sy(r.y));
+  ctx.globalAlpha = !visible ? 0.1 : stale ? 0.6 : 1;
+  // 방향 바늘
+  const a = -r.theta * Math.PI / 180;
+  ctx.strokeStyle = COL.marker; ctx.fillStyle = COL.marker; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(Math.cos(a) * R, Math.sin(a) * R); ctx.lineTo(Math.cos(a) * (R + 6), Math.sin(a) * (R + 6)); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(Math.cos(a) * (R + 9), Math.sin(a) * (R + 9));
+  ctx.lineTo(Math.cos(a + 0.5) * (R + 4.5), Math.sin(a + 0.5) * (R + 4.5));
+  ctx.lineTo(Math.cos(a - 0.5) * (R + 4.5), Math.sin(a - 0.5) * (R + 4.5));
+  ctx.closePath(); ctx.fill();
+  // 본체
+  shapePath(r.vendor, R);
+  ctx.fillStyle = stale ? COL.STALE : COL[r.opState];
+  ctx.fill();
+  ctx.lineWidth = 1.5;
+  if (stale) { ctx.setLineDash([2.5, 2]); ctx.strokeStyle = COL.text2; }
+  else { ctx.strokeStyle = COL.floor; }
+  ctx.stroke(); ctx.setLineDash([]);
+  // 적재
+  if (r.loaded) { ctx.fillStyle = COL.floor; ctx.beginPath(); ctx.arc(0, 0, R * 0.38, 0, Math.PI * 2); ctx.fill(); }
+  // 오류 고리
+  if (r.opState === 'ERROR' && !stale && visible) {
+    const pulse = reducedMotion.matches ? 1 : 0.45 + 0.55 * Math.abs(Math.sin(t / 300));
+    ctx.globalAlpha = pulse; ctx.strokeStyle = COL.ERROR; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(0, 0, R + 4, 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+  // 선택
+  if (selected) {
+    ctx.globalAlpha = 1; ctx.strokeStyle = COL.accent; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(0, 0, R + 7, 0, Math.PI * 2); ctx.stroke();
+  }
+  ctx.restore();
+  if (selected || (hover && visible)) drawLabel(r, R, selected);
+};
+const drawLabel = (r, R, selected) => {
+  const x = sx(r.x); const y = sy(r.y) - R - 12;
+  const text = `${r.name} · ${isStale(r) ? '끊김' : OP_LABEL[r.opState]}`;
+  ctx.font = `600 11px ${COL.sans}`;
+  const w = ctx.measureText(text).width + 12;
+  const bx = clamp(x - w / 2, 2, view.w - w - 2);
+  const by = Math.max(2, y - 18);
+  ctx.fillStyle = selected ? COL.accent : COL.surface;
+  ctx.globalAlpha = 0.95;
+  ctx.fillRect(bx, by, w, 18);
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = selected ? COL.bg : COL.text1;
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillText(text, bx + 6, by + 9);
+};
+
+const drawMap = () => {
+  if (!view.w) return;
+  const t = performance.now();
+  ctx.setTransform(view.dpr, 0, 0, view.dpr, 0, 0);
+  drawFloor();
+  if (state.mode === 'connecting') return;
+  drawPlcMarks(t);
+  const order = [...robots].sort((a, b) => isVisible(a) - isVisible(b));
+  for (const r of order) if (r.id !== state.selectedId && r.id !== state.hoverId) drawRobot(r, t);
+  const hov = robotById(state.hoverId); if (hov && hov.id !== state.selectedId) drawRobot(hov, t);
+  const sel = robotById(state.selectedId); if (sel) drawRobot(sel, t);
+  const vis = robots.filter(isVisible).length;
+  document.getElementById('mapCount').textContent = `표시 ${vis} / ${robots.length}대`;
+};
+
+const hitTest = (mx, my) => {
+  const R = markerR() + 6;
+  let best = null; let bestD = Infinity;
+  for (const r of robots) {
+    if (!isVisible(r)) continue;
+    const d = Math.hypot(sx(r.x) - mx, sy(r.y) - my);
+    if (d < R && d < bestD) { best = r; bestD = d; }
+  }
+  return best;
+};
+
+/* ===== 이벤트 ===== */
+const canvasPoint = (e) => { const rect = canvas.getBoundingClientRect(); return [e.clientX - rect.left, e.clientY - rect.top]; };
+canvas.addEventListener('mousemove', (e) => {
+  if (state.mode === 'connecting') return;
+  const hit = hitTest(...canvasPoint(e));
+  const id = hit ? hit.id : null;
+  canvas.classList.toggle('is-hover', !!hit);
+  if (id !== state.hoverId) { state.hoverId = id; drawMap(); }
+});
+canvas.addEventListener('mouseleave', () => { state.hoverId = null; canvas.classList.remove('is-hover'); drawMap(); });
+canvas.addEventListener('click', (e) => {
+  if (state.mode === 'connecting') return;
+  const hit = hitTest(...canvasPoint(e));
+  if (hit) selectRobot(hit.id);
+});
+canvas.addEventListener('keydown', (e) => {
+  if (state.mode === 'connecting') return;
+  if (e.key === 'Escape') { selectRobot(null); return; }
+  if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+  e.preventDefault();
+  const list = robots.filter(isVisible);
+  if (!list.length) return;
+  const i = list.findIndex((r) => r.id === state.selectedId);
+  const next = e.key === 'ArrowRight' ? (i + 1) % list.length : (i <= 0 ? list.length - 1 : i - 1);
+  selectRobot(list[next].id);
+});
+
+document.querySelectorAll('[data-vendor]').forEach((b) => b.addEventListener('click', () => {
+  const v = b.dataset.vendor;
+  if (state.vendors.has(v)) state.vendors.delete(v); else state.vendors.add(v);
+  renderFilters(); drawMap();
+}));
+document.getElementById('stateFilters').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-state]');
+  if (!b) return;
+  const k = b.dataset.state;
+  if (state.states.has(k)) state.states.delete(k); else state.states.add(k);
+  renderFilters(); renderSummary(); drawMap();
+});
+document.getElementById('filterReset').addEventListener('click', () => {
+  state.vendors = new Set(['A', 'B', 'C']);
+  state.states = new Set(FILTER_STATES);
+  renderFilters(); renderSummary(); drawMap();
+});
+
+const search = document.getElementById('robotSearch');
+document.getElementById('robotNames').innerHTML = robots.map((r) => `<option value="${r.name}"></option>`).join('');
+const trySearch = () => {
+  const q = search.value.trim().toUpperCase();
+  if (!q) return;
+  const r = robots.find((x) => x.name === q) || robots.find((x) => x.name.includes(q));
+  if (r) { selectRobot(r.id, { reveal: true }); search.value = r.name; }
+  else toast(`‘${search.value}’에 해당하는 로봇이 없습니다.`, 'warn');
+};
+search.addEventListener('change', trySearch);
+search.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); trySearch(); } });
+
+document.getElementById('plcGrid').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-plc]');
+  if (!b) return;
+  state.selectedPlc = Number(b.dataset.plc);
+  renderPlc();
+  const again = document.querySelector(`#plcGrid [data-plc="${state.selectedPlc}"]`);
+  if (again) again.focus();
+});
+
+document.getElementById('alarmList').addEventListener('click', (e) => {
+  const ack = e.target.closest('[data-ack]');
+  if (ack) { ackAlarm(Number(ack.dataset.ack)); return; }
+  const go = e.target.closest('[data-goto]');
+  if (!go) return;
+  const [kind, id] = go.dataset.goto.split(':');
+  if (kind === 'robot') { selectRobot(id, { reveal: true }); canvas.focus(); }
+  if (kind === 'plc') {
+    state.selectedPlc = Number(id);
+    renderPlc();
+    const tile = document.querySelector(`#plcGrid [data-plc="${id}"]`);
+    if (tile) { tile.scrollIntoView({ block: 'nearest' }); tile.focus(); }
+  }
+});
+
+// 상단 내비게이션
+document.querySelector('[data-nav="faults"]').addEventListener('click', () => toast('‘장애 주입’ 화면은 다음 단계에서 같은 스타일로 만듭니다.', 'info'));
+document.getElementById('logoutBtn').addEventListener('click', () => toast('로그아웃하면 로그인 화면으로 이동합니다 (데모).', 'info'));
+
+// 데모 컨트롤
+document.getElementById('demoMode').addEventListener('change', (e) => {
+  if (e.target.name !== 'mode') return;
+  state.userTouchedMode = true;
+  setMode(e.target.value);
+});
+
+/* ===== 전체 렌더 ===== */
+const renderAll = () => {
+  renderStatus();
+  renderSummary();
+  renderConnections();
+  renderPlc();
+  renderAlarms();
+  buildDetail();
+  drawMap();
+};
+
+/* ===== 시작 ===== */
+readColors();
+buildSummary();
+buildFilters();
+state.selectedId = 'A-AMR-12';
+new ResizeObserver(resizeMap).observe(document.getElementById('mapStage'));
+renderAll();
+
+const clockEl = document.getElementById('clock');
+setInterval(() => { clockEl.textContent = fmtTime(Date.now()); }, 1000);
+clockEl.textContent = fmtTime(Date.now());
+
+setInterval(() => {
+  tickCount += 1;
+  if (isStreaming()) {
+    simulate();
+    if (tickCount % 60 === 0) randomStateChange();
+    if (tickCount % 450 === 200) raiseRandomError();
+    if (tickCount % 10 === 0) processAutoClear();
+  }
+  drawMap();
+  updateDetail();
+  tickBanner();
+  if (tickCount % 5 === 0) renderSummary();
+  if (tickCount % 10 === 0) {
+    renderPlcDetail();
+    renderConnections();
+  }
+}, TICK_MS);
+
+// 첫 접속: 잠시 첫 스냅샷을 기다린 뒤 실시간 수신으로 전환
+setTimeout(() => { if (!state.userTouchedMode) setMode('live'); }, 1600);
+</script>
+</body>
+</html>
