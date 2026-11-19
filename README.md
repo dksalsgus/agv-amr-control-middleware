@@ -35,6 +35,9 @@ docker compose exec mosquitto mosquitto_sub -t 'vendorA/amr/+/state' -v
 # 미들웨어가 모은 로봇의 최신 상태
 curl http://localhost:3000/robots
 curl http://localhost:3000/robots/{id}
+
+# 로봇 이력 (최신 순, from/to는 ISO 8601, page는 1부터, size는 최대 1000)
+curl "http://localhost:3000/robots/{id}/telemetry?from=2026-11-19T00:00:00Z&page=1&size=100"
 ```
 
 시작할 때 `prisma migrate deploy`로 테이블을 만들고 `prisma/seed.sql`로 데모 데이터(제조사, 연결, 장비)를 넣습니다. 시드는 여러 번 실행해도 결과가 같습니다.
