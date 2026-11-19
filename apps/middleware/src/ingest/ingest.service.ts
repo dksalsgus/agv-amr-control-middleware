@@ -1,9 +1,4 @@
-import {
-  Inject,
-  Injectable,
-  Logger,
-  OnApplicationBootstrap,
-} from "@nestjs/common";
+import { Inject, Injectable, Logger } from "@nestjs/common";
 import {
   RobotReading,
   VENDOR_ADAPTERS,
@@ -18,38 +13,67 @@ import {
   MqttLinkProvider,
 } from "./providers/mqtt-link.provider";
 import { RobotState } from "../state/robot-state";
+import {
+  RestConnectionConfig,
+  RestLinkProvider,
+} from "./providers/rest-link.provider";
 import { RobotStateProvider } from "./providers/robot-state.provider";
 import { SeqJudgeProvider } from "./providers/seq-judge.provider";
 import { TelemetryProvider } from "./providers/telemetry.provider";
 
+type PollState = {
+  lastPolledAt: number;
+  inFlight: boolean;
+};
+
 /**
  * 수집: 원본 수신 → 어댑터로 공통 모델 변환 → seq 판정 → 메모리 상태 반영 → 이력 기록.
+ * 시작과 폴링 시점은 Controller 위치의 IngestScheduler가 정한다.
  */
 @Injectable()
-export class IngestService implements OnApplicationBootstrap {
+export class IngestService {
   private readonly logger = new Logger(IngestService.name);
+  private connections: IngestConnection[] = [];
+  private readonly pollStates = new Map<string, PollState>();
 
   constructor(
     @Inject(VENDOR_ADAPTERS)
     private readonly adapters: VendorAdapter<unknown>[],
     private readonly connectionProvider: ConnectionProvider,
     private readonly mqttLinkProvider: MqttLinkProvider,
+    private readonly restLinkProvider: RestLinkProvider,
     private readonly robotStateProvider: RobotStateProvider,
     private readonly seqJudgeProvider: SeqJudgeProvider,
     private readonly telemetryProvider: TelemetryProvider,
   ) {}
 
-  async onApplicationBootstrap() {
-    const connections = await this.connectionProvider.findEnabledConnections();
+  async start() {
+    this.connections = await this.connectionProvider.findEnabledConnections();
 
-    for (const connection of connections) {
+    for (const connection of this.connections) {
       this.robotStateProvider.registerDevices(connection.robots);
     }
 
     await this.restoreLatestStates();
 
-    for (const connection of connections) {
+    for (const connection of this.connections) {
       this.startConnection(connection);
+    }
+  }
+
+  /** 주기가 된 폴링 연결(REST)을 한 번씩 폴링한다. 이전 요청이 아직 끝나지 않았으면 건너뛴다. */
+  pollDue(now: number) {
+    for (const connection of this.connections) {
+      if (connection.protocol !== "REST") {
+        continue;
+      }
+
+      const config = connection.config as RestConnectionConfig;
+      if (!this.isPollDue(connection.id, config.pollIntervalMs, now)) {
+        continue;
+      }
+
+      void this.pollRest(connection, config, now);
     }
   }
 
@@ -77,6 +101,44 @@ export class IngestService implements OnApplicationBootstrap {
         connection.config as MqttConnectionConfig,
         (raw) => this.handleRaw(connection.id, adapter, raw),
       );
+    }
+  }
+
+  private isPollDue(connectionId: string, intervalMs: number, now: number) {
+    const state = this.pollStates.get(connectionId);
+    if (!state) {
+      return true;
+    }
+
+    return !state.inFlight && now - state.lastPolledAt >= intervalMs;
+  }
+
+  private async pollRest(
+    connection: IngestConnection,
+    config: RestConnectionConfig,
+    now: number,
+  ) {
+    const adapter = this.findAdapter(connection.vendorCode);
+    if (!adapter) {
+      return;
+    }
+
+    this.pollStates.set(connection.id, { lastPolledAt: now, inFlight: true });
+
+    try {
+      const externalIds = connection.robots.map((robot) => robot.externalId);
+      const raws = await this.restLinkProvider.poll(config, externalIds);
+
+      for (const raw of raws) {
+        this.handleRaw(connection.id, adapter, raw);
+      }
+    } catch (error) {
+      this.logger.warn(`폴링 실패 (${connection.id}): ${String(error)}`);
+    } finally {
+      this.pollStates.set(connection.id, {
+        lastPolledAt: now,
+        inFlight: false,
+      });
     }
   }
 
