@@ -77,10 +77,9 @@ export class LinkStateProvider {
     }
     const failureCount = state.failureCount + 1;
 
-    if (
-      state.status === "DOWN" ||
-      failureCount < this.config.downAfterFailures
-    ) {
+    const isAlreadyDown = state.status === "DOWN";
+    const isBelowThreshold = failureCount < this.config.downAfterFailures;
+    if (isAlreadyDown || isBelowThreshold) {
       await this.linkStateRepository.save(connectionId, {
         status: state.status,
         changedAt: state.changedAt,

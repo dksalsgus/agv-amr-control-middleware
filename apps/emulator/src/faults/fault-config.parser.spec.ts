@@ -1,3 +1,4 @@
+import { FaultSettings } from "./fault-settings";
 import { FaultConfigParser } from "./fault-config.parser";
 
 describe("FaultConfigParser", () => {
@@ -36,5 +37,34 @@ describe("FaultConfigParser", () => {
   it("그룹 이름은 A, B, C, PLC만 받는다", () => {
     expect(parser.parseGroup("PLC")).toBe("PLC");
     expect(parser.parseGroup("D")).toBeNull();
+  });
+});
+
+describe("FaultSettings 장비 값 주입", () => {
+  it("켠 PLC 점과 오류를 넣은 로봇을 돌려준다", () => {
+    const settings = new FaultSettings();
+
+    settings.setPlcPoint(8, true);
+    settings.setPlcPoint(2, true);
+    settings.setPlcPoint(2, false);
+    settings.setRobotError("C-004", true);
+
+    expect(settings.getDevices()).toEqual({
+      plcPointsOn: [8],
+      robotErrors: ["C-004"],
+    });
+  });
+});
+
+describe("FaultConfigParser 장비 경로", () => {
+  it("PLC 점 번호는 0~15, serial은 A-001 꼴만 받는다", () => {
+    const parser = new FaultConfigParser();
+
+    expect(parser.parsePointNo("15")).toBe(15);
+    expect(parser.parsePointNo("16")).toBeNull();
+    expect(parser.parseSerial("B-030")).toBe("B-030");
+    expect(parser.parseSerial("D-001")).toBeNull();
+    expect(parser.parseSwitch({ on: true }, "on")).toBe(true);
+    expect(parser.parseSwitch({ on: "yes" }, "on")).toBeNull();
   });
 });

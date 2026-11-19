@@ -185,7 +185,8 @@ PATCH /connections/{id}
 → { "id": "...", "version": 2 }
 ```
 
-- PATCH는 `version`이 필수이고, 저장된 값과 다르면 409입니다. `name`, `enabled`, config는 바꿀 것만 보냅니다. protocol은 바꾸지 않습니다.
+- PATCH는 `version`이 필수이고, 저장된 값과 다르면 409입니다. `name`, `enabled`, `protocol`, config는 바꿀 것만 보냅니다. `protocol`을 바꾸면 그 프로토콜의 config도 같이 보내야 합니다(없으면 400).
+- 제조사 장비가 보내지 않는 프로토콜은 POST와 PATCH 모두 400입니다(예: 제조사 A는 MQTT만). 지원 목록은 `VENDOR_PROTOCOLS`에 있고, 제조사가 프로토콜을 더 지원하면 어댑터를 만들고 목록에 더합니다.
 - 바뀐 설정은 2초 안에 수집에 반영되고, 그 연결만 다시 붙습니다.
 - DELETE는 장비가 딸린 연결이면 409입니다. 이때는 `enabled: false`로 끕니다. 성공하면 `data`가 null입니다.
 
@@ -259,10 +260,13 @@ PATCH /connections/{id}
 
 ## 4. 에뮬레이터 장애 주입 `http://localhost:8090`
 
-| 메서드 | 경로              | 하는 일                        |
-| ------ | ----------------- | ------------------------------ |
-| GET    | `/faults`         | 그룹(A, B, C, PLC)별 장애 설정 |
-| PUT    | `/faults/{group}` | 그룹 하나의 장애 설정 바꾸기   |
+| 메서드 | 경로                      | 하는 일                                             |
+| ------ | ------------------------- | --------------------------------------------------- |
+| GET    | `/faults`                 | 그룹(A, B, C, PLC)별 장애 설정                      |
+| PUT    | `/faults/{group}`         | 그룹 하나의 장애 설정 바꾸기                        |
+| GET    | `/faults/devices`         | 켠 PLC 점과 오류를 넣은 로봇                        |
+| PUT    | `/faults/plc-points/{no}` | PLC 점(0~15) 켜기·끄기 `{ "on": true }`             |
+| PUT    | `/faults/robots/{serial}` | 로봇(`A-001` 꼴) 오류 넣기·빼기 `{ "error": true }` |
 
 ```http
 PUT /faults/A
@@ -270,4 +274,5 @@ PUT /faults/A
 ```
 
 - 응답은 공통 구조가 아니라 설정 그대로입니다. 없는 그룹은 404, 형식이 틀리면 400(`{ message }`)입니다.
+- 장비 값 주입 응답은 `{ plcPointsOn: number[], robotErrors: string[] }`입니다. 오류를 넣은 로봇은 그 자리에 멈추고 제조사 형식대로 오류(A `fault`, B `ERR`, C 상태 4)와 코드 101을 보냅니다. 에뮬레이터는 장애를 넣지 않으면 PLC 값과 로봇 오류를 스스로 바꾸지 않습니다.
 - 미들웨어는 이 설정을 모르고 받은 데이터만으로 판단합니다. 장애별 동작은 [README](../README.md#장애-확인)에 있습니다.

@@ -1,4 +1,5 @@
 import { Robot } from "./robot";
+import { RobotFleet } from "./robot-fleet";
 import { RouteMap } from "./route-map";
 import { RouteNode } from "./route-map.types";
 
@@ -79,5 +80,25 @@ describe("Robot", () => {
 
     expect(robot.batteryPct).toBe(100);
     expect(robot.mode).toBe("IDLE");
+  });
+});
+
+describe("RobotFleet", () => {
+  it("오류를 넣은 로봇만 오류 코드를 달고 그 자리에 멈춘다", () => {
+    const fleet = new RobotFleet("A", 2);
+    const [broken, healthy] = fleet.robots;
+    const before = { x: broken.x, y: broken.y };
+
+    fleet.step(1, new Set(["A-001"]));
+    fleet.step(1, new Set(["A-001"]));
+
+    expect(broken.errorCode).toBe(RobotFleet.INJECTED_ERROR_CODE);
+    expect(broken.speed).toBe(0);
+    expect({ x: broken.x, y: broken.y }).toEqual(before);
+    expect(healthy.errorCode).toBeNull();
+
+    fleet.step(1, new Set());
+
+    expect(broken.errorCode).toBeNull();
   });
 });

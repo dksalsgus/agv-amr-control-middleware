@@ -6,6 +6,7 @@ import {
 import { Prisma } from "@prisma/client";
 import { VendorsConnectionsRepository } from "../settings/vendors-connections.repository";
 import { VendorsRepository } from "../settings/vendors.repository";
+import { VendorRow } from "../settings/vendors.types";
 import { LinkStateRepository } from "../state/link-state.repository";
 import {
   ConnectionChanges,
@@ -57,6 +58,7 @@ export class ConnectionsProvider {
         {
           name: changes.name,
           enabled: changes.enabled,
+          protocol: changes.protocol,
           config: changes.config as Prisma.InputJsonObject | undefined,
         },
       );
@@ -65,6 +67,16 @@ export class ConnectionsProvider {
       this.throwIfDuplicateName(error, changes.name);
       throw error;
     }
+  }
+
+  /** 없는 제조사면 400 */
+  async findVendor(vendorId: string): Promise<VendorRow> {
+    const vendor = await this.vendorsRepository.findById(vendorId);
+    if (!vendor) {
+      throw new BadRequestException(`없는 제조사입니다: ${vendorId}`);
+    }
+
+    return vendor;
   }
 
   /** 없는 제조사면 400, 이름이 겹치면 409 */
@@ -97,10 +109,10 @@ export class ConnectionsProvider {
   }
 
   private throwIfDuplicateName(error: unknown, name: string | undefined): void {
-    if (
+    const isDuplicateName =
       error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === "P2002"
-    ) {
+      error.code === "P2002";
+    if (isDuplicateName) {
       throw new ConflictException(`이미 있는 연결 이름입니다: ${name}`);
     }
   }

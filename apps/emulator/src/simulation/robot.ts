@@ -24,6 +24,8 @@ export class Robot {
   batteryPct: number;
   mode: RobotMode = "DRIVING";
   loaded = false;
+  /** 장애 주입으로 넣은 오류 코드. 있으면 그 자리에 멈춘다. */
+  errorCode: number | null = null;
 
   /** 마지막으로 도착한 지점 */
   private currentNode: RouteNode;
@@ -38,7 +40,9 @@ export class Robot {
   }
 
   step(dtSec: number) {
-    if (this.mode === "CHARGING") {
+    if (this.errorCode !== null) {
+      this.speed = 0;
+    } else if (this.mode === "CHARGING") {
       this.charge(dtSec);
     } else {
       this.drive(dtSec);
@@ -48,7 +52,9 @@ export class Robot {
   }
 
   private drive(dtSec: number) {
-    if (this.batteryPct < Robot.LOW_BATTERY_PCT && !this.headingToCharger) {
+    const shouldGoCharge =
+      this.batteryPct < Robot.LOW_BATTERY_PCT && !this.headingToCharger;
+    if (shouldGoCharge) {
       this.routeToCharger();
     }
 

@@ -28,11 +28,13 @@ export class RealtimeService {
   /** 같은 epoch에서 이어받을 수 있으면 delta, 아니면 snapshot */
   async hello(message: HelloMessageDto): Promise<RealtimeReply> {
     const epoch = await this.realtimeStateProvider.findEpoch();
-    if (message.epoch !== epoch || message.lastRev === undefined) {
+    const lastRev = message.lastRev;
+    const canResume = message.epoch === epoch && lastRev !== undefined;
+    if (!canResume) {
       return { event: "snapshot", data: await this.getSnapshot() };
     }
 
-    return await this.resync(message.lastRev);
+    return await this.resync(lastRev);
   }
 
   /** 서버 rev보다 앞선 lastRev는 이어받을 수 없어 snapshot으로 답한다. */

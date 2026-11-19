@@ -25,8 +25,11 @@ export class VendorBPayloadBuilder {
       headingDeg: Math.round(radianToDegree(robot.theta) * 10) / 10,
       speedMmS: Math.round(robot.speed * 1000),
       batteryLevel: Math.round(robot.batteryPct),
-      status: VendorBPayloadBuilder.STATUS_MAP[robot.mode],
-      errorCode: "",
+      status:
+        robot.errorCode === null
+          ? VendorBPayloadBuilder.STATUS_MAP[robot.mode]
+          : "ERR",
+      errorCode: robot.errorCode === null ? "" : `E${robot.errorCode}`,
       hasLoad: robot.loaded,
     };
   }

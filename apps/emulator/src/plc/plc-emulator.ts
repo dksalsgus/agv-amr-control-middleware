@@ -5,10 +5,11 @@ import { PlcServer } from "./plc-server";
 import { PlcSimulator } from "./plc-simulator";
 
 export class PlcEmulator {
-  private readonly plc = new PlcSimulator();
+  private readonly plc: PlcSimulator;
   private readonly server: PlcServer;
 
   constructor(faults: FaultSettings) {
+    this.plc = new PlcSimulator(faults.plcPoints);
     this.server = new PlcServer(PLC_PORT, this.plc, faults);
   }
 

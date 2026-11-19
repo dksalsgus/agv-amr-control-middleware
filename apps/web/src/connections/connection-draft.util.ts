@@ -241,6 +241,7 @@ export const changedKeys = (
   saved: ConnectionDraft,
 ): string[] => {
   const nameChanged = draft.name !== saved.name ? ["name"] : [];
+  const protocolChanged = draft.protocol !== saved.protocol ? ["protocol"] : [];
   const configChanged = FIELDS[draft.protocol]
     .filter((field) =>
       field.key === "password"
@@ -248,7 +249,7 @@ export const changedKeys = (
         : draft.config[field.key] !== saved.config[field.key],
     )
     .map((field) => configKey(field.key));
-  return nameChanged.concat(configChanged);
+  return nameChanged.concat(protocolChanged, configChanged);
 };
 
 /** 입력란 문자열을 서버 요청 모양으로. 비밀번호를 비워 두면 보내지 않아 저장된 값을 유지한다. */
@@ -266,6 +267,7 @@ export const toWriteBody = (draft: ConnectionDraft): ConnectionWriteBody => {
   );
   return {
     name: draft.name.trim(),
+    protocol: draft.protocol,
     [CONFIG_BODY_KEY[draft.protocol]]: config,
   };
 };

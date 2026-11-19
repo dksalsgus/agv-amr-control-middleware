@@ -118,6 +118,10 @@ curl -X PUT http://localhost:8090/faults/C -H 'content-type: application/json' \
 # A 중복 30%·순서 뒤바뀜 30%: 미들웨어가 seq로 걸러 화면의 seq는 뒤로 가지 않는다
 curl -X PUT http://localhost:8090/faults/A -H 'content-type: application/json' \
   -d '{"disconnected":false,"delayMs":0,"duplicatePct":30,"reorderPct":30,"lossPct":0}'
+# PLC 도어 1(점 0) 열림 → PLC_ABNORMAL 알람. {"on":false}로 풀면 알람 해제
+curl -X PUT http://localhost:8090/faults/plc-points/0 -H 'content-type: application/json' -d '{"on":true}'
+# 로봇 A-001 오류 → 멈추고 ROBOT_ERROR 알람. {"error":false}로 풀면 해제
+curl -X PUT http://localhost:8090/faults/robots/A-001 -H 'content-type: application/json' -d '{"error":true}'
 ```
 
 | 장애       | A (MQTT 푸시)                     | B·C·PLC (폴링)                             |
