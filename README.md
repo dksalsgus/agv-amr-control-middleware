@@ -48,6 +48,11 @@ curl "http://localhost:3000/plc-points/{id}/events?page=1&size=100"
 # 연결 목록과 연결 상태(UP, DOWN, UNKNOWN)
 curl http://localhost:3000/connections
 
+# 연결 하나의 설정 보기와 바꾸기 (version이 다르면 409, 잘못된 config는 400)
+curl http://localhost:3000/connections/{id}
+curl -X PATCH http://localhost:3000/connections/{id} -H 'content-type: application/json' \
+  -d '{"version":1,"rest":{"baseUrl":"http://emulator:8081","pollIntervalMs":1000,"mode":"bulk","timeoutMs":800}}'
+
 # 시스템 로그 (연결 끊김·복구 등, 최신 순, type으로 거를 수 있다)
 curl "http://localhost:3000/logs?type=LINK_DOWN&page=1&size=100"
 
