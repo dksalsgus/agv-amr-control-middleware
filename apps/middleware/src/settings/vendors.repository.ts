@@ -11,4 +11,8 @@ export class VendorsRepository {
   async findAll(): Promise<VendorRow[]> {
     return await this.prisma.vendors.findMany({ orderBy: { code: "asc" } });
   }
+
+  async findById(id: string): Promise<VendorRow | null> {
+    return await this.prisma.vendors.findUnique({ where: { id } });
+  }
 }
