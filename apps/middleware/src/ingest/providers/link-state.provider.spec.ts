@@ -89,6 +89,17 @@ describe("LinkStateProvider", () => {
     expect(await removedEntityRepository.findAfter(before)).toEqual([]);
   });
 
+  it("지운 뒤에 끝난 폴링은 링크를 되살리거나 로그를 남기지 않는다", async () => {
+    await provider.unregister(id);
+
+    await provider.markUp(id, "B");
+    await provider.markFailure(id, "B", "timeout");
+    await provider.markDown(id, "B", "close");
+
+    expect(await linkStateRepository.findById(id)).toBeUndefined();
+    expect(insert).not.toHaveBeenCalled();
+  });
+
   it("로그 기록이 실패해도 상태는 바뀐다", async () => {
     insert.mockRejectedValue(new Error("db down"));
 
