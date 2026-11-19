@@ -27,7 +27,7 @@ import { TelemetryProvider } from "./providers/telemetry.provider";
 import { PollTracker } from "./poll-tracker";
 
 /**
- * 수집: 원본 수신 → 어댑터로 공통 모델 변환 → seq 판정 → 메모리 상태 반영 → 이력 기록.
+ * 로봇 수집: 원본 수신 → 어댑터로 공통 모델 변환 → seq 판정 → 메모리 상태 반영 → 이력 기록.
  * 시작과 폴링 시점은 Controller 위치의 IngestScheduler가 정한다.
  */
 @Injectable()
@@ -49,7 +49,10 @@ export class IngestService {
   ) {}
 
   async start() {
-    this.connections = await this.connectionProvider.findEnabledConnections();
+    const connections = await this.connectionProvider.findEnabledConnections();
+    this.connections = connections.filter(
+      (connection) => connection.robots.length > 0,
+    );
 
     for (const connection of this.connections) {
       this.robotStateProvider.registerDevices(connection.robots);
