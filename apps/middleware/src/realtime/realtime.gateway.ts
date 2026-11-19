@@ -9,9 +9,11 @@ import {
   OnGatewayInit,
   SubscribeMessage,
   WebSocketGateway,
+  WsException,
   WsResponse,
 } from "@nestjs/websockets";
 import { WebSocket } from "ws";
+import { AuthService } from "../auth/auth.service";
 import { WsExceptionsFilter } from "../common/filters/ws-exceptions.filter";
 import { realtimeConfig } from "../config/realtime.config";
 import { DeltaMessageDto } from "./dto/delta.message.dto";
@@ -31,7 +33,7 @@ export class RealtimeGateway
   private static readonly DELTA_JOB = "realtime-delta";
   private static readonly PING_JOB = "realtime-ping";
 
-  /** hello를 보낸 화면과 그 화면에 마지막으로 보낸 rev */
+  /** 토큰을 확인한 hello를 보낸 화면과 그 화면에 마지막으로 보낸 rev */
   private readonly sentRevs = new Map<WebSocket, number>();
   /** 화면별 마지막 pong 시각(ms) */
   private readonly lastPongAts = new Map<WebSocket, number>();
@@ -42,6 +44,7 @@ export class RealtimeGateway
     private readonly config: ConfigType<typeof realtimeConfig>,
     private readonly schedulerRegistry: SchedulerRegistry,
     private readonly realtimeService: RealtimeService,
+    private readonly authService: AuthService,
   ) {}
 
   afterInit(): void {
@@ -72,6 +75,7 @@ export class RealtimeGateway
     @ConnectedSocket() client: WebSocket,
     @MessageBody() message: HelloMessageDto,
   ): Promise<void> {
+    await this.authService.authenticate(message.token);
     this.reply(client, await this.realtimeService.hello(message));
   }
 
@@ -80,6 +84,10 @@ export class RealtimeGateway
     @ConnectedSocket() client: WebSocket,
     @MessageBody() message: ResyncMessageDto,
   ): Promise<void> {
+    if (!this.sentRevs.has(client)) {
+      throw new WsException("hello를 먼저 보내야 합니다.");
+    }
+
     this.reply(client, await this.realtimeService.resync(message.lastRev));
   }
 
