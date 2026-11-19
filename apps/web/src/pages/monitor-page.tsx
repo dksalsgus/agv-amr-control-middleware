@@ -234,6 +234,7 @@ export const MonitorPage = () => {
             waiting={mode === "connecting"}
             frozenAt={frozen ? view.disconnectedAt : null}
             onSelect={setSelectedRobotId}
+            onSelectPlc={setSelectedPlcId}
           />
           <MapLegend
             visible={robots.filter((robot) => isVisible(robot, filters)).length}
