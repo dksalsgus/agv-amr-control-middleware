@@ -1,3 +1,4 @@
+import { RealtimeAlarmDto } from "./dto/realtime-alarm.dto";
 import { RealtimeLinkDto } from "./dto/realtime-link.dto";
 import { RealtimePlcPointDto } from "./dto/realtime-plc-point.dto";
 import { RealtimeRobotDto } from "./dto/realtime-robot.dto";
@@ -12,4 +13,5 @@ export type ChangedEntities = {
   robots: RealtimeRobotDto[];
   plcPoints: RealtimePlcPointDto[];
   links: RealtimeLinkDto[];
+  alarms: RealtimeAlarmDto[];
 };

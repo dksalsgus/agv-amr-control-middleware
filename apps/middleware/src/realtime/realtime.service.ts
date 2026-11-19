@@ -1,8 +1,10 @@
 import { Injectable } from "@nestjs/common";
 import { StaleJudgeProvider } from "../device/stale-judge.provider";
+import { AlarmEntry } from "../state/alarm-state";
 import { LinkStateEntry } from "../state/link-state";
 import { PlcPointEntry } from "../state/plc-point-state";
 import { RobotEntry, RobotState } from "../state/robot-state";
+import { RealtimeAlarmDto } from "./dto/realtime-alarm.dto";
 import { RealtimeLinkDto } from "./dto/realtime-link.dto";
 import { RealtimePlcPointDto } from "./dto/realtime-plc-point.dto";
 import { RealtimeRobotStateDto } from "./dto/realtime-robot-state.dto";
@@ -64,7 +66,7 @@ export class RealtimeService {
       robots: changed.robots,
       plcPoints: changed.plcPoints,
       links: changed.links,
-      alarms: [],
+      alarms: changed.alarms,
     };
   }
 
@@ -79,6 +81,7 @@ export class RealtimeService {
       robots: changed.robots,
       plcPoints: changed.plcPoints,
       links: changed.links,
+      alarms: changed.alarms,
       removed: removed.map((entity) => ({ kind: entity.kind, id: entity.id })),
     };
   }
@@ -102,6 +105,7 @@ export class RealtimeService {
     }
 
     const links = await this.realtimeStateProvider.findLinks();
+    const alarms = await this.realtimeStateProvider.findAlarms();
 
     return {
       robots,
@@ -109,6 +113,9 @@ export class RealtimeService {
       links: links
         .filter((link) => link.state.rev > fromRev)
         .map((link) => this.toLink(link)),
+      alarms: alarms
+        .filter((alarm) => alarm.rev > fromRev)
+        .map((alarm) => this.toAlarm(alarm)),
     };
   }
 
@@ -180,6 +187,20 @@ export class RealtimeService {
         linkStatus,
         now,
       ),
+      rev: entry.rev,
+    };
+  }
+
+  private toAlarm(entry: AlarmEntry): RealtimeAlarmDto {
+    return {
+      id: entry.id,
+      code: entry.code,
+      level: entry.level,
+      targetType: entry.targetType,
+      targetId: entry.targetId,
+      message: entry.message,
+      raisedAt: entry.raisedAt.toISOString(),
+      ackedAt: entry.ackedAt?.toISOString() ?? null,
       rev: entry.rev,
     };
   }

@@ -1,5 +1,6 @@
 import { staleConfig } from "../config/stale.config";
 import { StaleJudgeProvider } from "../device/stale-judge.provider";
+import { AlarmStateRepository } from "../state/alarm-state.repository";
 import { LinkStateRepository } from "../state/link-state.repository";
 import { PlcPointStateRepository } from "../state/plc-point-state.repository";
 import { RemovedEntityRepository } from "../state/removed-entity.repository";
@@ -21,6 +22,7 @@ describe("RealtimeService", () => {
     const revisionRepository = new RevisionRepository();
     const robotStateRepository = new RobotStateRepository();
     const removedEntityRepository = new RemovedEntityRepository();
+    const alarmStateRepository = new AlarmStateRepository();
     const service = new RealtimeService(
       new RealtimeStateProvider(
         revisionRepository,
@@ -28,6 +30,7 @@ describe("RealtimeService", () => {
         new PlcPointStateRepository(),
         new LinkStateRepository(),
         removedEntityRepository,
+        alarmStateRepository,
       ),
       new StaleJudgeProvider(staleConfig()),
     );
@@ -46,6 +49,7 @@ describe("RealtimeService", () => {
       revisionRepository,
       robotStateRepository,
       removedEntityRepository,
+      alarmStateRepository,
     };
   };
 
@@ -101,5 +105,27 @@ describe("RealtimeService", () => {
     expect((await service.getDelta(2))?.removed).toEqual([
       { kind: "ROBOT", id: "r1" },
     ]);
+  });
+
+  it("열리거나 확인된 알람은 rev가 오르면 snapshot과 delta에 실린다", async () => {
+    const { service, revisionRepository, alarmStateRepository } = await setup();
+
+    await alarmStateRepository.save({
+      id: "a1",
+      code: "ROBOT_ERROR",
+      level: "CRITICAL",
+      targetType: "DEVICE",
+      targetId: "r1",
+      message: "r1 오류",
+      raisedAt: new Date(0),
+      ackedAt: null,
+      rev: await revisionRepository.next(),
+    });
+
+    expect((await service.getSnapshot()).alarms).toHaveLength(1);
+    expect((await service.getDelta(2))?.alarms.map((item) => item.id)).toEqual([
+      "a1",
+    ]);
+    expect(await service.getDelta(3)).toBeNull();
   });
 });
