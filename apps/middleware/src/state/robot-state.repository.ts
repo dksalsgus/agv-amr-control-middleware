@@ -3,13 +3,14 @@ import { RobotDevice, RobotEntry, RobotState } from "./robot-state";
 
 /**
  * 로봇의 현재 상태를 담는 메모리 저장소. 현재 상태 테이블은 두지 않는다(설계 문서 5장).
+ * 메모리라 실제로는 동기지만 모든 레이어 메서드를 async로 두는 규칙을 따른다.
  */
 @Injectable()
 export class RobotStateRepository {
   private readonly entries = new Map<string, RobotEntry>();
   private readonly deviceIdByExternalKey = new Map<string, string>();
 
-  register(device: RobotDevice) {
+  async register(device: RobotDevice): Promise<void> {
     this.entries.set(device.deviceId, { ...device, state: null, rev: 0 });
 
     const externalKey = this.toExternalKey(
@@ -19,14 +20,14 @@ export class RobotStateRepository {
     this.deviceIdByExternalKey.set(externalKey, device.deviceId);
   }
 
-  findById(deviceId: string): RobotEntry | undefined {
+  async findById(deviceId: string): Promise<RobotEntry | undefined> {
     return this.entries.get(deviceId);
   }
 
-  findByExternalId(
+  async findByExternalId(
     connectionId: string,
     externalId: string,
-  ): RobotEntry | undefined {
+  ): Promise<RobotEntry | undefined> {
     const externalKey = this.toExternalKey(connectionId, externalId);
     const deviceId = this.deviceIdByExternalKey.get(externalKey);
     if (!deviceId) {
@@ -36,11 +37,15 @@ export class RobotStateRepository {
     return this.entries.get(deviceId);
   }
 
-  findAll(): RobotEntry[] {
+  async findAll(): Promise<RobotEntry[]> {
     return [...this.entries.values()];
   }
 
-  updateState(deviceId: string, state: RobotState, rev: number) {
+  async updateState(
+    deviceId: string,
+    state: RobotState,
+    rev: number,
+  ): Promise<void> {
     const entry = this.entries.get(deviceId);
     if (!entry) {
       return;

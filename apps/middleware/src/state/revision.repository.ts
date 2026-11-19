@@ -7,11 +7,11 @@ import { Injectable } from "@nestjs/common";
 export class RevisionRepository {
   private rev = 0;
 
-  current(): number {
+  async current(): Promise<number> {
     return this.rev;
   }
 
-  next(): number {
+  async next(): Promise<number> {
     this.rev += 1;
     return this.rev;
   }
