@@ -1,5 +1,6 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
+import { ScheduleModule } from "@nestjs/schedule";
 import { appConfig } from "./config/app.config";
 import { databaseConfig } from "./config/database.config";
 import { ingestConfig } from "./config/ingest.config";
@@ -19,6 +20,7 @@ import { PrismaModule } from "./prisma/prisma.module";
       isGlobal: true,
       load: [appConfig, databaseConfig, ingestConfig, linkConfig, staleConfig],
     }),
+    ScheduleModule.forRoot(),
     LoggerModule,
     PrismaModule,
     HealthModule,
