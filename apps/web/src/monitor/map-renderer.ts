@@ -10,7 +10,7 @@ import {
   PLC_POSITIONS,
 } from "./monitor.constants";
 import { MapFilters, MapRobot, VendorKey } from "./monitor.types";
-import { isVisible } from "./monitor.util";
+import { isVisible, toPlcMapTags } from "./monitor.util";
 
 type Colors = Record<string, string>;
 
@@ -19,6 +19,7 @@ export type MapScene = {
   plcPoints: PlcPoint[];
   filters: MapFilters;
   selectedId: string | null;
+  selectedPlcId: string | null;
   hoverId: string | null;
   waiting: boolean;
 };
@@ -31,12 +32,6 @@ const GRID_Y = ticks(MAP_HEIGHT_M, 5);
 const RACK_ROWS = [0, 1, 2];
 
 const PAD = { l: 36, r: 16, t: 16, b: 28 };
-const PLC_TAG: Record<string, string> = {
-  DOOR: "D",
-  INTERSECTION: "X",
-  ESTOP: "E",
-};
-
 const COLOR_VARS: Record<string, string> = {
   floor: "--map-floor",
   grid: "--map-grid",
@@ -110,7 +105,7 @@ export class MapRenderer {
     if (scene.waiting) {
       return;
     }
-    this.drawPlcMarks(scene.plcPoints, t);
+    this.drawPlcMarks(scene.plcPoints, scene.selectedPlcId, t);
 
     const front = [scene.hoverId, scene.selectedId];
     const back = scene.robots
@@ -291,23 +286,25 @@ export class MapRenderer {
     ctx.fillText("m", this.sx(MAP_WIDTH_M) + 4, this.sy(0) + 6);
   }
 
-  private drawPlcMarks(points: PlcPoint[], t: number): void {
+  private drawPlcMarks(
+    points: PlcPoint[],
+    selectedPlcId: string | null,
+    t: number,
+  ): void {
     const ctx = this.ctx;
     const c = this.colors;
     const s = this.scale;
-    const counters = new Map<string, number>();
+    const tags = toPlcMapTags(points);
     ctx.font = `600 10px ${c.mono}`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
 
     points.forEach((point) => {
       const position = PLC_POSITIONS[point.pointNo];
-      const tag = PLC_TAG[point.type];
+      const tag = tags.get(point.id);
       if (!position || !tag) {
         return;
       }
-      const order = (counters.get(point.type) ?? 0) + 1;
-      counters.set(point.type, order);
       const x = this.sx(position.x);
       const y = this.sy(position.y);
       const color = point.abnormal ? c.critical : c.label;
@@ -322,7 +319,7 @@ export class MapRenderer {
         ctx.lineTo(x, y + s * 1.2);
         ctx.stroke();
         const offset = position.x === 0 ? 12 : -12;
-        ctx.fillText(`${tag}${order}`, x + offset, y);
+        ctx.fillText(tag, x + offset, y);
       } else if (point.type === "INTERSECTION") {
         const k = s * 0.9;
         ctx.beginPath();
@@ -330,7 +327,7 @@ export class MapRenderer {
         ctx.setLineDash([3, 3]);
         ctx.stroke();
         ctx.setLineDash([]);
-        ctx.fillText(`${tag}${order}`, x + k + 8, y - k - 2);
+        ctx.fillText(tag, x + k + 8, y - k - 2);
       } else {
         ctx.beginPath();
         ctx.arc(x, y, 5, 0, Math.PI * 2);
@@ -339,7 +336,7 @@ export class MapRenderer {
         } else {
           ctx.stroke();
         }
-        ctx.fillText(`${tag}${order}`, x + 14, y);
+        ctx.fillText(tag, x + 14, y);
       }
 
       if (point.abnormal) {
@@ -353,7 +350,37 @@ export class MapRenderer {
         ctx.stroke();
         ctx.globalAlpha = 1;
       }
+
+      if (point.id === selectedPlcId) {
+        this.drawPlcSelection(x, y, `${tag} · ${point.name}`);
+      }
     });
+  }
+
+  /** 고른 PLC 점. 로봇 선택과 같은 강조색 고리와 이름표를 쓴다. */
+  private drawPlcSelection(x: number, y: number, text: string): void {
+    const ctx = this.ctx;
+    const c = this.colors;
+    ctx.strokeStyle = c.accent;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(x, y, 16, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.font = `600 11px ${c.sans}`;
+    const w = ctx.measureText(text).width + 12;
+    const bx = clamp(x - w / 2, 2, this.width - w - 2);
+    const by = Math.max(2, y - 16 - 22);
+    ctx.fillStyle = c.accent;
+    ctx.globalAlpha = 0.95;
+    ctx.fillRect(bx, by, w, 18);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = c.bg;
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillText(text, bx + 6, by + 9);
+    ctx.font = `600 10px ${c.mono}`;
+    ctx.textAlign = "center";
   }
 
   /** 제조사별 모양: A 원, B 사각, C 마름모 */

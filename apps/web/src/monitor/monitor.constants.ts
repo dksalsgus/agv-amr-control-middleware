@@ -69,6 +69,13 @@ export const PLC_POSITIONS: Record<number, { x: number; y: number }> = {
   9: { x: 25.5, y: 29.2 },
 };
 
+/** 맵에 적는 PLC 점 머리글자. 유형별 순번을 붙여 D1, X2처럼 쓴다. */
+export const PLC_TAG: Record<string, string> = {
+  DOOR: "D",
+  INTERSECTION: "X",
+  ESTOP: "E",
+};
+
 /** 맵 바닥 그림: 세로·가로 통로 위치(m)와 충전기 자리 */
 export const AISLE_X = [3, 12, 21, 30, 39, 47];
 export const AISLE_Y = [3, 10, 17, 24, 27.5];
