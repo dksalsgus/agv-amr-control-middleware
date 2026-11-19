@@ -26,15 +26,11 @@ export class VendorCAdapter implements VendorAdapter<ModbusRawMessage> {
 
   toCommon(raw: ModbusRawMessage): RobotReading[] {
     const blockCount = Math.floor(raw.registers.length / raw.blockSize);
-    const readings: RobotReading[] = [];
-
-    for (let index = 0; index < blockCount; index += 1) {
+    return Array.from({ length: blockCount }, (_, index) => {
       const start = index * raw.blockSize;
       const block = raw.registers.slice(start, start + raw.blockSize);
-      readings.push(this.toReading(raw.firstBlock + index, block));
-    }
-
-    return readings;
+      return this.toReading(raw.firstBlock + index, block);
+    });
   }
 
   private toReading(blockNo: number, block: number[]): RobotReading {

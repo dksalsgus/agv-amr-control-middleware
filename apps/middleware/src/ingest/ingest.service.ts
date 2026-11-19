@@ -147,17 +147,26 @@ export class IngestService {
     adapter: VendorAdapter<unknown>,
     raw: unknown,
   ) {
-    let readings: RobotReading[];
-    try {
-      readings = adapter.toCommon(raw);
-    } catch (error) {
-      this.logger.warn(`변환 실패 (${adapter.vendorCode}): ${String(error)}`);
+    const readings = this.toReadings(adapter, raw);
+    if (!readings) {
       return;
     }
 
     const receivedTs = new Date();
     for (const reading of readings) {
       this.applyReading(connectionId, reading, receivedTs);
+    }
+  }
+
+  private toReadings(
+    adapter: VendorAdapter<unknown>,
+    raw: unknown,
+  ): RobotReading[] | null {
+    try {
+      return adapter.toCommon(raw);
+    } catch (error) {
+      this.logger.warn(`변환 실패 (${adapter.vendorCode}): ${String(error)}`);
+      return null;
     }
   }
 

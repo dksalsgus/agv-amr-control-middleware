@@ -32,11 +32,9 @@ export class PlcAdapter {
   }
 
   private toBits(word: number): boolean[] {
-    const values: boolean[] = [];
-    for (let pointNo = 0; pointNo < POINT_COUNT; pointNo += 1) {
-      values.push((word & (1 << pointNo)) !== 0);
-    }
-
-    return values;
+    return Array.from(
+      { length: POINT_COUNT },
+      (_, pointNo) => (word & (1 << pointNo)) !== 0,
+    );
   }
 }
