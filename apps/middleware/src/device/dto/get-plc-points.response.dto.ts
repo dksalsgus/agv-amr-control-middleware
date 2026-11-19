@@ -9,6 +9,7 @@ export class GetPlcPointsItemDto {
   value!: boolean | null;
   abnormal!: boolean;
   changedAt!: string | null;
+  stale!: boolean;
   rev!: number;
 }
 

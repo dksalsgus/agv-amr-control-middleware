@@ -12,21 +12,24 @@ import {
 } from "./dto/get-plc-points.response.dto";
 import { PlcEventsQueryProvider } from "./plc-events-query.provider";
 import { PlcPointsProvider } from "./plc-points.provider";
+import { StaleJudgeProvider } from "./stale-judge.provider";
 
 @Injectable()
 export class PlcPointsService {
   constructor(
     private readonly plcPointsProvider: PlcPointsProvider,
     private readonly plcEventsQueryProvider: PlcEventsQueryProvider,
+    private readonly staleJudgeProvider: StaleJudgeProvider,
   ) {}
 
   async getPlcPoints(): Promise<GetPlcPointsResponseDto> {
     const entries = await this.plcPointsProvider.findAll();
     const sorted = [...entries].sort((a, b) => a.pointNo - b.pointNo);
+    const now = new Date();
 
     const plcPoints: GetPlcPointsItemDto[] = [];
     for (const entry of sorted) {
-      plcPoints.push(await this.toItem(entry));
+      plcPoints.push(await this.toItem(entry, now));
     }
 
     return { plcPoints };
@@ -57,8 +60,15 @@ export class PlcPointsService {
     return { items, page: query.page, size: query.size, total };
   }
 
-  private async toItem(entry: PlcPointEntry): Promise<GetPlcPointsItemDto> {
+  private async toItem(
+    entry: PlcPointEntry,
+    now: Date,
+  ): Promise<GetPlcPointsItemDto> {
     const value = entry.current?.value ?? null;
+    const lastRead = await this.plcPointsProvider.findLastRead(entry.deviceId);
+    const linkStatus = await this.plcPointsProvider.findLinkStatus(
+      entry.connectionId,
+    );
 
     return {
       id: entry.pointId,
@@ -71,6 +81,11 @@ export class PlcPointsService {
       value,
       abnormal: value !== null && value !== entry.normalValue,
       changedAt: entry.current?.sourceTs.toISOString() ?? null,
+      stale: await this.staleJudgeProvider.isPlcStale(
+        lastRead,
+        linkStatus,
+        now,
+      ),
       rev: entry.rev,
     };
   }
