@@ -57,6 +57,10 @@ curl -H "$AUTH" "http://localhost:3000/robots/{id}/telemetry?from=2026-11-19T00:
 curl -H "$AUTH" http://localhost:3000/plc-points
 curl -H "$AUTH" "http://localhost:3000/plc-points/{id}/events?page=1&size=100"
 
+# 인터록 제어: PLC 점 값 쓰기 (Modbus 코일 쓰기). 값은 다음 폴링에서 화면에 반영되고 logs에 PLC_WRITE가 남는다
+# 관제 화면에서는 맵의 PLC 표시를 눌러 상세를 열고 "ON으로 쓰기"·"OFF로 쓰기"를 누른다
+curl -H "$AUTH" -X PUT http://localhost:3000/plc-points/{id}/value -H 'content-type: application/json' -d '{"value":true}'
+
 # 연결 목록과 연결 상태 (UP, DOWN, UNKNOWN)
 curl -H "$AUTH" http://localhost:3000/connections
 
@@ -74,6 +78,9 @@ node scripts/measure.mjs
 # 측정: 연결별 수신·중복·뒤바뀜·유실 건수, 수집 구간 지연 p50·p95, 프로세스 CPU·메모리 (reset으로 구간을 새로 시작)
 curl -H "$AUTH" http://localhost:3000/metrics
 curl -H "$AUTH" -X POST http://localhost:3000/metrics/reset
+
+# 연결별 최근 30초 받음·중복 버림·늦어서 버림·유실률 (관제 화면 연결 카드에 같은 값이 나온다)
+curl -H "$AUTH" http://localhost:3000/metrics/connections
 
 # 에뮬레이터 원본 데이터 확인
 docker compose exec mosquitto mosquitto_sub -t 'vendorA/amr/+/state' -v
@@ -97,7 +104,7 @@ curl -H "$AUTH" -X POST http://localhost:3000/connections -H 'content-type: appl
 curl -H "$AUTH" -X DELETE http://localhost:3000/connections/{id}
 ```
 
-연결 설정을 저장하면 미들웨어가 바로 DB의 연결 설정과 비교해서, `version`이 바뀐 연결만 내렸다가 새 설정으로 다시 붙입니다.
+연결 설정을 저장하면 미들웨어가 저장한 그 연결 하나만 바로 내렸다가 새 설정으로 다시 붙입니다. 다른 연결은 끊기지 않습니다.
 
 ### 장애 확인
 
@@ -370,6 +377,9 @@ erDiagram
 | 필수 4. 실시간 전달 (WebSocket, 재접속 복구, 중복·순서)    | 완료 | `/ws` snapshot·delta·resync·ping, epoch와 rev. 수집 구간은 seq 판정                                                                                                                                        |
 | 필수 5. 관제 UI (맵, 상태, 연결, PLC, 장애 알림)           | 완료 | 관제 화면(`/`): 공장 맵(Canvas, 90대), 상태 요약, 연결·PLC 패널, 로봇 상세, 열린 알람과 확인, 서버 끊김·복구 표시. 알람 5종(ROBOT_ERROR, DEVICE_STALE, PLC_ABNORMAL, LOW_BATTERY, LINK_LOSS)               |
 | 필수 6. 측정 (지연 p50·p95, 유실률, 복구 시간, CPU·메모리) | 완료 | `node scripts/measure.mjs` 한 번으로 4종 수치가 표로 나옴. 결과는 [docs/measurements.md](docs/measurements.md). 브라우저 종단 지연 p50·p95는 관제 화면 상단 요약에                                         |
+| 가점. PLC 신호에 따른 인터록 제어                          | 완료 | `PUT /plc-points/{id}/value`(Modbus 코일 쓰기, `PLC_WRITE` 로그). 관제 화면 맵에서 PLC 표시를 눌러 고르고 상세에서 켜기·끄기, "이 신호의 이력 보기"로 이동                                                 |
+| 추가. 연결별 수신 통계와 유실률 알람                       | 완료 | `GET /metrics/connections`, 관제 화면 연결 카드에 최근 30초 받음·중복·늦음·유실률. 30초 유실률 5% 이상이면 `LINK_LOSS` 경고(기준은 임의로 정함)                                                            |
+| 추가. 이력 보관 기간 정리                                  | 완료 | 1시간마다 telemetry 24시간, PLC 이벤트와 logs 30일이 지난 행을 지움. `RETENTION_*` 환경 변수로 조정                                                                                                        |
 | 제출물. `docker compose up` 한 번으로 실행                 | 완료 | `docker-compose.yml`                                                                                                                                                                                       |
 
 ## 저장소 구조
