@@ -57,6 +57,7 @@
 | GET    | `/robots/{id}/telemetry`  | 로봇 이력 (목록)                       |
 | GET    | `/plc-points`             | PLC 16점의 현재 값                     |
 | GET    | `/plc-points/{id}/events` | PLC 점의 값 변화 이력 (목록)           |
+| PUT    | `/plc-points/{id}/value`  | 인터록 제어: PLC 점 값 쓰기            |
 | GET    | `/vendors`                | 제조사 목록 (연결 만들 때 고르는 값)   |
 | GET    | `/connections`            | 연결 목록과 연결 상태                  |
 | GET    | `/connections/{id}`       | 연결 하나의 설정                       |
@@ -144,6 +145,7 @@ POST /auth/login
 
 - `type`: `DOOR`, `INTERSECTION`, `ESTOP`, `GENERIC`. `abnormal`은 `value !== normalValue`입니다.
 - `GET /plc-points/{id}/events?from&to&page&size` → `{ items: { id, value, seq, sourceTs, receivedTs }[], page, size, total }`
+- `PUT /plc-points/{id}/value` `{ "value": true }` → `{ id, value }`. 인터록 제어로 PLC 코일(번호 = 점 번호)에 Modbus FC5로 씁니다. 실제 값은 다음 폴링에서 읽혀 WebSocket으로 옵니다. 누가 썼는지는 `logs`에 `PLC_WRITE`(대상 `PLC_POINT`)로 남습니다. PLC 연결이 꺼져 있으면 409, PLC가 답하지 않으면 503입니다.
 
 ### 연결 설정
 
@@ -224,7 +226,7 @@ PATCH /connections/{id}
 
 `GET /logs?type&targetType&targetId&from&to&page&size` → `{ items, page, size, total }`
 
-- `type`: `LINK_UP`, `LINK_DOWN`, `ALARM_RAISED`, `ALARM_CLEARED`, `ALARM_ACKED`, `CONFIG_CHANGED`
+- `type`: `LINK_UP`, `LINK_DOWN`, `ALARM_RAISED`, `ALARM_CLEARED`, `ALARM_ACKED`, `CONFIG_CHANGED`, `PLC_WRITE`
 - `targetType`: `CONNECTION`, `DEVICE`, `PLC_POINT`
 - 항목: `{ id, type, level, alarmCode, targetType, targetId, message, usersId, createdAt }`
 

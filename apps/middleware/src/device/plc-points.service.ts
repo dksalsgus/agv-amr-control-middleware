@@ -1,5 +1,7 @@
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { ConfigType } from "@nestjs/config";
+import { AuthUser } from "../auth/auth.types";
+import { PlcIngestService } from "../ingest/plc-ingest.service";
 import { isPlcStale } from "../common/utils/stale-judge.util";
 import { staleConfig } from "../config/stale.config";
 import { PlcPointEventRow } from "../history/vendors-connections-devices-plc-points-events.types";
@@ -9,6 +11,8 @@ import { GetPlcPointEventsResponseDto } from "./dto/get-plc-point-events.respons
 import { GetPlcPointEventsItemDto } from "./dto/get-plc-point-events.item.dto";
 import { GetPlcPointsResponseDto } from "./dto/get-plc-points.response.dto";
 import { GetPlcPointsItemDto } from "./dto/get-plc-points.item.dto";
+import { PutPlcPointValueRequestDto } from "./dto/put-plc-point-value.request.dto";
+import { PutPlcPointValueResponseDto } from "./dto/put-plc-point-value.response.dto";
 import { PlcEventsQueryProvider } from "./plc-events-query.provider";
 import { PlcPointsProvider } from "./plc-points.provider";
 
@@ -19,7 +23,33 @@ export class PlcPointsService {
     private readonly plcEventsQueryProvider: PlcEventsQueryProvider,
     @Inject(staleConfig.KEY)
     private readonly staleSettings: ConfigType<typeof staleConfig>,
+    private readonly plcIngestService: PlcIngestService,
   ) {}
+
+  /** 인터록 제어: PLC 점 값을 쓰고 이력에 남긴다. 화면 값은 다음 폴링에서 바뀐다. */
+  async putValue(
+    id: string,
+    request: PutPlcPointValueRequestDto,
+    user: AuthUser,
+  ): Promise<PutPlcPointValueResponseDto> {
+    const point = await this.plcPointsProvider.findById(id);
+    if (!point) {
+      throw new NotFoundException(`PLC 점이 없습니다: ${id}`);
+    }
+
+    await this.plcIngestService.writePoint(
+      point.connectionId,
+      point.pointNo,
+      request.value,
+    );
+    await this.plcPointsProvider.writeWriteLog(
+      id,
+      `${point.name} ${request.value ? "ON" : "OFF"} 쓰기 · ${user.username}`,
+      user.sub,
+    );
+
+    return { id, value: request.value };
+  }
 
   async getPlcPoints(): Promise<GetPlcPointsResponseDto> {
     const entries = await this.plcPointsProvider.findAll();
