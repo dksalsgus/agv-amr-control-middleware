@@ -77,7 +77,11 @@ export class ApiClient {
       return;
     }
     tokenStorage.clear();
-    window.location.assign(ApiClient.LOGIN_PATH);
+    const params = new URLSearchParams({
+      reason: "expired",
+      from: window.location.pathname,
+    });
+    window.location.assign(`${ApiClient.LOGIN_PATH}?${params.toString()}`);
   }
 }
 
