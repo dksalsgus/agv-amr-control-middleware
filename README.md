@@ -77,6 +77,8 @@ curl -H "$AUTH" -X POST http://localhost:3000/metrics/reset
 
 # 에뮬레이터 원본 데이터 확인
 docker compose exec mosquitto mosquitto_sub -t 'vendorA/amr/+/state' -v
+# 제조사 B는 REST에 더해 같은 상태를 MQTT로도 발행한다(연결 설정에서 프로토콜을 MQTT, 토픽을 vendorB/agv/+/state로 바꿔 시연)
+docker compose exec mosquitto mosquitto_sub -t 'vendorB/agv/+/state' -v
 curl http://localhost:8081/api/vehicles
 ```
 

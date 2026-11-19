@@ -186,7 +186,7 @@ PATCH /connections/{id}
 ```
 
 - PATCH는 `version`이 필수이고, 저장된 값과 다르면 409입니다. `name`, `enabled`, `protocol`, config는 바꿀 것만 보냅니다. `protocol`을 바꾸면 그 프로토콜의 config도 같이 보내야 합니다(없으면 400).
-- 제조사 장비가 보내지 않는 프로토콜은 POST와 PATCH 모두 400입니다(예: 제조사 A는 MQTT만). 지원 목록은 `VENDOR_PROTOCOLS`에 있고, 제조사가 프로토콜을 더 지원하면 어댑터를 만들고 목록에 더합니다.
+- 제조사 장비가 보내지 않는 프로토콜은 POST와 PATCH 모두 400입니다(예: 제조사 A는 MQTT만). 제조사 B는 REST와 MQTT를 모두 보내서, 연결 설정에서 `{ "protocol": "MQTT", "mqtt": { "url": "mqtt://mosquitto:1883", "topicPattern": "vendorB/agv/+/state", "qos": 1 } }`로 바꾸면 재시작 없이 MQTT로 계속 받습니다. 지원 목록은 `VENDOR_PROTOCOLS`에 있고, 제조사가 프로토콜을 더 지원하면 어댑터를 만들고 목록에 더합니다.
 - 바뀐 설정은 2초 안에 수집에 반영되고, 그 연결만 다시 붙습니다.
 - DELETE는 장비가 딸린 연결이면 409입니다. 이때는 `enabled: false`로 끕니다. 성공하면 `data`가 null입니다.
 

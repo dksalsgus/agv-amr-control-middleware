@@ -1,13 +1,19 @@
 import { Injectable } from "@nestjs/common";
 import { normalizeDegree } from "../../common/utils/angle.util";
 import { RobotOpState } from "../../state/robot-state";
+import { MqttRawMessage } from "../repositories/mqtt-client.types";
 import { RestRawMessage } from "../repositories/rest-client.types";
 import { RobotReading, VendorAdapter } from "./vendor-adapter";
 import { VendorBStatus, VendorBVehicle } from "./vendor-b.types";
 
-/** 제조사 B: REST JSON (mm, 도, mm/s). 전체 목록과 한 대 응답을 모두 받는다. */
+/**
+ * 제조사 B: JSON (mm, 도, mm/s). REST는 전체 목록과 한 대 응답을,
+ * MQTT는 토픽 vendorB/agv/{serial}/state로 한 대 응답과 같은 본문을 받는다.
+ */
 @Injectable()
-export class VendorBAdapter implements VendorAdapter<RestRawMessage> {
+export class VendorBAdapter
+  implements VendorAdapter<RestRawMessage | MqttRawMessage>
+{
   private static readonly OP_STATE_BY_STATUS: Record<
     VendorBStatus,
     RobotOpState
@@ -21,8 +27,14 @@ export class VendorBAdapter implements VendorAdapter<RestRawMessage> {
 
   readonly vendorCode = "VENDOR_B";
 
-  async toCommon(raw: RestRawMessage): Promise<RobotReading[]> {
-    const vehicles = this.toVehicles(raw.body);
+  async toCommon(
+    raw: RestRawMessage | MqttRawMessage,
+  ): Promise<RobotReading[]> {
+    const body =
+      "payload" in raw
+        ? (JSON.parse(raw.payload.toString()) as unknown)
+        : raw.body;
+    const vehicles = this.toVehicles(body);
 
     const readings: RobotReading[] = vehicles.map((vehicle) =>
       this.toReading(vehicle),
