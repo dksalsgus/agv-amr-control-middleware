@@ -33,4 +33,14 @@ export class LogsRepository {
 
     return { rows, total };
   }
+
+  /** created_at이 cutoff보다 오래된 행을 batchSize개까지 지우고 지운 수를 돌려준다. */
+  async deleteOlderThan(cutoff: Date, batchSize: number): Promise<number> {
+    return await this.prisma.$executeRaw`
+      DELETE FROM logs
+      WHERE id IN (
+        SELECT id FROM logs WHERE created_at < ${cutoff} LIMIT ${batchSize}
+      )
+    `;
+  }
 }

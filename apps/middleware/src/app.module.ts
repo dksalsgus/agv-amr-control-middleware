@@ -13,6 +13,7 @@ import { linkConfig } from "./config/link.config";
 import { linkQualityConfig } from "./config/link-quality.config";
 import { queueConfig } from "./config/queue.config";
 import { realtimeConfig } from "./config/realtime.config";
+import { retentionConfig } from "./config/retention.config";
 import { staleConfig } from "./config/stale.config";
 import { ConnectionModule } from "./connection/connection.module";
 import { DeviceModule } from "./device/device.module";
@@ -22,6 +23,7 @@ import { LogModule } from "./log/log.module";
 import { MetricsModule } from "./metrics/metrics.module";
 import { LoggerModule } from "./logger/logger.module";
 import { PrismaModule } from "./prisma/prisma.module";
+import { RetentionModule } from "./retention/retention.module";
 import { RealtimeModule } from "./realtime/realtime.module";
 
 @Module({
@@ -39,6 +41,7 @@ import { RealtimeModule } from "./realtime/realtime.module";
         alarmConfig,
         authConfig,
         queueConfig,
+        retentionConfig,
       ],
     }),
     BullModule.forRootAsync({
@@ -59,6 +62,7 @@ import { RealtimeModule } from "./realtime/realtime.module";
     AlarmModule,
     AuthModule,
     MetricsModule,
+    RetentionModule,
   ],
 })
 export class AppModule {}
