@@ -35,4 +35,8 @@ export class MqttLinkProvider {
       handlers,
     );
   }
+
+  async stop(connectionId: string): Promise<void> {
+    await this.mqttClientRepository.unsubscribe(connectionId);
+  }
 }

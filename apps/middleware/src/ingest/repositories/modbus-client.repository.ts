@@ -25,7 +25,7 @@ export class ModbusClientRepository implements OnModuleDestroy {
       const result = await client.readHoldingRegisters(address, length);
       return result.data;
     } catch (error) {
-      await this.close(connectionId);
+      await this.disconnect(connectionId);
       throw error;
     }
   }
@@ -42,14 +42,14 @@ export class ModbusClientRepository implements OnModuleDestroy {
       const result = await client.readInputRegisters(address, length);
       return result.data;
     } catch (error) {
-      await this.close(connectionId);
+      await this.disconnect(connectionId);
       throw error;
     }
   }
 
   async onModuleDestroy() {
     for (const connectionId of [...this.clients.keys()]) {
-      await this.close(connectionId);
+      await this.disconnect(connectionId);
     }
   }
 
@@ -75,7 +75,8 @@ export class ModbusClientRepository implements OnModuleDestroy {
     return client;
   }
 
-  private async close(connectionId: string): Promise<void> {
+  /** 접속을 닫는다. 다음 읽기 때 새 설정으로 다시 붙는다. */
+  async disconnect(connectionId: string): Promise<void> {
     const client = this.clients.get(connectionId);
     if (!client) {
       return;

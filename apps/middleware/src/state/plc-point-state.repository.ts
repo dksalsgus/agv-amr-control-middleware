@@ -16,6 +16,14 @@ export class PlcPointStateRepository {
     this.entries.set(point.pointId, { ...point, current: null, rev: 0 });
   }
 
+  async remove(pointId: string): Promise<void> {
+    this.entries.delete(pointId);
+  }
+
+  async removeLastRead(deviceId: string): Promise<void> {
+    this.lastReadByDevice.delete(deviceId);
+  }
+
   async findById(pointId: string): Promise<PlcPointEntry | undefined> {
     return this.entries.get(pointId);
   }

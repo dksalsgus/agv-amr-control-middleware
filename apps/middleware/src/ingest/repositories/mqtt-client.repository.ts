@@ -53,7 +53,7 @@ export class MqttClientRepository implements OnModuleDestroy {
       await this.handleConnect(client, connectionId, options);
     });
     client.on("close", async () => {
-      if (this.stopping) {
+      if (!(await this.isActive(connectionId, client))) {
         return;
       }
 
@@ -70,6 +70,18 @@ export class MqttClientRepository implements OnModuleDestroy {
     this.clients.set(connectionId, client);
   }
 
+  /** 구독을 끝내고 접속을 닫는다. 끊김으로 보지 않는다. */
+  async unsubscribe(connectionId: string): Promise<void> {
+    const client = this.clients.get(connectionId);
+    if (!client) {
+      return;
+    }
+
+    this.clients.delete(connectionId);
+    this.retryDelays.delete(connectionId);
+    await client.endAsync();
+  }
+
   async onModuleDestroy() {
     this.stopping = true;
 
@@ -77,6 +89,14 @@ export class MqttClientRepository implements OnModuleDestroy {
       client.endAsync(),
     );
     await Promise.all(closing);
+  }
+
+  /** 내려간 클라이언트(앱 종료, 구독 해제, 재시작으로 교체)의 이벤트는 무시한다. */
+  private async isActive(
+    connectionId: string,
+    client: MqttClient,
+  ): Promise<boolean> {
+    return !this.stopping && this.clients.get(connectionId) === client;
   }
 
   private async reconnectLater(
@@ -87,7 +107,7 @@ export class MqttClientRepository implements OnModuleDestroy {
     this.retryDelays.set(connectionId, Math.min(delayMs * 2, MAX_RETRY_MS));
 
     await delay(delayMs);
-    if (!this.stopping) {
+    if (await this.isActive(connectionId, client)) {
       client.reconnect();
     }
   }

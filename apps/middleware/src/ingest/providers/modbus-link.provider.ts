@@ -76,6 +76,10 @@ export class ModbusLinkProvider {
     return { firstBlock: 0, blockSize: config.blockSize, registers };
   }
 
+  async disconnect(connectionId: string): Promise<void> {
+    await this.modbusClientRepository.disconnect(connectionId);
+  }
+
   private async readBlocks(
     connectionId: string,
     config: ModbusConnectionConfig,

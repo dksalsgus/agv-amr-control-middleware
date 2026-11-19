@@ -17,6 +17,18 @@ export class RobotStateRepository {
     this.deviceIdByExternalKey.set(externalKey, device.deviceId);
   }
 
+  async remove(deviceId: string): Promise<void> {
+    const entry = this.entries.get(deviceId);
+    if (!entry) {
+      return;
+    }
+
+    this.entries.delete(deviceId);
+    this.deviceIdByExternalKey.delete(
+      this.toExternalKey(entry.connectionId, entry.externalId),
+    );
+  }
+
   async findById(deviceId: string): Promise<RobotEntry | undefined> {
     return this.entries.get(deviceId);
   }
