@@ -17,6 +17,7 @@ import { HistoryQueueProvider } from "./providers/history-queue.provider";
 import { IngestMetricsProvider } from "./providers/ingest-metrics.provider";
 import { TelemetryProvider } from "./providers/telemetry.provider";
 import { RobotTelemetry } from "./providers/telemetry.types";
+import { LinkQualityProvider } from "./providers/link-quality.provider";
 import { LinkStateProvider } from "./providers/link-state.provider";
 import { SerialQueue } from "./serial-queue";
 import { PolledConfig } from "./ingest.types";
@@ -40,6 +41,7 @@ export class IngestService {
     private readonly historyQueueProvider: HistoryQueueProvider,
     private readonly ingestMetricsProvider: IngestMetricsProvider,
     private readonly linkStateProvider: LinkStateProvider,
+    private readonly linkQualityProvider: LinkQualityProvider,
     private readonly logger: AppLogger,
   ) {
     this.logger.setContext(IngestService.name);
@@ -224,6 +226,7 @@ export class IngestService {
 
     const label = this.toLabel(connection);
     const raws = await this.tryFetchRaws(connection, label);
+    await this.linkQualityProvider.recordPoll(connection.id, raws !== null);
     if (!raws) {
       return;
     }
@@ -335,6 +338,15 @@ export class IngestService {
       reading.sourceTs,
       receivedTs,
     );
+    const isPushConnection =
+      this.connections.get(connectionId)?.protocol === "MQTT";
+    if (isPushConnection) {
+      await this.linkQualityProvider.recordPush(
+        connectionId,
+        judgement.missed,
+        entry.state?.receivedTs ?? null,
+      );
+    }
     if (!judgement.accept) {
       return null;
     }

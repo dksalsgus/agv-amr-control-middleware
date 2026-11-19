@@ -17,6 +17,7 @@ import { HistoryQueueProvider } from "./providers/history-queue.provider";
 import { IngestMetricsProvider } from "./providers/ingest-metrics.provider";
 import { PlcEventProvider } from "./providers/plc-event.provider";
 import { PlcPointChange } from "./providers/plc-event.types";
+import { LinkQualityProvider } from "./providers/link-quality.provider";
 import { LinkStateProvider } from "./providers/link-state.provider";
 import { PlcPointStateProvider } from "./providers/plc-point-state.provider";
 import { AppLogger } from "../logger/app-logger";
@@ -37,6 +38,7 @@ export class PlcIngestService {
     private readonly historyQueueProvider: HistoryQueueProvider,
     private readonly ingestMetricsProvider: IngestMetricsProvider,
     private readonly linkStateProvider: LinkStateProvider,
+    private readonly linkQualityProvider: LinkQualityProvider,
     private readonly logger: AppLogger,
   ) {
     this.logger.setContext(PlcIngestService.name);
@@ -141,6 +143,7 @@ export class PlcIngestService {
   private async pollOnce(connection: IngestConnection): Promise<void> {
     const label = `${connection.vendorCode} ${connection.protocol}`;
     const raw = await this.tryPollPlc(connection, label);
+    await this.linkQualityProvider.recordPoll(connection.id, raw !== null);
     if (!raw) {
       return;
     }

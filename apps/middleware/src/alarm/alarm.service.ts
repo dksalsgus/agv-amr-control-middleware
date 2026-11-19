@@ -1,6 +1,7 @@
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { ConfigType } from "@nestjs/config";
 import { isRobotStale, isPlcStale } from "../common/utils/stale-judge.util";
+import { linkQualityConfig } from "../config/link-quality.config";
 import { staleConfig } from "../config/stale.config";
 import { AlarmEntry } from "../state/alarm-state";
 import { LinkState } from "../state/link-state";
@@ -21,6 +22,8 @@ export class AlarmService {
     private readonly alarmStateProvider: AlarmStateProvider,
     @Inject(staleConfig.KEY)
     private readonly staleSettings: ConfigType<typeof staleConfig>,
+    @Inject(linkQualityConfig.KEY)
+    private readonly qualitySettings: ConfigType<typeof linkQualityConfig>,
   ) {}
 
   /** 모든 대상을 판정해 알람을 열고 푼다. 대상이 사라진 알람도 푼다. */
@@ -129,7 +132,51 @@ export class AlarmService {
       );
     }
 
+    for (const link of await this.alarmTargetProvider.findLinks()) {
+      const isOpen = await this.alarmStateProvider.isOpen(
+        "LINK_LOSS",
+        "CONNECTION",
+        link.connectionId,
+      );
+      candidates.push(
+        await this.alarmJudgeProvider.judgeLinkLoss(
+          link.connectionId,
+          await this.findLossPct(link.connectionId, link.state, now),
+          isOpen,
+        ),
+      );
+    }
+
     return candidates;
+  }
+
+  /**
+   * 연결이 UP인 동안의 최근 유실률(%). UP이 된 뒤의 표본만 써서 끊겼던 동안의 실패가 섞이지 않게 한다.
+   * UP이 아니거나 표본이 모자라면 null. 끊김은 DEVICE_STALE이 알리므로 유실률로 따로 알리지 않는다.
+   */
+  private async findLossPct(
+    connectionId: string,
+    link: LinkState,
+    now: Date,
+  ): Promise<number | null> {
+    const upSince = link.status === "UP" ? link.changedAt : null;
+    if (!upSince) {
+      return null;
+    }
+
+    const windowStart = now.getTime() - this.qualitySettings.windowMs;
+    const since = new Date(Math.max(upSince.getTime(), windowStart));
+    const samples = await this.alarmTargetProvider.findQualitySamples(
+      connectionId,
+      since,
+    );
+    const expected = samples.reduce((sum, sample) => sum + sample.expected, 0);
+    const lost = samples.reduce((sum, sample) => sum + sample.lost, 0);
+    if (expected < this.qualitySettings.minExpected) {
+      return null;
+    }
+
+    return (lost / expected) * 100;
   }
 
   /**

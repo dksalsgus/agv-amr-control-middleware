@@ -26,6 +26,16 @@ export class AlarmStateProvider {
     return await this.alarmStateRepository.findAll();
   }
 
+  async isOpen(
+    code: AlarmCandidate["code"],
+    targetType: AlarmCandidate["targetType"],
+    targetId: string,
+  ): Promise<boolean> {
+    return Boolean(
+      await this.alarmStateRepository.findByTarget(code, targetType, targetId),
+    );
+  }
+
   async findOpenByCandidate(
     candidate: AlarmCandidate,
   ): Promise<AlarmEntry | undefined> {

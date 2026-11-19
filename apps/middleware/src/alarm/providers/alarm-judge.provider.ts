@@ -1,16 +1,19 @@
 import { Inject, Injectable } from "@nestjs/common";
 import { ConfigType } from "@nestjs/config";
 import { alarmConfig } from "../../config/alarm.config";
+import { linkQualityConfig } from "../../config/link-quality.config";
 import { PlcPointEntry } from "../../state/plc-point-state";
 import { RobotEntry } from "../../state/robot-state";
 import { AlarmCandidate } from "../alarm.types";
 
-/** 장비 상태로 알람 4종을 판정한다. */
+/** 장비와 연결 상태로 알람 5종을 판정한다. */
 @Injectable()
 export class AlarmJudgeProvider {
   constructor(
     @Inject(alarmConfig.KEY)
     private readonly config: ConfigType<typeof alarmConfig>,
+    @Inject(linkQualityConfig.KEY)
+    private readonly qualityConfig: ConfigType<typeof linkQualityConfig>,
   ) {}
 
   async judgeRobot(
@@ -48,6 +51,29 @@ export class AlarmJudgeProvider {
     canAlarmStale: boolean,
   ): Promise<AlarmCandidate> {
     return this.toStaleCandidate(deviceId, "PLC", stale, canAlarmStale);
+  }
+
+  /**
+   * 연결의 최근 유실률이 기준(5%) 이상이면 연다. 열린 뒤에는 해제 기준(2%) 아래로 내려가야 푼다.
+   * 표본이 모자라면(null) 열지 않는다.
+   */
+  async judgeLinkLoss(
+    connectionId: string,
+    lossPct: number | null,
+    isOpen: boolean,
+  ): Promise<AlarmCandidate> {
+    const thresholdPct = isOpen
+      ? this.qualityConfig.clearLossPct
+      : this.qualityConfig.alarmLossPct;
+    const shown = lossPct === null ? 0 : Math.round(lossPct * 10) / 10;
+    return {
+      code: "LINK_LOSS",
+      level: "WARN",
+      targetType: "CONNECTION",
+      targetId: connectionId,
+      message: `통신 품질 저하(유실률 ${shown}%)`,
+      active: lossPct !== null && lossPct >= thresholdPct,
+    };
   }
 
   /** 알람을 켜 둔 점만 판정한다. 값을 아직 모르면 열지 않는다. */

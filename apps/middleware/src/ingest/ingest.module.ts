@@ -20,6 +20,7 @@ import { IngestConnectionProvider } from "./providers/ingest-connection.provider
 import { DeviceTransportProvider } from "./providers/device-transport.provider";
 import { HistoryQueueProvider } from "./providers/history-queue.provider";
 import { IngestMetricsProvider } from "./providers/ingest-metrics.provider";
+import { LinkQualityProvider } from "./providers/link-quality.provider";
 import { LinkStateProvider } from "./providers/link-state.provider";
 import { PlcEventProvider } from "./providers/plc-event.provider";
 import { PlcPointStateProvider } from "./providers/plc-point-state.provider";
@@ -55,6 +56,7 @@ import { RestClientRepository } from "./repositories/rest-client.repository";
     HistoryService,
     HistoryQueueProvider,
     IngestMetricsProvider,
+    LinkQualityProvider,
     IngestConnectionProvider,
     DeviceTransportProvider,
     LinkStateProvider,
