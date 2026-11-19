@@ -11,10 +11,10 @@ const main = async () => {
   new FaultServer(FAULT_PORT, faults).listen();
 
   await Promise.all([
-    new VendorAEmulator().start(),
-    new VendorBEmulator().start(),
-    new VendorCEmulator().start(),
-    new PlcEmulator().start(),
+    new VendorAEmulator(faults).start(),
+    new VendorBEmulator(faults).start(),
+    new VendorCEmulator(faults).start(),
+    new PlcEmulator(faults).start(),
   ]);
 };
 
