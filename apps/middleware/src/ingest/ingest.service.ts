@@ -24,11 +24,7 @@ import {
 import { RobotStateProvider } from "./providers/robot-state.provider";
 import { SeqJudgeProvider } from "./providers/seq-judge.provider";
 import { TelemetryProvider } from "./providers/telemetry.provider";
-
-type PollState = {
-  lastPolledAt: number;
-  inFlight: boolean;
-};
+import { PollTracker } from "./poll-tracker";
 
 /**
  * 수집: 원본 수신 → 어댑터로 공통 모델 변환 → seq 판정 → 메모리 상태 반영 → 이력 기록.
@@ -38,7 +34,7 @@ type PollState = {
 export class IngestService {
   private readonly logger = new Logger(IngestService.name);
   private connections: IngestConnection[] = [];
-  private readonly pollStates = new Map<string, PollState>();
+  private readonly pollTracker = new PollTracker();
 
   constructor(
     @Inject(VENDOR_ADAPTERS)
@@ -74,7 +70,7 @@ export class IngestService {
       }
 
       const config = connection.config as { pollIntervalMs: number };
-      if (!this.isPollDue(connection.id, config.pollIntervalMs, now)) {
+      if (!this.pollTracker.isDue(connection.id, config.pollIntervalMs, now)) {
         continue;
       }
 
@@ -109,22 +105,13 @@ export class IngestService {
     }
   }
 
-  private isPollDue(connectionId: string, intervalMs: number, now: number) {
-    const state = this.pollStates.get(connectionId);
-    if (!state) {
-      return true;
-    }
-
-    return !state.inFlight && now - state.lastPolledAt >= intervalMs;
-  }
-
   private async poll(connection: IngestConnection, now: number) {
     const adapter = this.findAdapter(connection.vendorCode);
     if (!adapter) {
       return;
     }
 
-    this.pollStates.set(connection.id, { lastPolledAt: now, inFlight: true });
+    this.pollTracker.begin(connection.id, now);
 
     try {
       const raws = await this.fetchRaws(connection);
@@ -135,10 +122,7 @@ export class IngestService {
     } catch (error) {
       this.logger.warn(`폴링 실패 (${connection.id}): ${String(error)}`);
     } finally {
-      this.pollStates.set(connection.id, {
-        lastPolledAt: now,
-        inFlight: false,
-      });
+      this.pollTracker.end(connection.id, now);
     }
   }
 
