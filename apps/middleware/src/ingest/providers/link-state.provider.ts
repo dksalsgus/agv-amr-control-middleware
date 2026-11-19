@@ -6,14 +6,16 @@ import { LinkStateRepository } from "../../state/link-state.repository";
 import { RemovedEntityRepository } from "../../state/removed-entity.repository";
 import { RevisionRepository } from "../../state/revision.repository";
 
-/** 폴링 연결은 이만큼 연속 실패하면 끊김으로 본다. */
-const DOWN_AFTER_FAILURES = 3;
-const MIN_RETRY_MS = 1000;
-const MAX_RETRY_MS = 10000;
-
 /** 연결 UP/DOWN 판정. 상태가 바뀔 때만 logs에 남긴다. */
 @Injectable()
 export class LinkStateProvider {
+  /** 폴링 연결은 이만큼 연속 실패하면 끊김으로 본다. */
+  private static readonly DOWN_AFTER_FAILURES = 3;
+
+  private static readonly MIN_RETRY_MS = 1000;
+
+  private static readonly MAX_RETRY_MS = 10000;
+
   private readonly logger = new Logger(LinkStateProvider.name);
 
   constructor(
@@ -67,7 +69,10 @@ export class LinkStateProvider {
     const state = await this.findState(connectionId);
     const failureCount = state.failureCount + 1;
 
-    if (state.status === "DOWN" || failureCount < DOWN_AFTER_FAILURES) {
+    if (
+      state.status === "DOWN" ||
+      failureCount < LinkStateProvider.DOWN_AFTER_FAILURES
+    ) {
       await this.linkStateRepository.save(connectionId, {
         status: state.status,
         changedAt: state.changedAt,
@@ -103,8 +108,14 @@ export class LinkStateProvider {
       return null;
     }
 
-    const retries = Math.max(0, state.failureCount - DOWN_AFTER_FAILURES);
-    return Math.min(MIN_RETRY_MS * 2 ** retries, MAX_RETRY_MS);
+    const retries = Math.max(
+      0,
+      state.failureCount - LinkStateProvider.DOWN_AFTER_FAILURES,
+    );
+    return Math.min(
+      LinkStateProvider.MIN_RETRY_MS * 2 ** retries,
+      LinkStateProvider.MAX_RETRY_MS,
+    );
   }
 
   private async findState(connectionId: string): Promise<LinkState> {

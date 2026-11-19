@@ -1,33 +1,22 @@
 import { Injectable } from "@nestjs/common";
 import { radianToDegree } from "../../common/utils/angle.util";
 import { RobotOpState } from "../../state/robot-state";
-import { MqttRawMessage } from "../repositories/mqtt-client.repository";
+import { MqttRawMessage } from "../repositories/mqtt-client.types";
 import { RobotReading, VendorAdapter } from "./vendor-adapter";
-
-type VendorAMode = "idle" | "driving" | "charging" | "paused" | "fault";
-
-type VendorAPayload = {
-  seq: number;
-  ts: string;
-  pose: { x: number; y: number; theta: number };
-  velocity: number;
-  battery: { soc: number };
-  mode: VendorAMode;
-  fault: { code: string } | null;
-  payload: { loaded: boolean };
-};
-
-const OP_STATE_BY_MODE: Record<VendorAMode, RobotOpState> = {
-  idle: "IDLE",
-  driving: "MOVING",
-  charging: "CHARGING",
-  paused: "PAUSED",
-  fault: "ERROR",
-};
+import { VendorAMode, VendorAPayload } from "./vendor-a.types";
 
 /** 제조사 A: MQTT JSON (m, rad, 배터리 0~1) */
 @Injectable()
 export class VendorAAdapter implements VendorAdapter<MqttRawMessage> {
+  private static readonly OP_STATE_BY_MODE: Record<VendorAMode, RobotOpState> =
+    {
+      idle: "IDLE",
+      driving: "MOVING",
+      charging: "CHARGING",
+      paused: "PAUSED",
+      fault: "ERROR",
+    };
+
   readonly vendorCode = "VENDOR_A";
 
   async toCommon(raw: MqttRawMessage): Promise<RobotReading[]> {
@@ -44,7 +33,7 @@ export class VendorAAdapter implements VendorAdapter<MqttRawMessage> {
         theta: radianToDegree(payload.pose.theta),
         speed: payload.velocity,
         batteryPct: Math.round(payload.battery.soc * 100),
-        opState: OP_STATE_BY_MODE[payload.mode],
+        opState: VendorAAdapter.OP_STATE_BY_MODE[payload.mode],
         errorCode: payload.fault?.code ?? null,
         loaded: payload.payload.loaded,
       },

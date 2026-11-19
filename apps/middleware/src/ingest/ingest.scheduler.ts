@@ -7,17 +7,16 @@ import {
 import { delay } from "../common/utils/delay.util";
 import { IngestService } from "./ingest.service";
 import { PlcIngestService } from "./plc-ingest.service";
-
-type PollOnce = (connectionId: string) => Promise<number | null>;
-
-/** 연결 설정 변경(DB)을 확인하는 간격 */
-const SYNC_INTERVAL_MS = 2000;
+import { PollOnce } from "./ingest-scheduler.types";
 
 /** 수집을 시작하고 폴링 연결마다 루프를 돌린다. 느린 연결이 다른 연결을 막지 않는다. */
 @Injectable()
 export class IngestScheduler
   implements OnApplicationBootstrap, OnApplicationShutdown
 {
+  /** 연결 설정 변경(DB)을 확인하는 간격 */
+  private static readonly SYNC_INTERVAL_MS = 2000;
+
   private readonly logger = new Logger(IngestScheduler.name);
   private running = false;
   private readonly loops: Promise<void>[] = [];
@@ -46,7 +45,7 @@ export class IngestScheduler
   /** 재배포 없이 바뀐 설정을 반영한다. 새로 생긴 폴링 연결은 루프를 띄운다. */
   private async runSyncLoop(): Promise<void> {
     while (this.running) {
-      await delay(SYNC_INTERVAL_MS);
+      await delay(IngestScheduler.SYNC_INTERVAL_MS);
       await this.sync();
       await this.startPollLoops();
     }

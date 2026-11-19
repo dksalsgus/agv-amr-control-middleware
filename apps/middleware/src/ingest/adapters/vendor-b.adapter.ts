@@ -1,35 +1,24 @@
 import { Injectable } from "@nestjs/common";
 import { normalizeDegree } from "../../common/utils/angle.util";
 import { RobotOpState } from "../../state/robot-state";
-import { RestRawMessage } from "../repositories/rest-client.repository";
+import { RestRawMessage } from "../repositories/rest-client.types";
 import { RobotReading, VendorAdapter } from "./vendor-adapter";
-
-type VendorBStatus = "IDLE" | "RUN" | "CHG" | "STOP" | "ERR";
-
-type VendorBVehicle = {
-  vehicleId: string;
-  sequence: number;
-  timestamp: number;
-  position: { xMm: number; yMm: number };
-  headingDeg: number;
-  speedMmS: number;
-  batteryLevel: number;
-  status: VendorBStatus;
-  errorCode: string;
-  hasLoad: boolean;
-};
-
-const OP_STATE_BY_STATUS: Record<VendorBStatus, RobotOpState> = {
-  IDLE: "IDLE",
-  RUN: "MOVING",
-  CHG: "CHARGING",
-  STOP: "PAUSED",
-  ERR: "ERROR",
-};
+import { VendorBStatus, VendorBVehicle } from "./vendor-b.types";
 
 /** 제조사 B: REST JSON (mm, 도, mm/s). 전체 목록과 한 대 응답을 모두 받는다. */
 @Injectable()
 export class VendorBAdapter implements VendorAdapter<RestRawMessage> {
+  private static readonly OP_STATE_BY_STATUS: Record<
+    VendorBStatus,
+    RobotOpState
+  > = {
+    IDLE: "IDLE",
+    RUN: "MOVING",
+    CHG: "CHARGING",
+    STOP: "PAUSED",
+    ERR: "ERROR",
+  };
+
   readonly vendorCode = "VENDOR_B";
 
   async toCommon(raw: RestRawMessage): Promise<RobotReading[]> {
@@ -62,7 +51,7 @@ export class VendorBAdapter implements VendorAdapter<RestRawMessage> {
       theta: normalizeDegree(vehicle.headingDeg),
       speed: vehicle.speedMmS / 1000,
       batteryPct: vehicle.batteryLevel,
-      opState: OP_STATE_BY_STATUS[vehicle.status],
+      opState: VendorBAdapter.OP_STATE_BY_STATUS[vehicle.status],
       errorCode: vehicle.errorCode === "" ? null : vehicle.errorCode,
       loaded: vehicle.hasLoad,
     };

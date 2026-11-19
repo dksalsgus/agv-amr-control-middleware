@@ -1,27 +1,7 @@
 import { Injectable, Logger, OnModuleDestroy } from "@nestjs/common";
 import mqtt, { MqttClient } from "mqtt";
 import { delay } from "../../common/utils/delay.util";
-
-export type MqttRawMessage = {
-  topic: string;
-  payload: Buffer;
-};
-
-export type MqttSubscribeOptions = {
-  url: string;
-  topic: string;
-  qos: 0 | 1 | 2;
-  username: string | null;
-  password: string | null;
-};
-
-export type MqttHandlers = {
-  onMessage: (message: MqttRawMessage) => Promise<void>;
-  onLinkChange: (up: boolean) => Promise<void>;
-};
-
-const MIN_RETRY_MS = 1000;
-const MAX_RETRY_MS = 10000;
+import { MqttSubscribeOptions, MqttHandlers } from "./mqtt-client.types";
 
 /**
  * 연결마다 MQTT 클라이언트 하나. 재접속 때 지난 메시지가 몰리지 않게 세션을 두지 않는다.
@@ -29,6 +9,10 @@ const MAX_RETRY_MS = 10000;
  */
 @Injectable()
 export class MqttClientRepository implements OnModuleDestroy {
+  private static readonly MIN_RETRY_MS = 1000;
+
+  private static readonly MAX_RETRY_MS = 10000;
+
   private readonly logger = new Logger(MqttClientRepository.name);
   private readonly clients = new Map<string, MqttClient>();
   private readonly retryDelays = new Map<string, number>();
@@ -48,7 +32,7 @@ export class MqttClientRepository implements OnModuleDestroy {
     });
 
     client.on("connect", async () => {
-      this.retryDelays.set(connectionId, MIN_RETRY_MS);
+      this.retryDelays.set(connectionId, MqttClientRepository.MIN_RETRY_MS);
       await handlers.onLinkChange(true);
       await this.handleConnect(client, connectionId, options);
     });
@@ -103,8 +87,12 @@ export class MqttClientRepository implements OnModuleDestroy {
     client: MqttClient,
     connectionId: string,
   ): Promise<void> {
-    const delayMs = this.retryDelays.get(connectionId) ?? MIN_RETRY_MS;
-    this.retryDelays.set(connectionId, Math.min(delayMs * 2, MAX_RETRY_MS));
+    const delayMs =
+      this.retryDelays.get(connectionId) ?? MqttClientRepository.MIN_RETRY_MS;
+    this.retryDelays.set(
+      connectionId,
+      Math.min(delayMs * 2, MqttClientRepository.MAX_RETRY_MS),
+    );
 
     await delay(delayMs);
     if (await this.isActive(connectionId, client)) {

@@ -1,30 +1,12 @@
 import { Injectable } from "@nestjs/common";
-
-export type SeqPoint = {
-  seq: number;
-  sourceTs: Date;
-};
-
-export type SeqVerdict =
-  | "FIRST"
-  | "NORMAL"
-  | "GAP"
-  | "DUPLICATE"
-  | "OUT_OF_ORDER"
-  | "RESTART";
-
-export type SeqJudgement = {
-  verdict: SeqVerdict;
-  accept: boolean;
-  missed: number;
-};
-
-/** seq가 줄어도 sourceTs가 이만큼 앞서면 장비 재시작으로 본다. */
-const RESTART_THRESHOLD_MS = 5000;
+import { SeqPoint, SeqJudgement } from "./seq-judge.types";
 
 /** 장비별 seq 판정 (설계 문서 6장) */
 @Injectable()
 export class SeqJudgeProvider {
+  /** seq가 줄어도 sourceTs가 이만큼 앞서면 장비 재시작으로 본다. */
+  private static readonly RESTART_THRESHOLD_MS = 5000;
+
   async judge(last: SeqPoint | null, next: SeqPoint): Promise<SeqJudgement> {
     if (!last) {
       return { verdict: "FIRST", accept: true, missed: 0 };
@@ -52,6 +34,6 @@ export class SeqJudgeProvider {
 
   private async isRestart(last: SeqPoint, next: SeqPoint): Promise<boolean> {
     const aheadMs = next.sourceTs.getTime() - last.sourceTs.getTime();
-    return aheadMs >= RESTART_THRESHOLD_MS;
+    return aheadMs >= SeqJudgeProvider.RESTART_THRESHOLD_MS;
   }
 }

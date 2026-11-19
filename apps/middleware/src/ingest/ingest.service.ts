@@ -5,32 +5,21 @@ import {
   VENDOR_ADAPTERS,
   VendorAdapter,
 } from "./adapters/vendor-adapter";
-import {
-  ConnectionProvider,
-  IngestConnection,
-} from "./providers/connection.provider";
-import {
-  ModbusConnectionConfig,
-  ModbusLinkProvider,
-} from "./providers/modbus-link.provider";
-import {
-  MqttConnectionConfig,
-  MqttLinkProvider,
-} from "./providers/mqtt-link.provider";
-import {
-  RestConnectionConfig,
-  RestLinkProvider,
-} from "./providers/rest-link.provider";
+import { ConnectionProvider } from "./providers/connection.provider";
+import { IngestConnection } from "./providers/connection.types";
+import { ModbusLinkProvider } from "./providers/modbus-link.provider";
+import { ModbusConnectionConfig } from "./providers/modbus-link.types";
+import { MqttLinkProvider } from "./providers/mqtt-link.provider";
+import { MqttConnectionConfig } from "./providers/mqtt-link.types";
+import { RestLinkProvider } from "./providers/rest-link.provider";
+import { RestConnectionConfig } from "./providers/rest-link.types";
 import { RobotStateProvider } from "./providers/robot-state.provider";
 import { SeqJudgeProvider } from "./providers/seq-judge.provider";
-import {
-  RobotTelemetry,
-  TelemetryProvider,
-} from "./providers/telemetry.provider";
+import { TelemetryProvider } from "./providers/telemetry.provider";
+import { RobotTelemetry } from "./providers/telemetry.types";
 import { LinkStateProvider } from "./providers/link-state.provider";
 import { SerialQueue } from "./serial-queue";
-
-type PolledConfig = { pollIntervalMs: number };
+import { PolledConfig } from "./ingest.types";
 
 /** 로봇 수집: 수신 → 공통 모델 변환 → seq 판정 → 메모리 반영 → 이력 기록 */
 @Injectable()

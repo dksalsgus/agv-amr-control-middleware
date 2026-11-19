@@ -1,12 +1,6 @@
 import { Injectable, OnModuleDestroy } from "@nestjs/common";
 import ModbusRTU from "modbus-serial";
-
-export type ModbusTarget = {
-  host: string;
-  port: number;
-  unitId: number;
-  timeoutMs: number;
-};
+import { ModbusTarget } from "./modbus-client.types";
 
 /** 연결마다 Modbus 클라이언트 하나. 읽기 실패 시 닫고 다음 읽기 때 다시 붙는다. */
 @Injectable()

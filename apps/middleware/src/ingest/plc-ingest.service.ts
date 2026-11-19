@@ -1,20 +1,16 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { PlcPointValue } from "../state/plc-point-state";
-import { PlcAdapter, PlcReading } from "./adapters/plc.adapter";
-import {
-  ConnectionProvider,
-  IngestConnection,
-  PlcDevice,
-} from "./providers/connection.provider";
+import { PlcAdapter } from "./adapters/plc.adapter";
+import { PlcReading } from "./adapters/plc.types";
+import { ConnectionProvider } from "./providers/connection.provider";
+import { IngestConnection, PlcDevice } from "./providers/connection.types";
+import { ModbusLinkProvider } from "./providers/modbus-link.provider";
 import {
   ModbusConnectionConfig,
-  ModbusLinkProvider,
   ModbusRawMessage,
-} from "./providers/modbus-link.provider";
-import {
-  PlcEventProvider,
-  PlcPointChange,
-} from "./providers/plc-event.provider";
+} from "./providers/modbus-link.types";
+import { PlcEventProvider } from "./providers/plc-event.provider";
+import { PlcPointChange } from "./providers/plc-event.types";
 import { LinkStateProvider } from "./providers/link-state.provider";
 import { PlcPointStateProvider } from "./providers/plc-point-state.provider";
 import { SeqJudgeProvider } from "./providers/seq-judge.provider";
