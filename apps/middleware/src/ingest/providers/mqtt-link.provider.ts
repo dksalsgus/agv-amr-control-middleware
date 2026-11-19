@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import {
   MqttClientRepository,
-  MqttRawMessage,
+  MqttHandlers,
 } from "../repositories/mqtt-client.repository";
 
 /** vendors_connections.config의 MQTT 모양 */
@@ -21,7 +21,7 @@ export class MqttLinkProvider {
   async start(
     connectionId: string,
     config: MqttConnectionConfig,
-    onMessage: (message: MqttRawMessage) => Promise<void>,
+    handlers: MqttHandlers,
   ): Promise<void> {
     await this.mqttClientRepository.subscribe(
       connectionId,
@@ -32,7 +32,7 @@ export class MqttLinkProvider {
         username: config.username,
         password: config.password,
       },
-      onMessage,
+      handlers,
     );
   }
 }
