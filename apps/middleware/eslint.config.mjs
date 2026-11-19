@@ -10,6 +10,13 @@ export default tseslint.config(
   {
     rules: {
       "func-style": ["error", "expression"],
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "VariableDeclaration[kind='let']",
+          message: "let 대신 const를 쓴다.",
+        },
+      ],
     },
   },
 );
