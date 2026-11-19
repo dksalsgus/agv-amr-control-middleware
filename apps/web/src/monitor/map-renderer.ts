@@ -64,7 +64,7 @@ const COLOR_VARS: Record<string, string> = {
 
 /**
  * 공장 맵을 Canvas 2D로 그린다. 좌표는 미터이고 원점은 왼쪽 아래, y는 위쪽이다.
- * 그리는 방식은 docs/design/monitor.html의 맵 코드를 그대로 따른다.
+ * 그리는 방식은 Open Design 디자인의 맵 코드를 그대로 따른다.
  */
 export class MapRenderer {
   private readonly ctx: CanvasRenderingContext2D;

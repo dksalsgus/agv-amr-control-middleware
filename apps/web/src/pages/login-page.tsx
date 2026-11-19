@@ -6,7 +6,7 @@ import { useLoginForm } from "../auth/use-login-form";
 import { Icon } from "../components/icon";
 import "../styles/login.css";
 
-/** 로그인 화면. 디자인 기준은 docs/design/login.html */
+/** 로그인 화면 */
 export const LoginPage = () => {
   const form = useLoginForm();
   const busy = form.phase !== "idle";

@@ -69,7 +69,7 @@ const apiMessages = (error: unknown): string[] =>
 const statusOf = (error: unknown): number =>
   error instanceof ApiRequestError ? error.status : 0;
 
-/** 연결 설정 화면의 상태와 동작. 디자인(docs/design/connections.html)의 흐름을 실제 API로 옮겼다. */
+/** 연결 설정 화면의 상태와 동작. 디자인의 흐름을 실제 API로 옮겼다. */
 export const useConnectionEditor = (
   links: ReadonlyMap<string, Link>,
   push: Push,
