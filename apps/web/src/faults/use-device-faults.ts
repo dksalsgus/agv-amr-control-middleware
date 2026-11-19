@@ -50,5 +50,31 @@ export const useDeviceFaults = (push: Push) => {
     }
   };
 
-  return { devices, busy, toggle };
+  /** 켜 둔 PLC 점과 로봇 오류를 모두 푼다. */
+  const resetAll = async () => {
+    if (!devices || busy) {
+      return;
+    }
+    setBusy(true);
+    try {
+      for (const pointNo of devices.plcPointsOn) {
+        await faultsApi.setPlcPoint(pointNo, false);
+      }
+      for (const serial of devices.robotErrors) {
+        await faultsApi.setRobotError(serial, false);
+      }
+      setDevices(await faultsApi.findDevices());
+    } catch (error) {
+      console.warn("장비 값 주입 초기화 실패", error);
+      push("장비 값 주입을 모두 풀지 못했습니다.", "danger");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onCount = devices
+    ? devices.plcPointsOn.length + devices.robotErrors.length
+    : 0;
+
+  return { devices, busy, onCount, toggle, resetAll };
 };
