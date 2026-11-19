@@ -4,26 +4,17 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-
 import { ConnectionsProvider } from "./connections.provider";
-
 import { ConnectionWithLink } from "./connections.types";
-
 import { GetConnectionResponseDto } from "./dto/get-connection.response.dto";
-
 import {
   GetConnectionsItemDto,
   GetConnectionsResponseDto,
 } from "./dto/get-connections.response.dto";
-
 import { PatchConnectionRequestDto } from "./dto/patch-connection.request.dto";
-
 import { PatchConnectionResponseDto } from "./dto/patch-connection.response.dto";
-
 import { PostConnectionRequestDto } from "./dto/post-connection.request.dto";
-
 import { PostConnectionResponseDto } from "./dto/post-connection.response.dto";
-
 import { ConfigParts } from "./connections.types";
 
 @Injectable()

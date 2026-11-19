@@ -3,15 +3,10 @@ import {
   ConflictException,
   Injectable,
 } from "@nestjs/common";
-
 import { Prisma } from "@prisma/client";
-
 import { VendorsConnectionsRepository } from "../settings/vendors-connections.repository";
-
 import { VendorsRepository } from "../settings/vendors.repository";
-
 import { LinkStateRepository } from "../state/link-state.repository";
-
 import {
   ConnectionChanges,
   NewConnection,
