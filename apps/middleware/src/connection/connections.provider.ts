@@ -1,10 +1,17 @@
-import { Injectable } from "@nestjs/common";
+import { ConflictException, Injectable } from "@nestjs/common";
+import { Prisma } from "@prisma/client";
 import {
   ConnectionSummaryRow,
   VendorsConnectionsRepository,
 } from "../settings/vendors-connections.repository";
 import { LinkState } from "../state/link-state";
 import { LinkStateRepository } from "../state/link-state.repository";
+
+export type ConnectionChanges = {
+  name?: string;
+  enabled?: boolean;
+  config?: Record<string, unknown>;
+};
 
 export type ConnectionWithLink = {
   row: ConnectionSummaryRow;
@@ -29,5 +36,46 @@ export class ConnectionsProvider {
     }
 
     return connections;
+  }
+
+  async findById(id: string): Promise<ConnectionWithLink | null> {
+    const row = await this.vendorsConnectionsRepository.findByIdWithVendor(id);
+    if (!row) {
+      return null;
+    }
+
+    const link = await this.linkStateRepository.findById(row.id);
+    return { row, link: link ?? null };
+  }
+
+  /** version이 맞을 때만 고친다. 고쳤으면 true. 이름이 겹치면 409 */
+  async update(
+    id: string,
+    version: number,
+    changes: ConnectionChanges,
+  ): Promise<boolean> {
+    try {
+      const count = await this.vendorsConnectionsRepository.updateIfVersion(
+        id,
+        version,
+        {
+          name: changes.name,
+          enabled: changes.enabled,
+          config: changes.config as Prisma.InputJsonObject | undefined,
+        },
+      );
+      return count > 0;
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        throw new ConflictException(
+          `이미 있는 연결 이름입니다: ${changes.name}`,
+        );
+      }
+
+      throw error;
+    }
   }
 }
