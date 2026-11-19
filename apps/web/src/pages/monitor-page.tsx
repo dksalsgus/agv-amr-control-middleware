@@ -5,6 +5,7 @@ import { useToasts } from "../components/use-toasts";
 import { connectionsApi } from "../connections/connections.api";
 import { ConnectionItem } from "../connections/connections.types";
 import { ConnBanner } from "../monitor/conn-banner";
+import { ConnectionPanel } from "../monitor/connection-panel";
 import { FILTER_STATES } from "../monitor/monitor.constants";
 import { MonitorMode } from "../monitor/monitor.types";
 import {
@@ -13,6 +14,7 @@ import {
   toMonitorMode,
   toVendorKeys,
 } from "../monitor/monitor.util";
+import { PlcPanel } from "../monitor/plc-panel";
 import { SummaryBar } from "../monitor/summary-bar";
 import { useMonitorToasts } from "../monitor/use-monitor-toasts";
 import { useRealtime } from "../realtime/use-realtime";
@@ -31,6 +33,7 @@ export const MonitorPage = () => {
   const view = useRealtime();
   const { toasts, push } = useToasts();
   const [connections, setConnections] = useState<ConnectionItem[]>([]);
+  const [selectedPlcId, setSelectedPlcId] = useState<string | null>(null);
   const [states, setStates] = useState<ReadonlySet<string>>(
     () => new Set(FILTER_STATES),
   );
@@ -49,6 +52,11 @@ export const MonitorPage = () => {
   const robots = useMemo(
     () => toMapRobots(view.robots, vendorKeys),
     [view.robots, vendorKeys],
+  );
+  const plcPoints = useMemo(
+    () =>
+      Array.from(view.plcPoints.values()).sort((a, b) => a.pointNo - b.pointNo),
+    [view.plcPoints],
   );
   const alarms = useMemo(() => Array.from(view.alarms.values()), [view.alarms]);
   const robotCountByConnection = useMemo(
@@ -115,7 +123,19 @@ export const MonitorPage = () => {
         </div>
       </section>
       <main className={frozen ? "workspace is-frozen" : "workspace"}>
-        <div className="col col-left" />
+        <div
+          className="col col-left"
+          style={{ gridTemplateRows: "minmax(0, 1fr)" }}
+        >
+          <div className="col-scroll">
+            <ConnectionPanel connections={connections} links={view.links} />
+            <PlcPanel
+              points={plcPoints}
+              selectedId={selectedPlcId}
+              onSelect={setSelectedPlcId}
+            />
+          </div>
+        </div>
         <div className="col col-center" />
         <div className="col col-right" />
       </main>

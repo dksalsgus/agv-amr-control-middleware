@@ -1,0 +1,153 @@
+import { formatTime, pad2 } from "../common/utils/format.util";
+import { Icon } from "../components/icon";
+import { PlcPoint } from "../realtime/realtime.types";
+
+type Props = {
+  points: PlcPoint[];
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+};
+
+const onOff = (value: boolean | null): string => {
+  if (value === null) {
+    return "-";
+  }
+  return value ? "ON" : "OFF";
+};
+
+const PlcFlag = ({ point }: { point: PlcPoint }) => {
+  if (point.abnormal) {
+    return (
+      <span className="plc-flag">
+        <Icon name="warn" />
+        비정상
+      </span>
+    );
+  }
+  return point.stale ? <span className="plc-flag is-stale">STALE</span> : null;
+};
+
+const PlcDetail = ({ point }: { point?: PlcPoint }) => {
+  if (!point) {
+    return <p className="muted">신호를 고르면 상세 값을 보여 줍니다.</p>;
+  }
+  const changedAt = point.changedAt ? Date.parse(point.changedAt) : null;
+  return (
+    <>
+      <p className="plc-detail-title">
+        점 {pad2(point.pointNo)} · {point.name}
+      </p>
+      <dl className="kv">
+        <div className="od-field">
+          <dt>유형</dt>
+          <dd className="mono">{point.type}</dd>
+        </div>
+        <div className="od-field">
+          <dt>비정상 여부</dt>
+          <dd>
+            {point.abnormal ? (
+              <span className="badge" data-tone="danger">
+                비정상
+              </span>
+            ) : (
+              <span className="badge" data-tone="ok">
+                정상
+              </span>
+            )}
+          </dd>
+        </div>
+        <div className="od-field">
+          <dt>현재 값</dt>
+          <dd className="mono">{onOff(point.value)}</dd>
+        </div>
+        <div className="od-field">
+          <dt>정상 값</dt>
+          <dd className="mono">{onOff(point.normalValue)}</dd>
+        </div>
+        <div className="od-field">
+          <dt>마지막 변경</dt>
+          <dd className="mono">
+            {changedAt === null ? "-" : formatTime(changedAt)}
+          </dd>
+        </div>
+        <div className="od-field">
+          <dt>STALE</dt>
+          <dd>
+            {point.stale ? <span className="stale-yes">예</span> : "아니요"}
+          </dd>
+        </div>
+      </dl>
+    </>
+  );
+};
+
+/** PLC 신호 타일과 고른 신호의 상세 */
+export const PlcPanel = ({ points, selectedId, onSelect }: Props) => {
+  const abnormal = points.filter((point) => point.abnormal).length;
+  const selected = points.find((point) => point.id === selectedId);
+
+  return (
+    <section className="panel" aria-labelledby="plcTitle">
+      <div className="panel-head">
+        <h2 className="panel-title" id="plcTitle">
+          PLC 신호
+        </h2>
+        <span className="panel-meta">{points.length}점</span>
+        <span className="end">
+          {abnormal > 0 ? (
+            <span className="badge" data-tone="danger">
+              <Icon name="warn" />
+              비정상 {abnormal}
+            </span>
+          ) : (
+            <span className="badge" data-tone="ok">
+              모두 정상
+            </span>
+          )}
+        </span>
+      </div>
+      <div className="skel">
+        <i className="tall" />
+        <i className="tall" />
+        <i className="tall" />
+        <i className="tall" />
+        <i className="tall" />
+      </div>
+      <div className="data-only">
+        <div
+          className="plc-grid"
+          role="group"
+          aria-label={`PLC 신호 ${points.length}점`}
+        >
+          {points.map((point) => (
+            <button
+              key={point.id}
+              type="button"
+              className="plc-tile"
+              data-abnormal={String(point.abnormal)}
+              data-stale={String(point.stale)}
+              aria-pressed={point.id === selectedId}
+              aria-label={`점 ${point.pointNo} ${point.name}, 현재 ${onOff(point.value)}${point.abnormal ? ", 비정상" : ""}${point.stale ? ", STALE" : ""}`}
+              onClick={() => onSelect(point.id)}
+            >
+              <span className="plc-top">
+                <span className="plc-no">{pad2(point.pointNo)}</span>
+                <PlcFlag point={point} />
+                <span
+                  className="plc-val"
+                  data-on={String(point.value === true)}
+                >
+                  {onOff(point.value)}
+                </span>
+              </span>
+              <span className="plc-name od-truncate">{point.name}</span>
+            </button>
+          ))}
+        </div>
+        <div className="plc-detail" aria-live="polite">
+          <PlcDetail point={selected} />
+        </div>
+      </div>
+    </section>
+  );
+};
