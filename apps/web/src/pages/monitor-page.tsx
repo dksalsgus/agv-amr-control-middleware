@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
+import { alarmsApi } from "../alarms/alarms.api";
+import { useNow } from "../common/hooks/use-now";
 import { toggleInSet } from "../common/utils/set.util";
 import { Gnb, LivePill } from "../components/gnb";
 import { ToastList } from "../components/toast-list";
 import { useToasts } from "../components/use-toasts";
 import { connectionsApi } from "../connections/connections.api";
 import { ConnectionItem } from "../connections/connections.types";
+import { AlarmPanel } from "../monitor/alarm-panel";
 import { ConnBanner } from "../monitor/conn-banner";
 import { ConnectionPanel } from "../monitor/connection-panel";
 import { FILTER_STATES, VENDOR_KEYS } from "../monitor/monitor.constants";
@@ -19,6 +22,7 @@ import {
   toVendorKeys,
 } from "../monitor/monitor.util";
 import { PlcPanel } from "../monitor/plc-panel";
+import { RobotDetail } from "../monitor/robot-detail";
 import { RobotMap } from "../monitor/robot-map";
 import { SummaryBar } from "../monitor/summary-bar";
 import { useMonitorToasts } from "../monitor/use-monitor-toasts";
@@ -55,6 +59,7 @@ export const MonitorPage = () => {
       .catch((error: unknown) => console.warn("연결 목록 조회 실패", error));
   }, []);
 
+  const now = useNow(1000);
   const mode = toMonitorMode(view);
   useMonitorToasts(mode, push);
 
@@ -80,6 +85,24 @@ export const MonitorPage = () => {
         new Map<string, number>(),
       ),
     [robots],
+  );
+
+  const robotsById = useMemo(
+    () => new Map(robots.map((robot) => [robot.id, robot])),
+    [robots],
+  );
+  const connectionNames = useMemo(
+    () =>
+      new Map(
+        connections.map((connection) => [connection.id, connection.name]),
+      ),
+    [connections],
+  );
+  const selectedRobot = selectedRobotId
+    ? robotsById.get(selectedRobotId)
+    : undefined;
+  const selectedConnection = connections.find(
+    (connection) => connection.id === selectedRobot?.connectionId,
   );
 
   const pickSummary = (key: string) =>
@@ -117,6 +140,19 @@ export const MonitorPage = () => {
     revealRobot(robot.id);
   };
 
+  const ackAlarm = async (id: string) => {
+    try {
+      await alarmsApi.ack(id);
+    } catch (error) {
+      console.warn("알람 확인 실패", error);
+      push(
+        "알람을 확인하지 못했습니다. 이미 해제된 알람일 수 있습니다.",
+        "warn",
+      );
+    }
+  };
+
+  const streaming = mode === "live" || mode === "linkDown";
   const frozen = mode === "disconnected" || mode === "reconnecting";
   const pill =
     mode === "linkDown"
@@ -201,7 +237,46 @@ export const MonitorPage = () => {
             total={robots.length}
           />
         </div>
-        <div className="col col-right" />
+        <div className="col col-right">
+          <section className="panel" aria-labelledby="detailTitle">
+            <div className="panel-head">
+              <h2 className="panel-title" id="detailTitle">
+                선택한 로봇
+              </h2>
+              <span className="panel-meta end mono">
+                {selectedRobot ? `seq ${selectedRobot.seq}` : ""}
+              </span>
+            </div>
+            <div className="skel">
+              <i className="tall" />
+              <i />
+              <i className="short" />
+              <i />
+              <i className="short" />
+              <i />
+            </div>
+            <div className="data-only">
+              <RobotDetail
+                robot={selectedRobot}
+                connectionName={selectedConnection?.name ?? ""}
+                vendorName={selectedConnection?.vendorName ?? ""}
+                latency={view.latencies.get(selectedRobotId ?? "")}
+                now={now}
+              />
+            </div>
+          </section>
+          <AlarmPanel
+            alarms={alarms}
+            robots={robotsById}
+            plcPoints={view.plcPoints}
+            connectionNames={connectionNames}
+            canAck={streaming}
+            showOfflineNote={!streaming && mode !== "connecting"}
+            onAck={(id) => void ackAlarm(id)}
+            onGotoRobot={revealRobot}
+            onGotoPlc={setSelectedPlcId}
+          />
+        </div>
       </main>
       <ToastList toasts={toasts} />
     </div>
