@@ -18,5 +18,6 @@ export const ALARM_CODES = [
   "DEVICE_STALE",
   "PLC_ABNORMAL",
   "LOW_BATTERY",
+  "LINK_DOWN",
 ] as const;
 export type AlarmCode = (typeof ALARM_CODES)[number];
