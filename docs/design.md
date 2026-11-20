@@ -256,9 +256,7 @@ PLC는 입력 레지스터 0의 비트 0~15에 16점, 1~5에 seq와 발생 시�
 
 **화면 이미지**
 
-![관제 화면](images/monitor.png)
-
-![관제 화면에서 PLC 점을 고른 모습](images/monitor-plc.png)
+![관제 화면 (PLC 점 02를 고른 상태)](images/monitor.png)
 
 ![연결 설정 화면](images/connections.png)
 
