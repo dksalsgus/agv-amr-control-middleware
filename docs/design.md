@@ -1,6 +1,6 @@
 # 설계 문서: 멀티 프로토콜 AGV·AMR 통합 관제 미들웨어
 
-「설계문서\_양식」의 목차를 따릅니다. 세부는 [인터페이스 명세](interface.md), [설계 근거](design-rationale.md), [측정 결과](measurements.md), [README](../README.md)에 있습니다.
+「설계문서\_양식」의 목차를 따르고, 15장에 채택하지 않은 대안을 더했습니다. 세부는 [인터페이스 명세](interface.md), [설계 근거](design-rationale.md), [측정 결과](measurements.md), [README](../README.md)에 있습니다.
 
 ## 1. 요약
 
